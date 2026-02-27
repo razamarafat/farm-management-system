@@ -1,0 +1,198 @@
+@import "tailwindcss";
+
+/* Class-based dark mode for Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Theme tokens for Tailwind utility classes */
+@theme {
+  --font-sans: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--c-bg);
+  --color-foreground: var(--c-fg);
+  --color-card: var(--c-card);
+  --color-card-foreground: var(--c-card-fg);
+  --color-popover: var(--c-popover);
+  --color-popover-foreground: var(--c-popover-fg);
+  --color-primary: var(--c-primary);
+  --color-primary-foreground: var(--c-primary-fg);
+  --color-secondary: var(--c-secondary);
+  --color-secondary-foreground: var(--c-secondary-fg);
+  --color-muted: var(--c-muted);
+  --color-muted-foreground: var(--c-muted-fg);
+  --color-accent: var(--c-accent);
+  --color-accent-foreground: var(--c-accent-fg);
+  --color-destructive: var(--c-destructive);
+  --color-destructive-foreground: var(--c-destructive-fg);
+  --color-border: var(--c-border);
+  --color-input: var(--c-input);
+  --color-ring: var(--c-ring);
+  --color-success: var(--c-success);
+  --color-warning: var(--c-warning);
+  --color-error: var(--c-error);
+  --color-info: var(--c-info);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+}
+
+/* Light theme variables */
+:root {
+  --c-bg: #F8F9FB;
+  --c-fg: #111827;
+  --c-card: #FFFFFF;
+  --c-card-fg: #111827;
+  --c-popover: #FFFFFF;
+  --c-popover-fg: #111827;
+  --c-primary: #16A34A;
+  --c-primary-fg: #FFFFFF;
+  --c-secondary: #0F766E;
+  --c-secondary-fg: #FFFFFF;
+  --c-muted: #F3F4F6;
+  --c-muted-fg: #9CA3AF;
+  --c-accent: #D97706;
+  --c-accent-fg: #FFFFFF;
+  --c-destructive: #DC2626;
+  --c-destructive-fg: #FFFFFF;
+  --c-border: #E5E7EB;
+  --c-input: #E5E7EB;
+  --c-ring: #16A34A;
+  --c-success: #16A34A;
+  --c-warning: #D97706;
+  --c-error: #DC2626;
+  --c-info: #2563EB;
+  
+  /* Additional UI colors */
+  --header-bg: #FFFFFF;
+  --hover-bg: #F3F4F6;
+  --active-bg: #EEF0F3;
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-muted: #9CA3AF;
+  --border-default: #E5E7EB;
+}
+
+/* Dark theme variables */
+.dark {
+  --c-bg: #0F1117;
+  --c-fg: #F3F4F6;
+  --c-card: #1A1D27;
+  --c-card-fg: #F3F4F6;
+  --c-popover: #1A1D27;
+  --c-popover-fg: #F3F4F6;
+  --c-primary: #22C55E;
+  --c-primary-fg: #111827;
+  --c-secondary: #0F766E;
+  --c-secondary-fg: #FFFFFF;
+  --c-muted: #252836;
+  --c-muted-fg: #6B7280;
+  --c-accent: #D97706;
+  --c-accent-fg: #FFFFFF;
+  --c-destructive: #991B1B;
+  --c-destructive-fg: #FFFFFF;
+  --c-border: #2A2E3D;
+  --c-input: #2A2E3D;
+  --c-ring: #22C55E;
+  --c-success: #22C55E;
+  --c-warning: #D97706;
+  --c-error: #F87171;
+  --c-info: #3B82F6;
+  
+  /* Additional UI colors - Dark */
+  --header-bg: #1A1D27;
+  --hover-bg: #252836;
+  --active-bg: #2A2E3D;
+  --text-primary: #F3F4F6;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
+  --border-default: #2A2E3D;
+}
+
+/* Base layer styles */
+@layer base {
+  * {
+    border-color: var(--c-border);
+  }
+  body {
+    background-color: var(--c-bg);
+    color: var(--c-fg);
+    font-family: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "ss03"; /* Vazirmatn Persian Digits */
+  }
+}
+
+/* Custom Tile Colors */
+.tile-blue { --tile-bg: #EFF6FF; --tile-border: #BFDBFE; --tile-color: #2563EB; }
+.tile-green { --tile-bg: #F0FDF4; --tile-border: #BBF7D0; --tile-color: #16A34A; }
+.tile-orange { --tile-bg: #FFF7ED; --tile-border: #FED7AA; --tile-color: #D97706; }
+.tile-purple { --tile-bg: #F5F3FF; --tile-border: #DDD6FE; --tile-color: #7C3AED; }
+.tile-teal { --tile-bg: #F0FDFA; --tile-border: #99F6E4; --tile-color: #0F766E; }
+.tile-red { --tile-bg: #FEF2F2; --tile-border: #FECACA; --tile-color: #DC2626; }
+.tile-indigo { --tile-bg: #EEF2FF; --tile-border: #C7D2FE; --tile-color: #4F46E5; }
+.tile-amber { --tile-bg: #FFFBEB; --tile-border: #FDE68A; --tile-color: #D97706; }
+.tile-cyan { --tile-bg: #ECFEFF; --tile-border: #A5F3FC; --tile-color: #0891B2; }
+.tile-slate { --tile-bg: #F8FAFC; --tile-border: #CBD5E1; --tile-color: #475569; }
+
+.dark .tile-blue { --tile-bg: #1E293B; --tile-border: #1E3A5F; --tile-color: #60A5FA; }
+.dark .tile-green { --tile-bg: #14261A; --tile-border: #1A3D2A; --tile-color: #4ADE80; }
+.dark .tile-orange { --tile-bg: #271A0C; --tile-border: #3D2A12; --tile-color: #FBBF24; }
+.dark .tile-purple { --tile-bg: #1E1A2E; --tile-border: #2E2650; --tile-color: #A78BFA; }
+.dark .tile-teal { --tile-bg: #0C2622; --tile-border: #143D36; --tile-color: #2DD4BF; }
+.dark .tile-red { --tile-bg: #2A1215; --tile-border: #3D1A1E; --tile-color: #F87171; }
+.dark .tile-indigo { --tile-bg: #1A1E35; --tile-border: #252D50; --tile-color: #818CF8; }
+.dark .tile-amber { --tile-bg: #271F0C; --tile-border: #3D3012; --tile-color: #FCD34D; }
+.dark .tile-cyan { --tile-bg: #0C2426; --tile-border: #143D40; --tile-color: #22D3EE; }
+.dark .tile-slate { --tile-bg: #1A1E27; --tile-border: #2A303D; --tile-color: #94A3B8; }
+
+/* Hide number input spinners */
+.no-spinners::-webkit-outer-spin-button,
+.no-spinners::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spinners {
+  -moz-appearance: textfield;
+}
+
+/* Hide scrollbar but keep functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Hide all scrollbars globally */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/* Force Persian font and numbers throughout the app */
+body, html, #root {
+  font-family: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 14px;
+  font-feature-settings: "ss03" !important;
+}
+
+/* Convert all numbers to Persian in text content */
+body * {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ensure all inputs use Persian font */
+input, textarea, select, button {
+  font-family: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif !important;
+  font-feature-settings: "ss03" !important;
+}
+
+/* Persian number utility class */
+.persian-nums {
+  font-family: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif !important;
+}
