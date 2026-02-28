@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { router } from '@/router';
 import { useAuthStore } from '@/store/authStore';
-import { seedAdmin } from '@/utils/seedAdmin';
 import { useTheme } from '@/hooks/useTheme';
 
 export function App() {
@@ -13,7 +12,6 @@ export function App() {
 
   useEffect(() => {
     initialize();
-    seedAdmin();
   }, [initialize]);
 
   // Check session expiry every minute for non-admin users
