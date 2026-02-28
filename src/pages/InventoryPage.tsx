@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { toast } from 'sonner';
-import { toPersianNumbers } from '@/utils/persianNumbers';
+import { toPersianNumbers, formatRial } from '@/utils/persianNumbers';
 import { getJalaliToday, jalaliToGregorian } from '@/utils/jalaliDate';
 import { JalaliDatePicker } from '@/components/ui/JalaliDatePicker';
 import type { InventoryFilters, TransactionType, StockBalance } from '@/types/inventory.types';
@@ -550,7 +550,7 @@ export default function InventoryPage() {
                                 </td>
                                 <td className="py-3 px-4 text-center text-sm text-indigo-600 dark:text-indigo-400 font-medium">
                                   {lastPrices.has(balance.item_id)
-                                    ? toPersianNumbers(Math.round(lastPrices.get(balance.item_id)!).toLocaleString())
+                                    ? formatRial(lastPrices.get(balance.item_id)!)
                                     : '—'}
                                 </td>
                               </tr>

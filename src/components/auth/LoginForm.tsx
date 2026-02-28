@@ -16,14 +16,13 @@ export const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { setUser, setProfile } = useAuthStore();
+  const { setUser, setProfile, setSessionStart } = useAuthStore();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormData>({
-    // @ts-ignore
     resolver: zodResolver(loginSchema),
     defaultValues: {
       username: '',
@@ -72,12 +71,12 @@ export const LoginForm = () => {
         // Update last login
         await supabase
           .from('profiles')
-          // @ts-ignore
-          .update({ last_login_at: new Date().toISOString() })
+          .update({ last_login_at: new Date().toISOString() } as Pick<Profile, 'last_login_at'>)
           .eq('id', profile.id);
 
         setUser(authData.user);
         setProfile(profile);
+        setSessionStart(profile.role);
         
         toast.success(`خوش آمدید، ${profile.first_name || profile.username}`);
 
@@ -96,16 +95,16 @@ export const LoginForm = () => {
             navigate('/');
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Login error:', error);
-      toast.error('نام کاربری یا رمز عبور اشتباه است');
+      const errorMessage = error instanceof Error ? error.message : '';
+      toast.error(errorMessage || 'نام کاربری یا رمز عبور اشتباه است');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    // @ts-ignore
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="space-y-2">
         <div className="relative">
