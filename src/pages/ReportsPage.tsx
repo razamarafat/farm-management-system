@@ -20,7 +20,7 @@ import { Badge } from '@/components/ui/Badge';
 import { JalaliDatePicker } from '@/components/ui/JalaliDatePicker';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { toast } from 'sonner';
-import { toPersianNumbers } from '@/utils/persianNumbers';
+import { toPersianNumbers, formatRial } from '@/utils/persianNumbers';
 import { formatJalaliDate, jalaliToGregorian } from '@/utils/jalaliDate';
 import { exportToExcelPro } from '@/utils/excelExportPro';
 
@@ -514,8 +514,8 @@ export default function ReportsPage() {
       { key: 'item_category', header: 'دسته', width: 12 },
       { key: 'unit', header: 'واحد', width: 10 },
       { key: 'quantity', header: 'مقدار', width: 12 },
-      { key: 'unit_price', header: 'قیمت واحد', width: 12 },
-      { key: 'total_price', header: 'قیمت کل', width: 15 },
+      { key: 'unit_price', header: 'قیمت واحد (ریال)', width: 18 },
+      { key: 'total_price', header: 'قیمت کل (ریال)', width: 20 },
       { key: 'supplier', header: 'تأمین‌کننده', width: 20 },
       { key: 'hall_name', header: 'سالن', width: 15 },
       { key: 'reference_no', header: 'شماره مرجع', width: 15 },
@@ -525,8 +525,8 @@ export default function ReportsPage() {
       ...r,
       date: formatJalaliDate(r.date),
       quantity: toPersianNumbers(r.quantity?.toLocaleString() || '0'),
-      unit_price: r.unit_price ? toPersianNumbers(r.unit_price.toLocaleString()) : '-',
-      total_price: r.total_price ? toPersianNumbers(r.total_price.toLocaleString()) : '-',
+      unit_price: r.unit_price ? formatRial(r.unit_price) : '—',
+      total_price: r.total_price ? formatRial(r.total_price) : '—',
     }));
 
     await exportToExcelPro({
@@ -820,8 +820,8 @@ export default function ReportsPage() {
                         <th className="text-right py-3 px-3 text-xs font-semibold text-[var(--c-muted-fg)]">مقدار</th>
                         {reportType === 'purchase' && (
                           <>
-                            <th className="text-right py-3 px-3 text-xs font-semibold text-[var(--c-muted-fg)]">قیمت واحد</th>
-                            <th className="text-right py-3 px-3 text-xs font-semibold text-[var(--c-muted-fg)]">قیمت کل</th>
+                            <th className="text-right py-3 px-3 text-xs font-semibold text-[var(--c-muted-fg)]">قیمت واحد (ریال)</th>
+                            <th className="text-right py-3 px-3 text-xs font-semibold text-[var(--c-muted-fg)]">قیمت کل (ریال)</th>
                             <th className="text-right py-3 px-3 text-xs font-semibold text-[var(--c-muted-fg)]">تأمین‌کننده</th>
                           </>
                         )}
@@ -851,8 +851,8 @@ export default function ReportsPage() {
                           </td>
                           {reportType === 'purchase' && (
                             <>
-                              <td className="py-3 px-3 text-sm">{row.unit_price ? toPersianNumbers(row.unit_price.toLocaleString()) : '-'}</td>
-                              <td className="py-3 px-3 text-sm">{row.total_price ? toPersianNumbers(row.total_price.toLocaleString()) : '-'}</td>
+                              <td className="py-3 px-3 text-sm">{row.unit_price ? formatRial(row.unit_price) : '—'}</td>
+                              <td className="py-3 px-3 text-sm">{row.total_price ? formatRial(row.total_price) : '—'}</td>
                               <td className="py-3 px-3 text-sm">{row.supplier || '-'}</td>
                             </>
                           )}
@@ -863,7 +863,7 @@ export default function ReportsPage() {
                                   const farmItem = farmItems.find(fi => fi.name === row.item_name);
                                   const price = farmItem ? (lastPrices.get(farmItem.id) || 0) : 0;
                                   const value = row.quantity * price;
-                                  return value > 0 ? toPersianNumbers(Math.round(value).toLocaleString()) : '—';
+                                  return value > 0 ? formatRial(value) : '—';
                                 })()}
                               </td>
                               <td className="py-3 px-3 text-sm">{row.hall_name || '-'}</td>
