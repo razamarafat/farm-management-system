@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -10,6 +10,8 @@ import {
   X,
   Save,
   Loader,
+  DollarSign,
+  Pencil,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useStockBalances } from '@/hooks/useInventory';
@@ -21,6 +23,39 @@ import { Spinner } from '@/components/ui/Spinner';
 import { toast } from 'sonner';
 import { toPersianNumbers, toEnglishDigits } from '@/utils/persianNumbers';
 import type { StockBalance } from '@/types/inventory.types';
+
+
+type LastPriceMap = Record<string, number>;
+
+const MANUAL_LAST_PRICE_KEY = 'manual-last-price-map';
+
+function getManualPriceStorageKey(farmId: string): string {
+  return `${MANUAL_LAST_PRICE_KEY}:${farmId}`;
+}
+
+function loadManualLastPriceMap(farmId: string): LastPriceMap {
+  try {
+    const raw = localStorage.getItem(getManualPriceStorageKey(farmId));
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const safe: LastPriceMap = {};
+    Object.entries(parsed).forEach(([itemId, value]) => {
+      const num = Number(value);
+      if (Number.isFinite(num) && num >= 0) safe[itemId] = num;
+    });
+    return safe;
+  } catch {
+    return {};
+  }
+}
+
+function saveManualLastPriceMap(farmId: string, data: LastPriceMap) {
+  try {
+    localStorage.setItem(getManualPriceStorageKey(farmId), JSON.stringify(data));
+  } catch {
+    // ignore storage errors
+  }
+}
 
 // ─── میانگین مصرف ۷ روزه ────────────────────────────────────────
 async function fetch7DayAvgConsumption(
@@ -59,8 +94,46 @@ export default function ReorderPointPage() {
   const [editValue, setEditValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [avgConsumption, setAvgConsumption] = useState<Map<string, number>>(new Map());
+  const [lastPurchasePriceMap, setLastPurchasePriceMap] = useState<LastPriceMap>({});
+  const [manualLastPriceMap, setManualLastPriceMap] = useState<LastPriceMap>({});
+  const [editingLastPriceItemId, setEditingLastPriceItemId] = useState<string | null>(null);
+  const [lastPriceInputValue, setLastPriceInputValue] = useState('');
 
   const { balances, isLoading, refetch } = useStockBalances(selectedFarmId, 'all');
+
+
+  const fetchLastPurchasePrices = useCallback(async (farmId: string, itemIds: string[]) => {
+    if (itemIds.length === 0) {
+      setLastPurchasePriceMap({});
+      return;
+    }
+
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('inventory_transactions')
+        .select('item_id, unit_price, txn_ts')
+        .eq('farm_id', farmId)
+        .eq('txn_type', 'purchase')
+        .in('item_id', itemIds)
+        .not('unit_price', 'is', null)
+        .order('txn_ts', { ascending: false });
+
+      if (error) throw error;
+
+      const latestPriceMap: LastPriceMap = {};
+      (data || []).forEach((row) => {
+        const price = Number(row.unit_price ?? 0);
+        if (!Number.isFinite(price) || price <= 0) return;
+        if (latestPriceMap[row.item_id] === undefined) {
+          latestPriceMap[row.item_id] = price;
+        }
+      });
+      setLastPurchasePriceMap(latestPriceMap);
+    } catch (err) {
+      console.error('Error fetching last purchase prices:', err);
+      setLastPurchasePriceMap({});
+    }
+  }, []);
 
   // Fetch farms on mount
   useEffect(() => {
@@ -90,6 +163,23 @@ export default function ReorderPointPage() {
     if (!selectedFarmId) return;
     fetch7DayAvgConsumption(selectedFarmId).then(setAvgConsumption);
   }, [selectedFarmId]);
+
+  useEffect(() => {
+    if (!selectedFarmId) {
+      setManualLastPriceMap({});
+      return;
+    }
+    setManualLastPriceMap(loadManualLastPriceMap(selectedFarmId));
+  }, [selectedFarmId]);
+
+  useEffect(() => {
+    if (!selectedFarmId) {
+      setLastPurchasePriceMap({});
+      return;
+    }
+    const itemIds = balances.map((item) => item.item_id);
+    fetchLastPurchasePrices(selectedFarmId, itemIds);
+  }, [selectedFarmId, balances, fetchLastPurchasePrices]);
 
   // Sort and categorize items
   const categorizedItems = useMemo(() => {
@@ -213,6 +303,58 @@ export default function ReorderPointPage() {
     setEditValue(cleaned);
   };
 
+  const getLastPrice = (itemId: string): number | null => {
+    const purchasePrice = lastPurchasePriceMap[itemId];
+    if (purchasePrice !== undefined) return purchasePrice;
+
+    const manualPrice = manualLastPriceMap[itemId];
+    if (manualPrice !== undefined) return manualPrice;
+
+    return null;
+  };
+
+  const startEditLastPrice = (itemId: string) => {
+    setEditingLastPriceItemId(itemId);
+    const existingPrice = getLastPrice(itemId);
+    setLastPriceInputValue(existingPrice !== null ? toPersianNumbers(existingPrice.toString()) : '');
+  };
+
+  const cancelEditLastPrice = () => {
+    setEditingLastPriceItemId(null);
+    setLastPriceInputValue('');
+  };
+
+  const handleLastPriceInputChange = (value: string) => {
+    const cleaned = value.replace(/[^\d۰-۹.]/g, '');
+    setLastPriceInputValue(cleaned);
+  };
+
+  const saveManualLastPrice = (itemId: string) => {
+    if (!selectedFarmId) {
+      toast.error('ابتدا مزرعه را انتخاب کنید');
+      return;
+    }
+
+    const normalized = toEnglishDigits(lastPriceInputValue.trim());
+    const numValue = Number(normalized);
+
+    if (!Number.isFinite(numValue) || numValue < 0) {
+      toast.error('لطفاً قیمت معتبر وارد کنید');
+      return;
+    }
+
+    const nextMap: LastPriceMap = {
+      ...manualLastPriceMap,
+      [itemId]: numValue,
+    };
+
+    setManualLastPriceMap(nextMap);
+    saveManualLastPriceMap(selectedFarmId, nextMap);
+    setEditingLastPriceItemId(null);
+    setLastPriceInputValue('');
+    toast.success('آخرین قیمت با موفقیت ذخیره شد');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--c-bg)] to-[var(--c-bg-secondary)]">
       {/* Header */}
@@ -297,6 +439,14 @@ export default function ReorderPointPage() {
                         getColorForRatio={getColorForRatio}
                         getStatusColor={getStatusColor}
                         getSmartLabel={getSmartLabel}
+                        lastPrice={getLastPrice(item.item_id)}
+                        hasPurchasePrice={lastPurchasePriceMap[item.item_id] !== undefined}
+                        editingLastPriceItemId={editingLastPriceItemId}
+                        lastPriceInputValue={lastPriceInputValue}
+                        onStartEditLastPrice={startEditLastPrice}
+                        onCancelEditLastPrice={cancelEditLastPrice}
+                        onLastPriceInputChange={handleLastPriceInputChange}
+                        onSaveManualLastPrice={saveManualLastPrice}
                       />
                     ))}
                   </AnimatePresence>
@@ -332,6 +482,14 @@ export default function ReorderPointPage() {
                         getColorForRatio={getColorForRatio}
                         getStatusColor={getStatusColor}
                         getSmartLabel={getSmartLabel}
+                        lastPrice={getLastPrice(item.item_id)}
+                        hasPurchasePrice={lastPurchasePriceMap[item.item_id] !== undefined}
+                        editingLastPriceItemId={editingLastPriceItemId}
+                        lastPriceInputValue={lastPriceInputValue}
+                        onStartEditLastPrice={startEditLastPrice}
+                        onCancelEditLastPrice={cancelEditLastPrice}
+                        onLastPriceInputChange={handleLastPriceInputChange}
+                        onSaveManualLastPrice={saveManualLastPrice}
                       />
                     ))}
                   </AnimatePresence>
@@ -367,6 +525,14 @@ export default function ReorderPointPage() {
                         getColorForRatio={getColorForRatio}
                         getStatusColor={getStatusColor}
                         getSmartLabel={getSmartLabel}
+                        lastPrice={getLastPrice(item.item_id)}
+                        hasPurchasePrice={lastPurchasePriceMap[item.item_id] !== undefined}
+                        editingLastPriceItemId={editingLastPriceItemId}
+                        lastPriceInputValue={lastPriceInputValue}
+                        onStartEditLastPrice={startEditLastPrice}
+                        onCancelEditLastPrice={cancelEditLastPrice}
+                        onLastPriceInputChange={handleLastPriceInputChange}
+                        onSaveManualLastPrice={saveManualLastPrice}
                       />
                     ))}
                   </AnimatePresence>
@@ -402,6 +568,14 @@ export default function ReorderPointPage() {
                         getColorForRatio={getColorForRatio}
                         getStatusColor={getStatusColor}
                         getSmartLabel={getSmartLabel}
+                        lastPrice={getLastPrice(item.item_id)}
+                        hasPurchasePrice={lastPurchasePriceMap[item.item_id] !== undefined}
+                        editingLastPriceItemId={editingLastPriceItemId}
+                        lastPriceInputValue={lastPriceInputValue}
+                        onStartEditLastPrice={startEditLastPrice}
+                        onCancelEditLastPrice={cancelEditLastPrice}
+                        onLastPriceInputChange={handleLastPriceInputChange}
+                        onSaveManualLastPrice={saveManualLastPrice}
                       />
                     ))}
                   </AnimatePresence>
@@ -437,6 +611,14 @@ interface ReorderPointCardProps {
   getColorForRatio: (balance: number, reorderPoint: number) => string;
   getStatusColor: (balance: number, reorderPoint: number) => string;
   getSmartLabel: (itemId: string, balance: number) => string;
+  lastPrice: number | null;
+  hasPurchasePrice: boolean;
+  editingLastPriceItemId: string | null;
+  lastPriceInputValue: string;
+  onStartEditLastPrice: (itemId: string) => void;
+  onCancelEditLastPrice: () => void;
+  onLastPriceInputChange: (value: string) => void;
+  onSaveManualLastPrice: (itemId: string) => void;
 }
 
 function ReorderPointCard({
@@ -451,6 +633,14 @@ function ReorderPointCard({
   getColorForRatio,
   getStatusColor,
   getSmartLabel,
+  lastPrice,
+  hasPurchasePrice,
+  editingLastPriceItemId,
+  lastPriceInputValue,
+  onStartEditLastPrice,
+  onCancelEditLastPrice,
+  onLastPriceInputChange,
+  onSaveManualLastPrice,
 }: ReorderPointCardProps) {
   return (
     <motion.div
@@ -545,6 +735,61 @@ function ReorderPointCard({
                 )}
               </div>
             )}
+
+            {/* Last Price */}
+            <div className="text-center min-w-[140px]">
+              <p className="text-xs text-[var(--c-muted-fg)] mb-1 flex items-center justify-center gap-1">
+                <DollarSign className="w-3 h-3" />
+                آخرین قیمت
+              </p>
+
+              {lastPrice !== null ? (
+                <>
+                  <p className="text-lg font-bold text-[var(--c-text-primary)]">
+                    {toPersianNumbers(lastPrice.toString())}
+                  </p>
+                  <p className="text-xs text-[var(--c-muted-fg)] mt-1">به ازای هر {item.item_unit}</p>
+                </>
+              ) : editingLastPriceItemId === item.item_id ? (
+                <div className="space-y-2">
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={lastPriceInputValue}
+                    onChange={(e) => onLastPriceInputChange(e.target.value)}
+                    placeholder="قیمت"
+                    className="text-center font-bold"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => onSaveManualLastPrice(item.item_id)}
+                      className="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                    >
+                      <Save className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={onCancelEditLastPrice}
+                      className="flex-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-700 text-gray-900 dark:text-white px-3 py-1 rounded text-sm font-medium transition-colors flex items-center justify-center gap-1"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => onStartEditLastPrice(item.item_id)}
+                  className="text-sm px-3 py-1 rounded-lg bg-white/70 dark:bg-black/20 hover:bg-white dark:hover:bg-black/30 border border-[var(--c-border)] transition-colors inline-flex items-center gap-1"
+                >
+                  <Pencil className="w-3 h-3" />
+                  ثبت قیمت
+                </button>
+              )}
+
+              {!hasPurchasePrice && lastPrice !== null && (
+                <p className="text-[10px] text-[var(--c-muted-fg)] mt-1">ورود دستی</p>
+              )}
+            </div>
           </div>
 
           {/* Right side - Action Button */}
