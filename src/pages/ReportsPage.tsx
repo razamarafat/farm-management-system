@@ -853,7 +853,7 @@ export default function ReportsPage() {
                             <>
                               <td className="py-3 px-3 text-sm">{row.unit_price ? formatRial(row.unit_price) : '—'}</td>
                               <td className="py-3 px-3 text-sm">{row.total_price ? formatRial(row.total_price) : '—'}</td>
-                              <td className="py-3 px-3 text-sm">{row.supplier ? toPersianNumbers(row.supplier) : '—'}</td>
+                              <td className="py-3 px-3 text-sm">{row.supplier || '-'}</td>
                             </>
                           )}
                           {reportType === 'consumption' && (
