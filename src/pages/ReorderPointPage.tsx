@@ -135,7 +135,7 @@ export default function ReorderPointPage() {
     }
   }, []);
 
-  // Fetch farms on mount / role change
+  // Fetch farms (admin: all, non-admin: assigned)
   useEffect(() => {
     const loadFarms = async () => {
       try {
@@ -203,7 +203,6 @@ export default function ReorderPointPage() {
     const itemIds = balances.map((item) => item.item_id);
     fetchLastPurchasePrices(selectedFarmId, itemIds);
   }, [selectedFarmId, balances, fetchLastPurchasePrices]);
-
 
   useEffect(() => {
     setEditingItemId(null);
