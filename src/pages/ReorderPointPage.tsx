@@ -29,6 +29,13 @@ type LastPriceMap = Record<string, number>;
 
 const MANUAL_LAST_PRICE_KEY = 'manual-last-price-map';
 
+
+function normalizeFarmId(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim()) return value;
+  if (Array.isArray(value) && typeof value[0] === 'string' && value[0].trim()) return value[0];
+  return null;
+}
+
 function getManualPriceStorageKey(farmId: string): string {
   return `${MANUAL_LAST_PRICE_KEY}:${farmId}`;
 }
@@ -87,7 +94,7 @@ export default function ReorderPointPage() {
   const isAdmin = profile?.role === 'admin';
 
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(
-    isAdmin ? null : profile?.farm_id || null
+    isAdmin ? null : normalizeFarmId(profile?.farm_id)
   );
   const [farms, setFarms] = useState<Array<{ id: string; name: string }>>([]);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -156,9 +163,10 @@ export default function ReorderPointPage() {
         }
 
         if (profile?.farm_id) {
-          const farmIdArray = Array.isArray(profile.farm_id)
-            ? profile.farm_id
-            : [profile.farm_id];
+          const normalizedFarmId = normalizeFarmId(profile.farm_id);
+          if (!normalizedFarmId) return;
+
+          const farmIdArray = [normalizedFarmId];
 
           const { data } = await supabaseAdmin
             .from('farms')

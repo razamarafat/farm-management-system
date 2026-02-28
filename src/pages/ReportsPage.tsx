@@ -774,7 +774,7 @@ export default function ReportsPage() {
               <Card className="bg-green-50 dark:bg-green-900/20 border-green-200">
                 <CardContent className="p-4 text-center">
                   <p className="text-xs text-green-600 mb-1">مجموع ارزش</p>
-                  <p className="text-xl font-bold text-green-700">{toPersianNumbers((stats.totalValue / 1000000).toFixed(2))} م</p>
+                  <p className="text-xl font-bold text-green-700">{formatRial(stats.totalValue)}</p>
                 </CardContent>
               </Card>
               <Card className="bg-purple-50 dark:bg-purple-900/20 border-purple-200">
@@ -866,10 +866,10 @@ export default function ReportsPage() {
                                   return value > 0 ? formatRial(value) : '—';
                                 })()}
                               </td>
-                              <td className="py-3 px-3 text-sm">{row.hall_name || '-'}</td>
+                              <td className="py-3 px-3 text-sm">{row.hall_name ? toPersianNumbers(row.hall_name) : '—'}</td>
                             </>
                           )}
-                          <td className="py-3 px-3 text-sm text-[var(--c-muted-fg)]">{row.reference_no || '-'}</td>
+                          <td className="py-3 px-3 text-sm text-[var(--c-muted-fg)]">{row.reference_no ? toPersianNumbers(row.reference_no) : '—'}</td>
                         </tr>
                       ))}
                     </tbody>
