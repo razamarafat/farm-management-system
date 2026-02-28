@@ -54,6 +54,9 @@ export const useAuthStore = create<AuthState>()(
 
             if (profile) {
               set({ profile: profile as Profile });
+            } else {
+              await supabase.auth.signOut();
+              set({ user: null, profile: null, isAuthenticated: false, sessionStartedAt: null });
             }
           } else {
             set({ user: null, profile: null, isAuthenticated: false });
