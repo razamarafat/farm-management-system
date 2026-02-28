@@ -26,9 +26,22 @@ export function formatNumberWithSeparator(value: string | number): string {
   return cleanValue.replace(/\B(?=(\d{3})+(?!\d))/g, '/');
 }
 
+export function formatRial(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === '') return '—';
+
+  const numeric = typeof value === 'number' ? value : Number(toEnglishDigits(String(value).replace(/[\/\s,]/g, '')));
+  if (!Number.isFinite(numeric)) return '—';
+
+  const rounded = Math.round(numeric);
+  const separated = formatNumberWithSeparator(String(Math.abs(rounded)));
+  const withSign = rounded < 0 ? `-${separated}` : separated;
+  return `${toPersianDigits(withSign)} ریال`;
+}
+
 export const persianNumbers = {
   toPersianDigits,
   toPersianNumbers,
   toEnglishDigits,
-  formatNumberWithSeparator
+  formatNumberWithSeparator,
+  formatRial
 };

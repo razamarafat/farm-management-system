@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/authStore';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { useFormulas, useFormulaActions, useFarmFeedItems, Formula, FormulaInput } from '@/hooks/useFormulas';
 import { toast } from 'sonner';
+import { formatRial } from '@/utils/persianNumbers';
 
 interface FarmOption {
   id: string;
@@ -632,10 +633,10 @@ const FormulaCard = ({
                               {toPersianNum(item.qty_per_mixer.toLocaleString())}
                             </td>
                             <td className="p-3 text-center text-indigo-600 dark:text-indigo-400 font-medium" dir="ltr">
-                              {unitPrice > 0 ? toPersianNum(Math.round(unitPrice).toLocaleString()) : '—'}
+                              {unitPrice > 0 ? formatRial(unitPrice) : '—'}
                             </td>
                             <td className="p-3 text-center text-purple-600 dark:text-purple-400 font-medium" dir="ltr">
-                              {unitPrice > 0 ? toPersianNum(Math.round(itemCost).toLocaleString()) : '—'}
+                              {unitPrice > 0 ? formatRial(itemCost) : '—'}
                             </td>
                             <td className="p-3 text-center text-[var(--c-muted-fg)]">
                               {formula.total_weight > 0
@@ -657,7 +658,7 @@ const FormulaCard = ({
                           <td className="p-3 text-center" dir="ltr">{toPersianNum(Math.round(formula.total_weight).toLocaleString())}</td>
                           <td className="p-3 text-center"></td>
                           <td className="p-3 text-center text-purple-700 dark:text-purple-300" dir="ltr">
-                            {totalCost > 0 ? toPersianNum(Math.round(totalCost).toLocaleString()) : '—'}
+                            {totalCost > 0 ? formatRial(totalCost) : '—'}
                           </td>
                           <td className="p-3 text-center">۱۰۰٪</td>
                         </tr>
