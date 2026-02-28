@@ -135,28 +135,51 @@ export default function ReorderPointPage() {
     }
   }, []);
 
-  // Fetch farms on mount
+  // Fetch farms on mount / role change
   useEffect(() => {
-    if (!selectedFarmId && profile?.farm_id) {
-      const farmIdArray = Array.isArray(profile.farm_id)
-        ? profile.farm_id
-        : [profile.farm_id];
+    const loadFarms = async () => {
+      try {
+        if (isAdmin) {
+          const { data } = await supabaseAdmin
+            .from('farms')
+            .select('id, name')
+            .eq('is_active', true)
+            .order('name');
 
-      supabaseAdmin
-        .from('farms')
-        .select('id, name')
-        .in('id', farmIdArray)
-        .eq('is_active', true)
-        .then(({ data }) => {
           if (data) {
             setFarms(data);
             if (data.length > 0 && !selectedFarmId) {
               setSelectedFarmId(data[0].id);
             }
           }
-        });
-    }
-  }, [profile, selectedFarmId]);
+          return;
+        }
+
+        if (profile?.farm_id) {
+          const farmIdArray = Array.isArray(profile.farm_id)
+            ? profile.farm_id
+            : [profile.farm_id];
+
+          const { data } = await supabaseAdmin
+            .from('farms')
+            .select('id, name')
+            .in('id', farmIdArray)
+            .eq('is_active', true);
+
+          if (data) {
+            setFarms(data);
+            if (data.length > 0 && !selectedFarmId) {
+              setSelectedFarmId(data[0].id);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error loading farms:', err);
+      }
+    };
+
+    loadFarms();
+  }, [isAdmin, profile?.farm_id, selectedFarmId]);
 
   // Load 7-day average consumption data
   useEffect(() => {
@@ -180,6 +203,14 @@ export default function ReorderPointPage() {
     const itemIds = balances.map((item) => item.item_id);
     fetchLastPurchasePrices(selectedFarmId, itemIds);
   }, [selectedFarmId, balances, fetchLastPurchasePrices]);
+
+
+  useEffect(() => {
+    setEditingItemId(null);
+    setEditValue('');
+    setEditingLastPriceItemId(null);
+    setLastPriceInputValue('');
+  }, [selectedFarmId]);
 
   // Sort and categorize items
   const categorizedItems = useMemo(() => {
