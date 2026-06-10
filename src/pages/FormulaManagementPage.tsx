@@ -10,7 +10,6 @@ import { useAuthStore } from '@/store/authStore';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { useFormulas, useFormulaActions, useFarmFeedItems, Formula, FormulaInput } from '@/hooks/useFormulas';
 import { toast } from 'sonner';
-import { formatRial } from '@/utils/persianNumbers';
 
 interface FarmOption {
   id: string;
@@ -571,47 +570,22 @@ const FormulaCard = ({
                   <tbody>
                     {formula.items
                       .sort((a, b) => a.qty_per_mixer > b.qty_per_mixer ? -1 : 1)
-                      .map((item, idx) => {
-                        const unitPrice = lastPrices.get(item.item_id) || 0;
-                        const itemCost = (item.qty_per_mixer * unitPrice);
-                        return (
-                          <tr key={item.id} className="border-b border-[var(--c-border)] hover:bg-[var(--c-muted)] transition-colors">
-                            <td className="p-3 text-center text-[var(--c-muted-fg)]">{toPersianNum(idx + 1)}</td>
-                            <td className="p-3 text-center font-medium text-[var(--c-fg)]">{item.item_name}</td>
-                            <td className="p-3 text-center text-[var(--c-muted-fg)]">{item.item_unit}</td>
-                            <td className="p-3 text-center font-bold text-[var(--c-fg)]" dir="ltr">
-                              {toPersianNum(item.qty_per_mixer.toLocaleString())}
-                            </td>
-                            <td className="p-3 text-center text-indigo-600 dark:text-indigo-400 font-medium" dir="ltr">
-                              {unitPrice > 0 ? formatRial(unitPrice) : '—'}
-                            </td>
-                            <td className="p-3 text-center text-purple-600 dark:text-purple-400 font-medium" dir="ltr">
-                              {unitPrice > 0 ? formatRial(itemCost) : '—'}
-                            </td>
-                            <td className="p-3 text-center text-[var(--c-muted-fg)]">
-                              {formula.total_weight > 0
-                                ? toPersianNum(((item.qty_per_mixer / formula.total_weight) * 100).toFixed(1)) + '٪'
-                                : '—'}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    {/* Total Row */}
-                    {(() => {
-                      const totalCost = formula.items.reduce((sum, item) => {
-                        const unitPrice = lastPrices.get(item.item_id) || 0;
-                        return sum + (item.qty_per_mixer * unitPrice);
-                      }, 0);
-                      return (
-                        <tr className="bg-purple-50 dark:bg-purple-900/20 font-bold">
-                          <td className="p-3 text-center" colSpan={3}>جمع کل</td>
-                          <td className="p-3 text-center" dir="ltr">{toPersianNum(Math.round(formula.total_weight).toLocaleString())}</td>
-                          <td className="p-3 text-center"></td>
-                          <td className="p-3 text-center text-purple-700 dark:text-purple-300" dir="ltr">
-                            {totalCost > 0 ? formatRial(totalCost) : '—'}
+                      .map((item, idx) => (
+                        <tr key={item.id} className="border-b border-[var(--c-border)] hover:bg-[var(--c-muted)] transition-colors">
+                          <td className="p-3 text-center text-[var(--c-muted-fg)]">{toPersianNum(idx + 1)}</td>
+                          <td className="p-3 text-center font-medium text-[var(--c-fg)]">{item.item_name}</td>
+                          <td className="p-3 text-center text-[var(--c-muted-fg)]">{item.item_unit}</td>
+                          <td className="p-3 text-center font-bold text-[var(--c-fg)]" dir="ltr">
+                            {toPersianNum(item.qty_per_mixer.toLocaleString())}
+                          </td>
+                          <td className="p-3 text-center text-[var(--c-muted-fg)]">
+                            {formula.total_weight > 0
+                              ? toPersianNum(((item.qty_per_mixer / formula.total_weight) * 100).toFixed(1)) + '٪'
+                              : '—'}
                           </td>
                         </tr>
                       ))}
+                    {/* Total Row */}
                     <tr className="bg-purple-50 dark:bg-purple-900/20 font-bold">
                       <td className="p-3 text-center" colSpan={3}>جمع کل</td>
                       <td className="p-3 text-center" dir="ltr">{toPersianNum(Math.round(formula.total_weight).toLocaleString())}</td>

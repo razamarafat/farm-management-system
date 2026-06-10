@@ -23,7 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { toast } from 'sonner';
-import { toPersianNumbers, formatRial } from '@/utils/persianNumbers';
+import { toPersianNumbers } from '@/utils/persianNumbers';
 import { getJalaliToday, jalaliToGregorian, formatJalaliDate } from '@/utils/jalaliDate';
 import { JalaliDatePicker } from '@/components/ui/JalaliDatePicker';
 import type { InventoryFilters, TransactionType, StockBalance } from '@/types/inventory.types';
