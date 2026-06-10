@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, ChevronDown, X } from 'lucide-react';
+import { Search, ChevronDown } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 interface SelectOption {

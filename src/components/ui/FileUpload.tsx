@@ -2,10 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Upload, 
-  X, 
-  Image as ImageIcon, 
   Camera, 
-  FileText,
   CheckCircle,
   AlertCircle,
   Loader2,
@@ -16,7 +13,6 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { 
   compressImage, 
-  formatFileSize, 
   validateFile,
   generateUniqueFileName,
   CompressedFile 
@@ -89,7 +85,7 @@ export function FileUpload({
       const fileName = generateUniqueFileName(folderName, 'jpg');
       const filePath = `${folderName}/${fileName}`;
 
-      const { data, error: uploadError } = await supabaseAdmin.storage
+      const { error: uploadError } = await supabaseAdmin.storage
         .from(bucketName)
         .upload(filePath, file, {
           cacheControl: '31536000',

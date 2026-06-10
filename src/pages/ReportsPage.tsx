@@ -297,8 +297,7 @@ export default function ReportsPage() {
           .gte('voucher_date', from)
           .lte('voucher_date', to);
 
-        // لاگ تشخیصی — بعد از تایید می‌توانید حذف کنید
-        console.log('[Reports Debug] consumption query:', { from, to, selectedFarmId, error: qErr, rowCount: data?.length });
+        if (qErr) throw qErr;
 
         const processedData: ReportData[] = [];
         (data || []).forEach((voucher: any) => {

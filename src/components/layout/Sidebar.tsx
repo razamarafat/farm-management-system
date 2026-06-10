@@ -91,22 +91,6 @@ export const Sidebar = () => {
           ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}
         `}
       >
-        {/* Brand/Logo at top */}
-        <div
-          className="flex flex-col items-center pt-8 pb-6 shrink-0 border-b"
-          style={{ borderColor: 'var(--c-border)' }}
-        >
-          <span
-            className="text-4xl font-normal"
-            style={{
-              fontFamily: "'Lalezar', cursive",
-              color: 'var(--c-fg)'
-            }}
-          >
-            مروارید فارم
-          </span>
-        </div>
-
         {/* Header with close button */}
         <div
           className="flex items-center justify-between px-4 h-14 border-b shrink-0"

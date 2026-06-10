@@ -1,26 +1,40 @@
 import { RouteObject, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import type { ReactNode } from 'react';
 
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+import { Spinner } from '@/components/ui/Spinner';
 
+// Eagerly loaded critical pages
 import LoginPage from '@/pages/LoginPage';
-import AdminPage from '@/pages/AdminPage';
-import SupervisorPage from '@/pages/SupervisorPage';
-import OperatorPage from '@/pages/OperatorPage';
-import AdminUsersPage from '@/pages/AdminUsersPage';
-import AdminFarmsPage from '@/pages/AdminFarmsPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import UnderDevelopment from '@/components/shared/UnderDevelopment';
-import ConsumptionPage from '@/pages/ConsumptionPage';
-import DailySheetPage from '@/pages/DailySheetPage';
-import FormulaManagementPage from '@/pages/FormulaManagementPage';
-import InventoryPage from '@/pages/InventoryPage';
-import InventoryItemHistoryPage from '@/pages/InventoryItemHistoryPage';
-import ReorderPointPage from '@/pages/ReorderPointPage';
-import PurchasesPage from '@/pages/PurchasesPage';
-import SuppliersPage from '@/pages/SuppliersPage';
-import ReportsPage from '@/pages/ReportsPage';
+
+// Lazy-loaded pages for code splitting
+const AdminPage = lazy(() => import('@/pages/AdminPage'));
+const SupervisorPage = lazy(() => import('@/pages/SupervisorPage'));
+const OperatorPage = lazy(() => import('@/pages/OperatorPage'));
+const AdminUsersPage = lazy(() => import('@/pages/AdminUsersPage'));
+const AdminFarmsPage = lazy(() => import('@/pages/AdminFarmsPage'));
+const ConsumptionPage = lazy(() => import('@/pages/ConsumptionPage'));
+const DailySheetPage = lazy(() => import('@/pages/DailySheetPage'));
+const FormulaManagementPage = lazy(() => import('@/pages/FormulaManagementPage'));
+const InventoryPage = lazy(() => import('@/pages/InventoryPage'));
+const PurchasesPage = lazy(() => import('@/pages/PurchasesPage'));
+const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
+const ReorderPointPage = lazy(() => import('@/pages/ReorderPointPage'));
+const SuppliersPage = lazy(() => import('@/pages/SuppliersPage'));
+const InventoryItemHistoryPage = lazy(() => import('@/pages/InventoryItemHistoryPage'));
+
+function LazyPage({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-20"><Spinner size={32} /></div>}>
+      {children}
+    </Suspense>
+  );
+}
 
 export const routes: RouteObject[] = [
   {
@@ -46,55 +60,55 @@ export const routes: RouteObject[] = [
         children: [
           {
             index: true,
-            element: <AdminPage />,
+            element: <LazyPage><AdminPage /></LazyPage>,
           },
           {
             path: 'users',
-            element: <AdminUsersPage />,
+            element: <LazyPage><AdminUsersPage /></LazyPage>,
           },
           {
             path: 'farms',
-            element: <AdminFarmsPage />,
+            element: <LazyPage><AdminFarmsPage /></LazyPage>,
           },
           {
             path: 'consumption',
-            element: <ConsumptionPage />,
+            element: <LazyPage><ConsumptionPage /></LazyPage>,
           },
           {
             path: 'consumption/feed',
-            element: <DailySheetPage category="feed" />,
+            element: <LazyPage><DailySheetPage category="feed" /></LazyPage>,
           },
           {
             path: 'consumption/packaging',
-            element: <DailySheetPage category="packaging" />,
+            element: <LazyPage><DailySheetPage category="packaging" /></LazyPage>,
           },
           {
             path: 'formulas',
-            element: <FormulaManagementPage />,
+            element: <LazyPage><FormulaManagementPage /></LazyPage>,
           },
           {
             path: 'inventory',
-            element: <InventoryPage />,
+            element: <LazyPage><InventoryPage /></LazyPage>,
           },
           {
-            path: 'inventory/items/:itemId',
-            element: <InventoryItemHistoryPage />,
+            path: 'inventory/:itemId/history',
+            element: <LazyPage><InventoryItemHistoryPage /></LazyPage>,
           },
           {
-            path: 'inventory/reorder-points',
-            element: <ReorderPointPage />,
-          },
-          {
-            path: 'purchases',
-            element: <PurchasesPage />,
-          },
-          {
-            path: 'suppliers',
-            element: <SuppliersPage />,
+            path: 'purchase',
+            element: <LazyPage><PurchasesPage /></LazyPage>,
           },
           {
             path: 'reports',
-            element: <ReportsPage />,
+            element: <LazyPage><ReportsPage /></LazyPage>,
+          },
+          {
+            path: 'reorder',
+            element: <LazyPage><ReorderPointPage /></LazyPage>,
+          },
+          {
+            path: 'suppliers',
+            element: <LazyPage><SuppliersPage /></LazyPage>,
           },
           {
             path: '*',
@@ -113,43 +127,43 @@ export const routes: RouteObject[] = [
         children: [
           {
             index: true,
-            element: <SupervisorPage />,
+            element: <LazyPage><SupervisorPage /></LazyPage>,
           },
           {
             path: 'consumption',
-            element: <ConsumptionPage />,
+            element: <LazyPage><ConsumptionPage /></LazyPage>,
           },
           {
             path: 'consumption/feed',
-            element: <DailySheetPage category="feed" />,
+            element: <LazyPage><DailySheetPage category="feed" /></LazyPage>,
           },
           {
             path: 'consumption/packaging',
-            element: <DailySheetPage category="packaging" />,
+            element: <LazyPage><DailySheetPage category="packaging" /></LazyPage>,
           },
           {
             path: 'formulas',
-            element: <FormulaManagementPage />,
+            element: <LazyPage><FormulaManagementPage /></LazyPage>,
           },
           {
             path: 'inventory',
-            element: <InventoryPage />,
+            element: <LazyPage><InventoryPage /></LazyPage>,
           },
           {
-            path: 'inventory/items/:itemId',
-            element: <InventoryItemHistoryPage />,
+            path: 'inventory/:itemId/history',
+            element: <LazyPage><InventoryItemHistoryPage /></LazyPage>,
           },
           {
-            path: 'inventory/reorder-points',
-            element: <ReorderPointPage />,
-          },
-          {
-            path: 'purchases',
-            element: <PurchasesPage />,
+            path: 'purchase',
+            element: <LazyPage><PurchasesPage /></LazyPage>,
           },
           {
             path: 'reports',
-            element: <ReportsPage />,
+            element: <LazyPage><ReportsPage /></LazyPage>,
+          },
+          {
+            path: 'reorder',
+            element: <LazyPage><ReorderPointPage /></LazyPage>,
           },
           {
             path: '*',
@@ -168,43 +182,43 @@ export const routes: RouteObject[] = [
         children: [
           {
             index: true,
-            element: <OperatorPage />,
+            element: <LazyPage><OperatorPage /></LazyPage>,
           },
           {
             path: 'consumption',
-            element: <ConsumptionPage />,
+            element: <LazyPage><ConsumptionPage /></LazyPage>,
           },
           {
             path: 'consumption/feed',
-            element: <DailySheetPage category="feed" />,
+            element: <LazyPage><DailySheetPage category="feed" /></LazyPage>,
           },
           {
             path: 'consumption/packaging',
-            element: <DailySheetPage category="packaging" />,
+            element: <LazyPage><DailySheetPage category="packaging" /></LazyPage>,
           },
           {
             path: 'formulas',
-            element: <FormulaManagementPage />,
+            element: <LazyPage><FormulaManagementPage /></LazyPage>,
           },
           {
             path: 'inventory',
-            element: <InventoryPage />,
+            element: <LazyPage><InventoryPage /></LazyPage>,
           },
           {
-            path: 'inventory/items/:itemId',
-            element: <InventoryItemHistoryPage />,
+            path: 'inventory/:itemId/history',
+            element: <LazyPage><InventoryItemHistoryPage /></LazyPage>,
           },
           {
-            path: 'inventory/reorder-points',
-            element: <ReorderPointPage />,
-          },
-          {
-            path: 'purchases',
-            element: <PurchasesPage />,
+            path: 'purchase',
+            element: <LazyPage><PurchasesPage /></LazyPage>,
           },
           {
             path: 'reports',
-            element: <ReportsPage />,
+            element: <LazyPage><ReportsPage /></LazyPage>,
+          },
+          {
+            path: 'reorder',
+            element: <LazyPage><ReorderPointPage /></LazyPage>,
           },
           {
             path: '*',

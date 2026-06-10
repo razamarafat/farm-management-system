@@ -31,16 +31,10 @@ export function getJalaliToday(): string {
 }
 
 // Format a Jalali date string for display
-export function formatJalaliDate(dateInput: string): string {
-  if (!dateInput) return '-';
-  
-  // If input contains dashes (ISO format like 2024-01-15), it's Gregorian
-  if (dateInput.includes('-')) {
-    return gregorianToJalali(dateInput);
-  }
-  
-  // If input is already Jalali format (yyyy/MM/dd), just convert Persian digits to English
-  const english = toEnglishDigits(dateInput);
+export function formatJalaliDate(jalaliDate: string): string {
+  // Input: "1403/10/15" (with English or Persian digits)
+  // Output: "1403/10/15" (always English for internal use)
+  const english = toEnglishDigits(jalaliDate);
   return english;
 }
 

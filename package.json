@@ -1,7 +1,7 @@
 {
   "name": "react-vite-tailwind",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,8 +15,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns-jalali": "^4.1.0-0",
-    "exceljs": "^4.4.0",
-    "file-saver": "^2.0.5",
     "framer-motion": "^12.34.0",
     "lucide-react": "^0.564.0",
     "react": "19.2.3",

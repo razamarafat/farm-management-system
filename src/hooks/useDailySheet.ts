@@ -20,15 +20,6 @@ interface UseDailySheetParams {
   ignoreEditWindow?: boolean;
 }
 
-function isWithin24Hours(submittedAt: string | null): boolean {
-  if (!submittedAt) return false;
-  const submittedTime = new Date(submittedAt).getTime();
-  const now = Date.now();
-  const diffMs = now - submittedTime;
-  const hours24 = 24 * 60 * 60 * 1000;
-  return diffMs < hours24;
-}
-
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 function numVal(v: unknown): number {
@@ -162,7 +153,8 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
       const isEditable =
         ignoreEditWindow ||
         voucherStatus === 'draft' ||
-        (voucherStatus === 'submitted' && isWithin24Hours(voucherSubmittedAt));
+        (voucherStatus === 'submitted' && voucherSubmittedAt !== null &&
+          Date.now() - new Date(voucherSubmittedAt).getTime() < 24 * 60 * 60 * 1000);
       // 2. Fetch farm items
       const { data: farmItems } = await client
         .from('farm_items')
@@ -255,22 +247,15 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
         }
       }
 
-      // 7. Build items - filter to only show formula items for feed category
-      let itemsToShow = farmItems || [];
-      if (category === 'feed' && formulaItemsMap.size > 0) {
-        // Only show items that are in the selected formula
-        itemsToShow = itemsToShow.filter(fi => formulaItemsMap.has(fi.id));
-      }
-
-      const processedItems: DailySheetRow[] = itemsToShow.map((fi) => {
+      // 7. Build items
+      const processedItems: DailySheetRow[] = (farmItems || []).map((fi) => {
         const line = linesMap.get(fi.id);
         const balance = balanceMap.get(fi.id) || 0;
         const hasInitial = (totalInMap.get(fi.id) || 0) > 0;
         const purchaseQty = purchaseMap.get(fi.id) || 0;
         const consumed = line ? numVal(line.consumed_qty) : 0;
         const waste = line ? numVal(line.waste_qty) : 0;
-        const adjustment = line ? (line.adjustment_qty !== undefined ? numVal(line.adjustment_qty) : 0) : 0;
-        const remaining = balance - consumed - waste + adjustment;
+        const remaining = balance - consumed - waste;
         const qtyPerMixer = formulaItemsMap.get(fi.id) || 0;
         const hallConsumed = (line?.hall_consumed && typeof line.hall_consumed === 'object')
           ? line.hall_consumed as Record<string, number>
@@ -293,7 +278,6 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
           hall_numbers: line ? String(line.hall_numbers || '') : '',
           consumed_qty: consumed,
           waste_qty: waste,
-          adjustment_qty: adjustment,
           notes: line ? String(line.notes || '') : '',
           current_balance: balance,
           today_purchase: purchaseQty,
@@ -306,25 +290,6 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
           status,
         };
       });
-
-      // Restore selected halls from stored hall_numbers
-      if (category === 'feed' && halls.length > 0) {
-        const allHallNumbers = new Set<number>();
-        for (const item of processedItems) {
-          if (item.hall_numbers) {
-            const numbers = item.hall_numbers.split(',').map(n => parseInt(n.trim()));
-            numbers.forEach(n => allHallNumbers.add(n));
-          }
-        }
-        
-        if (allHallNumbers.size > 0) {
-          const updatedHalls = halls.map(h => ({
-            ...h,
-            isSelected: allHallNumbers.has(h.hallNumber),
-          }));
-          setHallConfigs(updatedHalls);
-        }
-      }
 
       setData({
         voucher: {
@@ -383,7 +348,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
           totalConsumed += hallQty;
         }
 
-        const remaining = item.current_balance - totalConsumed - item.waste_qty + item.adjustment_qty;
+        const remaining = item.current_balance - totalConsumed - item.waste_qty;
         let status: 'ok' | 'warning' | 'danger' = 'ok';
         if (remaining < 0) status = 'danger';
         else if (remaining < item.reorder_point) status = 'warning';
@@ -432,12 +397,11 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
           const updated = { ...item, [field]: value, isDirty: true };
           const consumed = field === 'consumed_qty' ? toNumber(value) : toNumber(updated.consumed_qty);
           const waste = field === 'waste_qty' ? toNumber(value) : toNumber(updated.waste_qty);
-          const adjustment = field === 'adjustment_qty' ? toNumber(value) : toNumber(updated.adjustment_qty || 0);
-          const remaining = toNumber(updated.current_balance) - consumed - waste + adjustment;
+          const remaining = toNumber(updated.current_balance) - consumed - waste;
           let status: 'ok' | 'warning' | 'danger' = 'ok';
           if (remaining < 0) status = 'danger';
           else if (remaining < toNumber(updated.reorder_point)) status = 'warning';
-          return { ...updated, consumed_qty: consumed, waste_qty: waste, adjustment_qty: adjustment, remaining_preview: remaining, total_consumed: consumed, status };
+          return { ...updated, consumed_qty: consumed, waste_qty: waste, remaining_preview: remaining, total_consumed: consumed, status };
         });
         return { ...prev, items: updatedItems };
       });
@@ -452,7 +416,6 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
           hall_numbers: String(updatedItem.hall_numbers || ''),
           consumed_qty: toNumber(field === 'consumed_qty' ? value : updatedItem.consumed_qty),
           waste_qty: toNumber(field === 'waste_qty' ? value : updatedItem.waste_qty),
-          adjustment_qty: toNumber(updatedItem.adjustment_qty || 0),
           notes: String(updatedItem.notes || ''),
           hall_consumed: updatedItem.hall_consumed,
         });
@@ -484,7 +447,6 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
             hall_numbers: line.hall_numbers || null,
             consumed_qty: line.consumed_qty,
             waste_qty: line.waste_qty,
-            adjustment_qty: line.adjustment_qty || 0,
             notes: line.notes || null,
             hall_consumed: (line.hall_consumed || {}) as unknown as Json,
           },
@@ -509,20 +471,12 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
   }, [data]);
 
   // Submit
-  // ════════════════════════════════════════════════════════════════
-  // ثبت نهایی حواله — اتمیک (همه یا هیچ)
-  // از یک تابع پایگاه داده استفاده می‌کند تا از خرابی داده جلوگیری کند
-  // ════════════════════════════════════════════════════════════════
   const submitSheet = useCallback(async (): Promise<boolean> => {
     if (!data) return false;
-
-    // اول تغییرات ذخیره‌نشده را save می‌کنیم
     if (dirtyLinesRef.current.size > 0) await saveDraft();
-
     setIsSaving(true);
 
     try {
-      // اعتبارسنجی: حواله خالی نباشد
       const totalQty = data.items.reduce(
         (sum, item) => sum + toNumber(item.consumed_qty) + toNumber(item.waste_qty),
         0
@@ -533,74 +487,71 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
         return false;
       }
 
-      // اعتبارسنجی: موجودی اولیه یا خرید وجود داشته باشد
+      // Check for any stock source (initial or purchase or other inbound)
       const missingStock = data.items.filter(
         i => !i.has_initial && i.today_purchase <= 0 && (i.consumed_qty > 0 || i.waste_qty > 0)
       );
       if (missingStock.length > 0) {
         const names = missingStock.map(i => i.name).join('، ');
-        toast.error(`برای این اقلام باید موجودی اولیه یا خرید ثبت شده باشد: ${names}`);
+        toast.error(`برای ثبت مصرف، باید برای این اقلام موجودی اولیه یا خرید ثبت شده باشد: ${names}`);
         setIsSaving(false);
         return false;
       }
 
-      // اعتبارسنجی: موجودی منفی نشود
-      const negativeItems = data.items.filter(
-        i => i.remaining_preview < 0 && (i.consumed_qty > 0 || i.waste_qty > 0)
-      );
+      // Check for negative stock
+      const negativeItems = data.items.filter(i => i.remaining_preview < 0 && (i.consumed_qty > 0 || i.waste_qty > 0));
       if (negativeItems.length > 0) {
-        const list = negativeItems
-          .map(i => `• ${i.name}: کمبود ${Math.abs(i.remaining_preview).toFixed(2)} ${i.unit}`)
-          .join('\n');
+        const list = negativeItems.map(i => `• ${i.name}: کمبود ${Math.abs(i.remaining_preview).toFixed(2)} ${i.unit}`).join('\n');
         toast.error(`موجودی کافی نیست:\n${list}`, { duration: 10000 });
         setIsSaving(false);
         return false;
       }
 
-      // ساخت آرایه JSON برای تابع اتمیک
-      const itemsPayload = data.items
-        .filter(item =>
-          item.consumed_qty > 0 ||
-          item.waste_qty > 0 ||
-          item.adjustment_qty !== 0
-        )
-        .map(item => ({
-          item_id: item.id,
-          consumed_qty: toNumber(item.consumed_qty),
-          waste_qty: toNumber(item.waste_qty),
-          adjustment_qty: toNumber(item.adjustment_qty),
-        }));
-
-      // ══════════════════════════════════════════════════════════
-      // فراخوانی تابع اتمیک — یک درخواست = همه چیز یا هیچ‌چیز
-      // ══════════════════════════════════════════════════════════
-      const { data: result, error: rpcError } = await supabaseAdmin
-        .rpc('submit_daily_voucher', {
-          p_voucher_id: data.voucher.id,
-          p_farm_id: data.voucher.farm_id,
-          p_voucher_date: data.voucher.voucher_date,
-          p_items: itemsPayload as unknown as never,
-          p_ignore_window: ignoreEditWindow ?? false,
-        });
-
-      if (rpcError) throw rpcError;
-
-      // بررسی نتیجه تابع
-      const outcome = result as unknown as { success: boolean; message: string };
-      if (!outcome?.success) {
-        if (outcome?.message?.includes('VOUCHER_LOCKED')) {
-          toast.error('این حواله قفل شده و قابل ویرایش نیست');
-        } else {
-          toast.error(outcome?.message || 'خطا در ثبت نهایی');
-        }
-        setIsSaving(false);
-        return false;
+      // If admin override, allow resubmitting by clearing previous transactions
+      if (ignoreEditWindow) {
+        await supabaseAdmin.from('inventory_transactions')
+          .delete()
+          .eq('source_type', 'daily_voucher')
+          .eq('source_id', data.voucher.id);
       }
 
-      toast.success('حواله با موفقیت ثبت شد ✓');
+      // Create inventory transactions
+      for (const item of data.items) {
+        if (item.consumed_qty > 0) {
+          await supabaseAdmin.from('inventory_transactions').insert({
+            farm_id: data.voucher.farm_id,
+            item_id: item.id,
+            txn_date: data.voucher.voucher_date,
+            txn_type: 'consumption' as const,
+            qty_out: item.consumed_qty,
+            qty_in: 0,
+            source_type: 'daily_voucher',
+            source_id: data.voucher.id,
+          });
+        }
+        if (item.waste_qty > 0) {
+          await supabaseAdmin.from('inventory_transactions').insert({
+            farm_id: data.voucher.farm_id,
+            item_id: item.id,
+            txn_date: data.voucher.voucher_date,
+            txn_type: 'waste' as const,
+            qty_out: item.waste_qty,
+            qty_in: 0,
+            source_type: 'daily_voucher',
+            source_id: data.voucher.id,
+          });
+        }
+      }
+
+      // Update voucher status
+      await supabaseAdmin.from('daily_vouchers').update({
+        status: 'submitted' as const,
+        submitted_at: new Date().toISOString(),
+      }).eq('id', data.voucher.id);
+
+      toast.success('حواله با موفقیت ثبت شد');
       await fetchData();
       return true;
-
     } catch (err) {
       const message = err instanceof Error ? err.message : 'خطا در ثبت نهایی';
       console.error('Submit error:', err);

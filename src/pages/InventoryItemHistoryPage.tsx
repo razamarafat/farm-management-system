@@ -48,9 +48,10 @@ export default function InventoryItemHistoryPage() {
 
     const gregorianFilters = useMemo(() => ({
         ...filters,
+        item_id: itemId || 'all',
         date_from: filters.date_from ? jalaliToGregorian(filters.date_from) : '',
         date_to: filters.date_to ? jalaliToGregorian(filters.date_to) : '',
-    }), [filters]);
+    }), [filters, itemId]);
 
     const {
         transactions,

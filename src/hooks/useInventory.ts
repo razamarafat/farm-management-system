@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
@@ -70,13 +70,12 @@ export function useStockBalances(farmId: string | null, category: 'feed' | 'pack
           last_txn: null,
         };
 
-        if (txn.txn_type === 'purchase' || txn.txn_type === 'transfer_in') {
-          current.total_in += Number(txn.qty_in) || 0;
-        } else if (txn.txn_type === 'initial') {
+        current.total_in += Number(txn.qty_in) || 0;
+        current.total_out += Number(txn.qty_out) || 0;
+
+        if (txn.txn_type === 'initial') {
           current.has_initial = true;
           current.initial_qty += Number(txn.qty_in) || 0;
-        } else {
-          current.total_out += Number(txn.qty_out) || 0;
         }
 
         if (!current.last_txn || txn.txn_ts > current.last_txn) {
@@ -102,7 +101,7 @@ export function useStockBalances(farmId: string | null, category: 'feed' | 'pack
           item_name: item.name,
           item_unit: item.unit,
           item_category: item.category,
-          balance: txnData.initial_qty + txnData.total_in - txnData.total_out,
+          balance: txnData.total_in - txnData.total_out,
           total_in: txnData.total_in,
           total_out: txnData.total_out,
           has_initial: txnData.has_initial,
@@ -218,92 +217,13 @@ export function useInventoryTransactions(farmId: string | null, filters: Invento
   return { transactions, isLoading, error, refetch: fetchTransactions };
 }
 
-// Hook for paginated transactions for a single item
-export function usePaginatedTransactions(farmId: string | null, itemId: string, filters: Omit<InventoryFilters, 'item_id'>, pageSize: number = 20) {
-  const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchTransactions = useCallback(async () => {
-    if (!farmId || !itemId) {
-      setTransactions([]);
-      setTotalCount(0);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      let query = supabaseAdmin
-        .from('inventory_transactions')
-        .select('*', { count: 'exact' })
-        .eq('farm_id', farmId)
-        .eq('item_id', itemId);
-
-      // Apply filters
-      if (filters.txn_type !== 'all') {
-        query = query.eq('txn_type', filters.txn_type);
-      }
-      if (filters.date_from) {
-        query = query.gte('txn_date', filters.date_from);
-      }
-      if (filters.date_to) {
-        query = query.lte('txn_date', filters.date_to);
-      }
-      if (filters.search) {
-        query = query.or(`notes.ilike.%${filters.search}%,reference_no.ilike.%${filters.search}%`);
-      }
-
-      const from = (currentPage - 1) * pageSize;
-      const to = from + pageSize - 1;
-
-      const { data, error: fetchError, count } = await query
-        .order('txn_ts', { ascending: false })
-        .range(from, to);
-
-      if (fetchError) throw fetchError;
-
-      setTransactions(data || []);
-      setTotalCount(count || 0);
-    } catch (err) {
-      console.error('Error fetching paginated transactions:', err);
-      setError('خطا در دریافت تاریخچه کالا');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [farmId, itemId, filters, currentPage, pageSize]);
-
-  useEffect(() => {
-    fetchTransactions();
-  }, [fetchTransactions]);
-
-  return {
-    transactions,
-    totalCount,
-    currentPage,
-    setCurrentPage,
-    totalPages: Math.ceil(totalCount / pageSize),
-    isLoading,
-    error,
-    refetch: fetchTransactions
-  };
-}
-
 // Hook for inventory mutations
 export function useInventoryMutations(farmId: string | null) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { user, profile } = useAuthStore();
-  const isSupervisor = profile?.role === 'supervisor';
+  const { user } = useAuthStore();
 
   // Add initial stock
   const addInitialStock = useCallback(async (input: InitialStockInput) => {
-    if (isSupervisor) {
-      toast.error('شما مجوز ثبت موجودی اولیه را ندارید');
-      return false;
-    }
     if (!farmId || !user) {
       toast.error('اطلاعات فارم یا کاربر نامعتبر است');
       return false;
@@ -332,8 +252,8 @@ export function useInventoryMutations(farmId: string | null) {
           item_id: input.item_id,
           txn_date: input.txn_date,
           txn_type: 'initial' as TransactionType,
-          qty_in: input.quantity >= 0 ? input.quantity : 0,
-          qty_out: input.quantity < 0 ? Math.abs(input.quantity) : 0,
+          qty_in: input.quantity,
+          qty_out: 0,
           notes: input.notes || null,
           created_by: user.id,
         });
@@ -349,14 +269,10 @@ export function useInventoryMutations(farmId: string | null) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [farmId, user, isSupervisor]);
+  }, [farmId, user]);
 
   // Add purchase
   const addPurchase = useCallback(async (input: PurchaseInput) => {
-    if (isSupervisor) {
-      toast.error('شما مجوز ثبت خرید را ندارید');
-      return false;
-    }
     if (!farmId || !user) {
       toast.error('اطلاعات فارم یا کاربر نامعتبر است');
       return false;
@@ -393,14 +309,10 @@ export function useInventoryMutations(farmId: string | null) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [farmId, user, isSupervisor]);
+  }, [farmId, user]);
 
   // Add transfer
   const addTransfer = useCallback(async (input: TransferInput, direction: 'in' | 'out') => {
-    if (isSupervisor) {
-      toast.error('شما مجوز ثبت انتقال را ندارید');
-      return false;
-    }
     if (!farmId || !user) {
       toast.error('اطلاعات فارم یا کاربر نامعتبر است');
       return false;
@@ -436,14 +348,10 @@ export function useInventoryMutations(farmId: string | null) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [farmId, user, isSupervisor]);
+  }, [farmId, user]);
 
   // Add adjustment
   const addAdjustment = useCallback(async (input: AdjustmentInput) => {
-    if (isSupervisor) {
-      toast.error('شما مجوز ثبت تعدیل را ندارید');
-      return false;
-    }
     if (!farmId || !user) {
       toast.error('اطلاعات فارم یا کاربر نامعتبر است');
       return false;
@@ -483,14 +391,10 @@ export function useInventoryMutations(farmId: string | null) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [farmId, user, isSupervisor]);
+  }, [farmId, user]);
 
-  // Delete transaction (admin only - but allow operators)
+  // Delete transaction (admin only)
   const deleteTransaction = useCallback(async (transactionId: string) => {
-    if (isSupervisor) {
-      toast.error('شما مجوز حذف تراکنش را ندارید');
-      return false;
-    }
     if (!user) {
       toast.error('کاربر نامعتبر است');
       return false;
@@ -514,7 +418,7 @@ export function useInventoryMutations(farmId: string | null) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [user, isSupervisor]);
+  }, [user]);
 
   // Update transaction (admin only)
   const updateTransaction = useCallback(async (transactionId: string, updates: Partial<{
@@ -525,10 +429,6 @@ export function useInventoryMutations(farmId: string | null) {
     reference_no: string;
     unit_price: number;
   }>) => {
-    if (isSupervisor) {
-      toast.error('شما مجوز ویرایش تراکنش را ندارید');
-      return false;
-    }
     if (!user) {
       toast.error('کاربر نامعتبر است');
       return false;
@@ -557,7 +457,7 @@ export function useInventoryMutations(farmId: string | null) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [user, isSupervisor]);
+  }, [user]);
 
   return {
     isSubmitting,
@@ -570,7 +470,36 @@ export function useInventoryMutations(farmId: string | null) {
   };
 }
 
-// Hook to check if item has initial stock
+// Hook for deleting a single transaction (kept for backward compat)
+export function usePaginatedTransactions(
+  farmId: string | null,
+  _itemId: string,
+  filters: InventoryFilters,
+  pageSize: number = 15
+) {
+  const { transactions, isLoading, error, refetch } = useInventoryTransactions(farmId, filters);
+  
+  // Simple client-side pagination
+  const totalCount = transactions.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  const paginatedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return transactions.slice(start, start + pageSize);
+  }, [transactions, currentPage, pageSize]);
+  
+  return {
+    transactions: paginatedTransactions,
+    totalCount,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    isLoading,
+    error,
+    refetch,
+  };
+}
 export function useItemInitialCheck(farmId: string | null) {
   const [itemsWithInitial, setItemsWithInitial] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);

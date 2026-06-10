@@ -34,7 +34,7 @@ const AdminDashboard = () => {
           icon={ShoppingCart}
           label="خرید و انتقال"
           color="green"
-          to="/admin/purchases"
+          to="/admin/purchase"
         />
         <Tile
           icon={FileText}

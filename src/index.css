@@ -119,7 +119,6 @@
     font-family: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-feature-settings: "ss03"; /* Vazirmatn Persian Digits */
   }
 }
 
@@ -145,54 +144,3 @@
 .dark .tile-amber { --tile-bg: #271F0C; --tile-border: #3D3012; --tile-color: #FCD34D; }
 .dark .tile-cyan { --tile-bg: #0C2426; --tile-border: #143D40; --tile-color: #22D3EE; }
 .dark .tile-slate { --tile-bg: #1A1E27; --tile-border: #2A303D; --tile-color: #94A3B8; }
-
-/* Hide number input spinners */
-.no-spinners::-webkit-outer-spin-button,
-.no-spinners::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-.no-spinners {
-  -moz-appearance: textfield;
-}
-
-/* Hide scrollbar but keep functionality */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* Hide all scrollbars globally */
-* {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-*::-webkit-scrollbar {
-  display: none;
-}
-
-/* Force Persian font and numbers throughout the app */
-body, html, #root {
-  font-family: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif !important;
-  font-size: 14px;
-  font-feature-settings: "ss03" !important;
-}
-
-/* Convert all numbers to Persian in text content */
-body * {
-  font-variant-numeric: tabular-nums;
-}
-
-/* Ensure all inputs use Persian font */
-input, textarea, select, button {
-  font-family: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif !important;
-  font-feature-settings: "ss03" !important;
-}
-
-/* Persian number utility class */
-.persian-nums {
-  font-family: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif !important;
-}

@@ -560,7 +560,6 @@ export default function PurchasesPage() {
                             placeholder="۰"
                             min="0"
                             step="0.001"
-                            persianNumbers
                             dir="ltr"
                           />
                         </div>
@@ -574,7 +573,6 @@ export default function PurchasesPage() {
                             placeholder="۰"
                             min="0"
                             step="0.001"
-                            persianNumbers
                             dir="ltr"
                           />
                         </div>
@@ -587,7 +585,6 @@ export default function PurchasesPage() {
                             onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
                             placeholder="۰"
                             min="0"
-                            persianNumbers
                             dir="ltr"
                           />
                         </div>
@@ -597,7 +594,6 @@ export default function PurchasesPage() {
                             value={formData.total_price}
                             disabled
                             className="bg-[var(--c-muted)]"
-                            persianNumbers
                             dir="ltr"
                           />
                         </div>
@@ -754,7 +750,6 @@ export default function PurchasesPage() {
                             placeholder="۰"
                             min="0"
                             step="0.001"
-                            persianNumbers
                             dir="ltr"
                           />
                         </div>
@@ -887,7 +882,6 @@ export default function PurchasesPage() {
                             placeholder="۰"
                             min="0"
                             step="0.001"
-                            persianNumbers
                             dir="ltr"
                           />
                         </div>

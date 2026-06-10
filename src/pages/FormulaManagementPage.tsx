@@ -25,7 +25,6 @@ const toPersianNum = (n: number | string): string => {
 const FormulaManagementPage = () => {
   const { profile } = useAuthStore();
   const isAdmin = profile?.role === 'admin';
-  const isReadOnly = profile?.role === 'supervisor';
 
   const [farms, setFarms] = useState<FarmOption[]>([]);
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null);
@@ -39,7 +38,6 @@ const FormulaManagementPage = () => {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [duplicateTarget, setDuplicateTarget] = useState<Formula | null>(null);
   const [dupNo, setDupNo] = useState('');
-  const [lastPrices, setLastPrices] = useState<Map<string, number>>(new Map());
 
   const { formulas, isLoading, error, refetch } = useFormulas(selectedFarmId);
   const { createFormula, updateFormula, deleteFormula, toggleFormulaStatus, duplicateFormula, isSaving } =
@@ -70,42 +68,6 @@ const FormulaManagementPage = () => {
       setSelectedFarmId(farms[0].id);
     }
   }, [farms, selectedFarmId, isAdmin]);
-
-  // آخرین قیمت خرید
-  useEffect(() => {
-    if (!selectedFarmId) return;
-    
-    supabaseAdmin
-      .from('inventory_transactions')
-      .select('item_id, unit_price, txn_date')
-      .eq('farm_id', selectedFarmId)
-      .in('txn_type', ['purchase', 'transfer_in'])
-      .not('unit_price', 'is', null)
-      .gt('unit_price', 0)
-      .order('txn_date', { ascending: false })
-      .then(({ data: priceData }) => {
-        const priceMap = new Map<string, number>();
-        (priceData || []).forEach((row) => {
-          if (!priceMap.has(row.item_id) && row.unit_price) {
-            priceMap.set(row.item_id, Number(row.unit_price));
-          }
-        });
-        // اگر قیمت خرید ندارد، از manual_unit_price استفاده کن
-        supabaseAdmin
-          .from('farm_items')
-          .select('id, manual_unit_price')
-          .eq('farm_id', selectedFarmId)
-          .not('manual_unit_price', 'is', null)
-          .then(({ data: manualData }) => {
-            (manualData || []).forEach((row: any) => {
-              if (!priceMap.has(row.id) && row.manual_unit_price) {
-                priceMap.set(row.id, Number(row.manual_unit_price));
-              }
-            });
-            setLastPrices(priceMap);
-          });
-      });
-  }, [selectedFarmId]);
 
   const filtered = formulas.filter((f) => {
     if (searchTerm) {
@@ -192,49 +154,47 @@ const FormulaManagementPage = () => {
             ایجاد، ویرایش و مدیریت فرمول‌های خوراک برای هر فارم
           </p>
         </div>
-        {!isReadOnly && (
-          <div className="flex items-center gap-2 flex-wrap">
-            {compareMode ? (
-              <>
+        <div className="flex items-center gap-2 flex-wrap">
+          {compareMode ? (
+            <>
+              <button
+                onClick={() => { setCompareMode(false); setCompareIds([]); }}
+                className="px-4 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-fg)] hover:bg-[var(--c-muted)]"
+              >
+                انصراف
+              </button>
+              {compareIds.length === 2 && (
                 <button
-                  onClick={() => { setCompareMode(false); setCompareIds([]); }}
-                  className="px-4 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-fg)] hover:bg-[var(--c-muted)]"
-                >
-                  انصراف
-                </button>
-                {compareIds.length === 2 && (
-                  <button
-                    onClick={() => setExpandedId('compare')}
-                    className="px-4 py-2 text-sm rounded-lg bg-purple-600 text-white hover:bg-purple-700 flex items-center gap-1"
-                  >
-                    <ArrowRightLeft className="w-4 h-4" />
-                    مقایسه
-                  </button>
-                )}
-                <span className="text-xs text-[var(--c-muted-fg)]">
-                  {toPersianNum(compareIds.length)} از ۲ انتخاب شده
-                </span>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setCompareMode(true)}
-                  className="px-3 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-fg)] hover:bg-[var(--c-muted)] flex items-center gap-1"
+                  onClick={() => setExpandedId('compare')}
+                  className="px-4 py-2 text-sm rounded-lg bg-purple-600 text-white hover:bg-purple-700 flex items-center gap-1"
                 >
                   <ArrowRightLeft className="w-4 h-4" />
                   مقایسه
                 </button>
-                <button
-                  onClick={handleCreate}
-                  className="px-4 py-2 text-sm rounded-lg bg-green-600 text-white hover:bg-green-700 flex items-center gap-1"
-                >
-                  <Plus className="w-4 h-4" />
-                  فرمول جدید
-                </button>
-              </>
-            )}
-          </div>
-        )}
+              )}
+              <span className="text-xs text-[var(--c-muted-fg)]">
+                {toPersianNum(compareIds.length)} از ۲ انتخاب شده
+              </span>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setCompareMode(true)}
+                className="px-3 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-fg)] hover:bg-[var(--c-muted)] flex items-center gap-1"
+              >
+                <ArrowRightLeft className="w-4 h-4" />
+                مقایسه
+              </button>
+              <button
+                onClick={handleCreate}
+                className="px-4 py-2 text-sm rounded-lg bg-green-600 text-white hover:bg-green-700 flex items-center gap-1"
+              >
+                <Plus className="w-4 h-4" />
+                فرمول جدید
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Farm Selector (Admin) */}
@@ -374,7 +334,6 @@ const FormulaManagementPage = () => {
               <FormulaCard
                 key={formula.id}
                 formula={formula}
-                lastPrices={lastPrices}
                 isExpanded={expandedId === formula.id}
                 onToggleExpand={() => setExpandedId(expandedId === formula.id ? null : formula.id)}
                 onEdit={() => handleEdit(formula)}
@@ -384,7 +343,6 @@ const FormulaManagementPage = () => {
                 compareMode={compareMode}
                 isCompareSelected={compareIds.includes(formula.id)}
                 onToggleCompare={() => toggleCompare(formula.id)}
-                isReadOnly={isReadOnly}
               />
             ))}
           </div>
@@ -499,7 +457,6 @@ const StatCard = ({ icon, label, value }: { icon: React.ReactNode; label: string
 /* ============= FormulaCard ============= */
 interface FormulaCardProps {
   formula: Formula;
-  lastPrices: Map<string, number>;
   isExpanded: boolean;
   onToggleExpand: () => void;
   onEdit: () => void;
@@ -509,12 +466,11 @@ interface FormulaCardProps {
   compareMode: boolean;
   isCompareSelected: boolean;
   onToggleCompare: () => void;
-  isReadOnly: boolean;
 }
 
 const FormulaCard = ({
-  formula, lastPrices, isExpanded, onToggleExpand, onEdit, onDelete,
-  onToggleStatus, onDuplicate, compareMode, isCompareSelected, onToggleCompare, isReadOnly
+  formula, isExpanded, onToggleExpand, onEdit, onDelete,
+  onToggleStatus, onDuplicate, compareMode, isCompareSelected, onToggleCompare
 }: FormulaCardProps) => (
   <motion.div
     layout
@@ -567,22 +523,18 @@ const FormulaCard = ({
       <div className="flex items-center gap-1">
         {!compareMode && (
           <>
-            {!isReadOnly && (
-              <>
-                <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)] text-blue-500" title="ویرایش">
-                  <Edit3 className="w-4 h-4" />
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); onDuplicate(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)] text-purple-500" title="کپی">
-                  <Copy className="w-4 h-4" />
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); onToggleStatus(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)]" title={formula.is_active ? 'غیرفعال‌سازی' : 'فعال‌سازی'}>
-                  {formula.is_active ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5 text-gray-400" />}
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)] text-red-500" title="حذف">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </>
-            )}
+            <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)] text-blue-500" title="ویرایش">
+              <Edit3 className="w-4 h-4" />
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onDuplicate(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)] text-purple-500" title="کپی">
+              <Copy className="w-4 h-4" />
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onToggleStatus(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)]" title={formula.is_active ? 'غیرفعال‌سازی' : 'فعال‌سازی'}>
+              {formula.is_active ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5 text-gray-400" />}
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)] text-red-500" title="حذف">
+              <Trash2 className="w-4 h-4" />
+            </button>
           </>
         )}
         {!compareMode && (
@@ -613,8 +565,6 @@ const FormulaCard = ({
                       <th className="text-center p-3">نام نهاده</th>
                       <th className="text-center p-3 w-20">واحد</th>
                       <th className="text-center p-3 w-36">مقدار در هر میکسر</th>
-                      <th className="text-center p-3 w-24">فی واحد</th>
-                      <th className="text-center p-3 w-32">هزینه</th>
                       <th className="text-center p-3 rounded-tl-lg w-20">درصد</th>
                     </tr>
                   </thead>
@@ -660,10 +610,13 @@ const FormulaCard = ({
                           <td className="p-3 text-center text-purple-700 dark:text-purple-300" dir="ltr">
                             {totalCost > 0 ? formatRial(totalCost) : '—'}
                           </td>
-                          <td className="p-3 text-center">۱۰۰٪</td>
                         </tr>
-                      );
-                    })()}
+                      ))}
+                    <tr className="bg-purple-50 dark:bg-purple-900/20 font-bold">
+                      <td className="p-3 text-center" colSpan={3}>جمع کل</td>
+                      <td className="p-3 text-center" dir="ltr">{toPersianNum(Math.round(formula.total_weight).toLocaleString())}</td>
+                      <td className="p-3 text-center">۱۰۰٪</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>

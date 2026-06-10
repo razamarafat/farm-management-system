@@ -1,32 +1,33 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Package,
-  Plus,
-  Search,
-  X,
+import { 
+  Package, 
+  Plus, 
+  Search, 
+  X, 
   AlertTriangle,
   CheckCircle,
+  Archive,
+  ShoppingCart,
+  Trash2,
+  ArrowDownLeft,
+  ArrowUpRight,
   RefreshCw,
-  Download,
-  ChevronLeft,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useStockBalances, useInventoryTransactions, useInventoryMutations, useItemInitialCheck } from '@/hooks/useInventory';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { Button } from '@/components/ui/Button';
-import { exportInventoryTransactionsToExcel, exportStockBalanceToExcel } from '@/utils/excelExportPro';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { toast } from 'sonner';
 import { toPersianNumbers, formatRial } from '@/utils/persianNumbers';
-import { getJalaliToday, jalaliToGregorian } from '@/utils/jalaliDate';
+import { getJalaliToday, jalaliToGregorian, formatJalaliDate } from '@/utils/jalaliDate';
 import { JalaliDatePicker } from '@/components/ui/JalaliDatePicker';
 import type { InventoryFilters, TransactionType, StockBalance } from '@/types/inventory.types';
-import { TXN_TYPE_LABELS } from '@/types/inventory.types';
+import { TXN_TYPE_LABELS, TXN_TYPE_COLORS } from '@/types/inventory.types';
 
 interface Farm {
   id: string;
@@ -41,11 +42,10 @@ interface FarmItem {
   category: string;
 }
 
-type TabType = 'balance' | 'transactions' | 'all-items';
+type TabType = 'balance' | 'transactions' | 'initial';
 
 export default function InventoryPage() {
   const { profile } = useAuthStore();
-  const navigate = useNavigate();
   const isAdmin = profile?.role === 'admin';
   const isReadOnly = profile?.role === 'supervisor';
 
@@ -55,7 +55,6 @@ export default function InventoryPage() {
     isAdmin ? null : profile?.farm_id || null
   );
   const [farmItems, setFarmItems] = useState<FarmItem[]>([]);
-  const [lastPrices, setLastPrices] = useState<Map<string, number>>(new Map());
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>('balance');
@@ -98,7 +97,7 @@ export default function InventoryPage() {
   }), [filters.date_from, filters.date_to, filters.item_id, filters.txn_type, filters.search, filters.category]);
 
   const { transactions, isLoading: txnLoading, refetch: refetchTransactions } = useInventoryTransactions(selectedFarmId, gregorianFilters);
-  const { isSubmitting, addInitialStock, addPurchase, addTransfer, addAdjustment } = useInventoryMutations(selectedFarmId);
+  const { isSubmitting, addInitialStock, addPurchase, addTransfer, addAdjustment, deleteTransaction } = useInventoryMutations(selectedFarmId);
   const { hasInitialStock, refetch: refetchInitialCheck } = useItemInitialCheck(selectedFarmId);
 
   // Load farms for admin
@@ -129,37 +128,6 @@ export default function InventoryPage() {
         .order('priority')
         .then(({ data }) => {
           setFarmItems(data || []);
-          // ─── آخرین قیمت خرید ───────────────────────────────
-          supabaseAdmin
-            .from('inventory_transactions')
-            .select('item_id, unit_price, txn_date')
-            .eq('farm_id', selectedFarmId)
-            .in('txn_type', ['purchase', 'transfer_in'])
-            .not('unit_price', 'is', null)
-            .gt('unit_price', 0)
-            .order('txn_date', { ascending: false })
-            .then(({ data: priceData }) => {
-              const priceMap = new Map<string, number>();
-              (priceData || []).forEach((row) => {
-                if (!priceMap.has(row.item_id) && row.unit_price) {
-                  priceMap.set(row.item_id, Number(row.unit_price));
-                }
-              });
-              // اگر قیمت خرید ندارد، از manual_unit_price استفاده کن
-              supabaseAdmin
-                .from('farm_items')
-                .select('id, manual_unit_price')
-                .eq('farm_id', selectedFarmId)
-                .not('manual_unit_price', 'is', null)
-                .then(({ data: manualData }) => {
-                  (manualData || []).forEach((row: any) => {
-                    if (!priceMap.has(row.id) && row.manual_unit_price) {
-                      priceMap.set(row.id, Number(row.manual_unit_price));
-                    }
-                  });
-                  setLastPrices(priceMap);
-                });
-            });
         });
     }
   }, [selectedFarmId]);
@@ -172,30 +140,15 @@ export default function InventoryPage() {
 
   // Handle form submit
   const handleSubmit = async () => {
-    if (!formData.item_id || formData.quantity === '') {
+    if (!formData.item_id || !formData.quantity) {
       toast.error('لطفاً کالا و مقدار را وارد کنید');
       return;
     }
 
     const qty = parseFloat(formData.quantity);
-    if (isNaN(qty)) {
-      toast.error('مقدار باید عدد باشد');
+    if (isNaN(qty) || qty <= 0) {
+      toast.error('مقدار باید عدد مثبت باشد');
       return;
-    }
-
-    // Validation based on transaction type
-    if (modalType === 'initial') {
-      // Initial inventory: allow zero and positive, reject negative
-      if (qty < 0) {
-        toast.error('مقدار موجودی اولیه نمی‌تواند منفی باشد');
-        return;
-      }
-    } else {
-      // Other transactions: require positive values only
-      if (qty <= 0) {
-        toast.error('مقدار باید عدد مثبت باشد');
-        return;
-      }
     }
 
     let success = false;
@@ -262,16 +215,23 @@ export default function InventoryPage() {
     });
   };
 
-
-  const openAddModal = (type: typeof modalType, preSelectedItemId?: string) => {
+  
+  const openAddModal = (type: typeof modalType) => {
     setModalType(type);
     resetForm();
-    if (preSelectedItemId) {
-      setFormData(prev => ({ ...prev, item_id: preSelectedItemId }));
-    }
     setShowAddModal(true);
   };
 
+  const handleDeleteTransaction = async (id: string) => {
+    if (!confirm('آیا از حذف این تراکنش اطمینان دارید؟')) return;
+
+    const success = await deleteTransaction(id);
+    if (success) {
+      refetchBalances();
+      refetchTransactions();
+      refetchInitialCheck();
+    }
+  };
 
   const getModalTitle = () => {
     switch (modalType) {
@@ -377,13 +337,7 @@ export default function InventoryPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <Card 
-                className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => {
-                  const basePath = profile?.role === 'admin' ? '/admin' : profile?.role === 'supervisor' ? '/supervisor' : '/operator';
-                  navigate(`${basePath}/inventory/reorder-points`);
-                }}
-              >
+              <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
@@ -404,33 +358,36 @@ export default function InventoryPage() {
           <div className="flex flex-wrap gap-2 border-b border-[var(--c-border)] pb-2">
             <button
               onClick={() => setActiveTab('balance')}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'balance'
-                ? 'bg-[var(--c-primary)] text-white'
-                : 'text-[var(--c-muted-fg)] hover:bg-[var(--c-muted)]'
-                }`}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+                activeTab === 'balance'
+                  ? 'bg-[var(--c-primary)] text-white'
+                  : 'text-[var(--c-muted-fg)] hover:bg-[var(--c-muted)]'
+              }`}
             >
               <Package className="w-4 h-4 inline-block ml-2" />
               موجودی انبار
             </button>
             <button
               onClick={() => setActiveTab('transactions')}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'transactions'
-                ? 'bg-[var(--c-primary)] text-white'
-                : 'text-[var(--c-muted-fg)] hover:bg-[var(--c-muted)]'
-                }`}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+                activeTab === 'transactions'
+                  ? 'bg-[var(--c-primary)] text-white'
+                  : 'text-[var(--c-muted-fg)] hover:bg-[var(--c-muted)]'
+              }`}
             >
               <RefreshCw className="w-4 h-4 inline-block ml-2" />
               تاریخچه کالا
             </button>
             <button
-              onClick={() => setActiveTab('all-items')}
-              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'all-items'
-                ? 'bg-[var(--c-primary)] text-white'
-                : 'text-[var(--c-muted-fg)] hover:bg-[var(--c-muted)]'
-                }`}
+              onClick={() => setActiveTab('initial')}
+              className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
+                activeTab === 'initial'
+                  ? 'bg-[var(--c-primary)] text-white'
+                  : 'text-[var(--c-muted-fg)] hover:bg-[var(--c-muted)]'
+              }`}
             >
-              <Package className="w-4 h-4 inline-block ml-2" />
-              کالاهای انبار
+              <Archive className="w-4 h-4 inline-block ml-2" />
+              موجودی اولیه
             </button>
           </div>
 
@@ -439,32 +396,87 @@ export default function InventoryPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setCategoryFilter('all')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${categoryFilter === 'all'
-                  ? 'bg-[var(--c-fg)] text-[var(--c-bg)]'
-                  : 'bg-[var(--c-muted)] text-[var(--c-muted-fg)] hover:bg-[var(--c-border)]'
-                  }`}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  categoryFilter === 'all'
+                    ? 'bg-[var(--c-fg)] text-[var(--c-bg)]'
+                    : 'bg-[var(--c-muted)] text-[var(--c-muted-fg)] hover:bg-[var(--c-border)]'
+                }`}
               >
                 همه
               </button>
               <button
                 onClick={() => setCategoryFilter('feed')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${categoryFilter === 'feed'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50'
-                  }`}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  categoryFilter === 'feed'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50'
+                }`}
               >
                 نهاده‌ها
               </button>
               <button
                 onClick={() => setCategoryFilter('packaging')}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${categoryFilter === 'packaging'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'
-                  }`}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  categoryFilter === 'packaging'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'
+                }`}
               >
                 بسته‌بندی
               </button>
             </div>
+
+            {!isReadOnly && (
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openAddModal('initial')}
+                  className="text-purple-600 border-purple-300 hover:bg-purple-50"
+                >
+                  <Archive className="w-4 h-4 ml-1" />
+                  موجودی اولیه
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openAddModal('purchase')}
+                  className="text-green-600 border-green-300 hover:bg-green-50"
+                >
+                  <ShoppingCart className="w-4 h-4 ml-1" />
+                  خرید
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openAddModal('transfer_in')}
+                  className="text-teal-600 border-teal-300 hover:bg-teal-50"
+                >
+                  <ArrowDownLeft className="w-4 h-4 ml-1" />
+                  انتقال ورودی
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openAddModal('transfer_out')}
+                  className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                >
+                  <ArrowUpRight className="w-4 h-4 ml-1" />
+                  انتقال خروجی
+                </Button>
+                {isAdmin && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openAddModal('adjustment')}
+                    className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                  >
+                    <RefreshCw className="w-4 h-4 ml-1" />
+                    تعدیل
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Tab Content */}
@@ -504,12 +516,11 @@ export default function InventoryPage() {
                               <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">کل خروجی</th>
                               <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">مانده</th>
                               <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">وضعیت</th>
-                              <th className="text-center py-3 px-4 text-xs font-semibold text-indigo-600 dark:text-indigo-400">آخرین فی خرید</th>
                             </tr>
                           </thead>
                           <tbody>
                             {balances.map((balance, index) => (
-                              <tr
+                              <tr 
                                 key={balance.item_id}
                                 className="border-b border-[var(--c-border)] hover:bg-[var(--c-muted)] transition-colors"
                               >
@@ -537,21 +548,17 @@ export default function InventoryPage() {
                                   {toPersianNumbers(balance.total_out.toLocaleString())}
                                 </td>
                                 <td className="py-3 px-4 text-center">
-                                  <span className={`font-bold text-lg ${balance.balance < 0 ? 'text-red-600' :
+                                  <span className={`font-bold text-lg ${
+                                    balance.balance < 0 ? 'text-red-600' :
                                     balance.balance === 0 ? 'text-[var(--c-muted-fg)]' :
-                                      balance.balance <= balance.reorder_point ? 'text-amber-600' :
-                                        'text-green-600'
-                                    }`}>
+                                    balance.balance <= balance.reorder_point ? 'text-amber-600' :
+                                    'text-green-600'
+                                  }`}>
                                     {toPersianNumbers(balance.balance.toLocaleString())}
                                   </span>
                                 </td>
                                 <td className="py-3 px-4 text-center">
                                   {getStatusBadge(balance)}
-                                </td>
-                                <td className="py-3 px-4 text-center text-sm text-indigo-600 dark:text-indigo-400 font-medium">
-                                  {lastPrices.has(balance.item_id)
-                                    ? formatRial(lastPrices.get(balance.item_id)!)
-                                    : '—'}
                                 </td>
                               </tr>
                             ))}
@@ -561,19 +568,6 @@ export default function InventoryPage() {
                     )}
                   </CardContent>
                 </Card>
-
-                {balances.length > 0 && (
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={async () => await exportStockBalanceToExcel(balances, 'stock_balance')}
-                      className="bg-green-600 hover:bg-green-700 text-white border-none"
-                      size="sm"
-                    >
-                      <Download className="w-4 h-4 ml-1" />
-                      خروجی اکسل
-                    </Button>
-                  </div>
-                )}
               </motion.div>
             )}
 
@@ -662,21 +656,7 @@ export default function InventoryPage() {
                   </CardContent>
                 </Card>
 
-                {/* Export Button */}
-                {transactions.length > 0 && (
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={async () => await exportInventoryTransactionsToExcel(transactions, 'inventory_transactions')}
-                      className="bg-green-600 hover:bg-green-700 text-white border-none"
-                      size="sm"
-                    >
-                      <Download className="w-4 h-4 ml-1" />
-                      خروجی اکسل
-                    </Button>
-                  </div>
-                )}
-
-                {/* Item Groups - Replaced with Summary Table */}
+                {/* Item Groups */}
                 {txnLoading ? (
                   <Card>
                     <CardContent className="p-10 flex items-center justify-center">
@@ -691,86 +671,114 @@ export default function InventoryPage() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <Card className="overflow-hidden">
-                    <CardContent className="p-0">
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead className="bg-[var(--c-muted)] border-b border-[var(--c-border)]">
-                            <tr>
-                              <th className="py-4 px-4 text-center font-bold text-[var(--c-muted-fg)]">ردیف</th>
-                              <th className="py-4 px-4 text-right font-bold text-[var(--c-muted-fg)]">نام کالا</th>
-                              <th className="py-4 px-4 text-center font-bold text-[var(--c-muted-fg)]">موجودی اولیه</th>
-                              <th className="py-4 px-4 text-center font-bold text-[var(--c-muted-fg)] text-green-700">کل ورودی</th>
-                              <th className="py-4 px-4 text-center font-bold text-[var(--c-muted-fg)] text-red-700">کل مصرف/خروجی</th>
-                              <th className="py-4 px-4 text-center font-bold text-[var(--c-muted-fg)]">باقیمانده</th>
-                              <th className="py-4 px-4 text-center font-bold text-[var(--c-muted-fg)]">عملیات</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {groupedTransactions.map((group, index) => {
-                              // We need the balance for this specific item. 
-                              // groupedTransactions has group.item and group.txns.
-                              // But we need the summary stats. We can calculate them from group.txns or use balances from useStockBalances.
-                              // Let's calculate from group.txns for accuracy considering filters.
-
-                              const initial = group.txns.filter(t => t.txn_type === 'initial').reduce((sum, t) => sum + (t.qty_in || 0), 0);
-                              const totalIn = group.txns.filter(t => t.txn_type === 'purchase' || t.txn_type === 'transfer_in').reduce((sum, t) => sum + (t.qty_in || 0), 0);
-                              const totalOut = group.txns.filter(t => t.txn_type !== 'initial' && t.txn_type !== 'purchase' && t.txn_type !== 'transfer_in')
-                                .reduce((sum, t) => sum + (t.qty_out || 0), 0);
-                              const balance = initial + totalIn - totalOut;
-
-                              const basePath = profile?.role === 'admin' ? '/admin' : profile?.role === 'supervisor' ? '/supervisor' : '/operator';
-
-                              return (
-                                <tr key={group.item.id} className="border-b border-[var(--c-border)] hover:bg-[var(--c-muted)] transition-colors">
-                                  <td className="py-4 px-4 text-center text-[var(--c-muted-fg)]">{toPersianNumbers(index + 1)}</td>
-                                  <td className="py-4 px-4 text-right">
-                                    <div className="font-bold text-[var(--c-fg)]">{group.item.name}</div>
-                                    <div className="text-xs text-[var(--c-muted-fg)]">واحد: {group.item.unit} | {group.item.category === 'feed' ? 'نهاده' : 'بسته‌بندی'}</div>
-                                  </td>
-                                  <td className="py-4 px-4 text-center font-medium">{toPersianNumbers(initial.toLocaleString())}</td>
-                                  <td className="py-4 px-4 text-center font-bold text-green-600">{toPersianNumbers(totalIn.toLocaleString())}</td>
-                                  <td className="py-4 px-4 text-center font-bold text-red-600">{toPersianNumbers(totalOut.toLocaleString())}</td>
-                                  <td className="py-4 px-4 text-center">
-                                    <Badge variant={balance < 0 ? 'destructive' : 'secondary'} className="font-bold">
-                                      {toPersianNumbers(balance.toLocaleString())}
-                                    </Badge>
-                                  </td>
-                                  <td className="py-4 px-4 text-center">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => navigate(`${basePath}/inventory/items/${group.item.id}`)}
-                                      className="text-primary border-primary/30 hover:bg-primary/5 h-8 px-3"
-                                    >
-                                      مشاهده تغییرات
-                                      <ChevronLeft className="w-4 h-4 mr-1" />
-                                    </Button>
-                                  </td>
+                  <div className="space-y-4">
+                    {groupedTransactions.map((group) => (
+                      <Card key={group.item.id}>
+                        <CardHeader className="pb-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                              <CardTitle className="text-base">{group.item.name}</CardTitle>
+                              <p className="text-xs text-[var(--c-muted-fg)]">واحد: {group.item.unit} | دسته: {group.item.category === 'feed' ? 'نهاده' : 'بسته‌بندی'}</p>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                              <Badge variant="secondary">تعداد تراکنش: {toPersianNumbers(group.txns.length)}</Badge>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead className="bg-[var(--c-muted)] border-b border-[var(--c-border)]">
+                                <tr>
+                                  <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">تاریخ</th>
+                                  <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">نوع</th>
+                                  <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">ورودی</th>
+                                  <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">خروجی</th>
+                                  <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">شماره مرجع</th>
+                                  <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">توضیحات</th>
+                                  <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">مشاهده سند</th>
+                                  {isAdmin && (
+                                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">عملیات</th>
+                                  )}
                                 </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </CardContent>
-                  </Card>
+                              </thead>
+                              <tbody>
+                                {group.txns.map((txn) => {
+                                  const typeInfo = TXN_TYPE_COLORS[txn.txn_type as TransactionType];
+                                  const basePath = profile?.role === 'admin' ? '/admin' : profile?.role === 'supervisor' ? '/supervisor' : '/operator';
+                                  const targetLink = txn.source_type === 'daily_voucher' && txn.source_id
+                                    ? `${basePath}/consumption/${txn.txn_type === 'consumption' || txn.txn_type === 'waste' ? 'feed' : 'packaging'}?date=${txn.txn_date}`
+                                    : '';
+                                  return (
+                                    <tr key={txn.id} className="border-b border-[var(--c-border)] hover:bg-[var(--c-muted)] transition-colors">
+                                      <td className="py-3 px-4 text-center text-sm">{formatJalaliDate(txn.txn_date)}</td>
+                                      <td className="py-3 px-4 text-center">
+                                        <Badge className={`${typeInfo?.bg || ''} ${typeInfo?.text || ''}`}>
+                                          {TXN_TYPE_LABELS[txn.txn_type as TransactionType] || txn.txn_type}
+                                        </Badge>
+                                      </td>
+                                      <td className="py-3 px-4 text-center text-sm text-green-600 font-medium">
+                                        {txn.qty_in > 0 ? `+${toPersianNumbers(txn.qty_in.toLocaleString())}` : '—'}
+                                      </td>
+                                      <td className="py-3 px-4 text-center text-sm text-red-600 font-medium">
+                                        {txn.qty_out > 0 ? `-${toPersianNumbers(txn.qty_out.toLocaleString())}` : '—'}
+                                      </td>
+                                      <td className="py-3 px-4 text-center text-sm text-[var(--c-muted-fg)]">
+                                        {txn.reference_no || '—'}
+                                      </td>
+                                      <td className="py-3 px-4 text-center text-sm text-[var(--c-muted-fg)] max-w-[200px] truncate">
+                                        {txn.notes || '—'}
+                                      </td>
+                                      <td className="py-3 px-4 text-center text-sm">
+                                        {targetLink ? (
+                                          <a
+                                            href={targetLink}
+                                            className="text-primary hover:underline"
+                                          >
+                                            مشاهده سند
+                                          </a>
+                                        ) : (
+                                          <span className="text-[var(--c-muted-fg)]">—</span>
+                                        )}
+                                      </td>
+                                      {isAdmin && (
+                                        <td className="py-3 px-4 text-center">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleDeleteTransaction(txn.id)}
+                                            className="text-red-600 hover:bg-red-50"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </td>
+                                      )}
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 )}
               </motion.div>
             )}
 
-            {activeTab === 'all-items' && (
+            {activeTab === 'initial' && (
               <motion.div
-                key="all-items"
+                key="initial"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
               >
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">کالاهای انبار</CardTitle>
+                    <CardTitle className="text-lg">ثبت موجودی اولیه</CardTitle>
                     <p className="text-sm text-[var(--c-muted-fg)]">
-                      لیست تمام کالاهای موجود. می‌توانید موجودی اولیه هر کالا را ثبت کنید و یا خریدها و انتقال‌های جدید را اضافه کنید.
+                      برای شروع کار با انبار، باید موجودی اولیه هر کالا را ثبت کنید. بدون ثبت موجودی اولیه، امکان ثبت مصرف وجود ندارد.
                     </p>
                   </CardHeader>
                   <CardContent>
@@ -778,78 +786,55 @@ export default function InventoryPage() {
                       <div className="flex items-center justify-center py-8">
                         <Spinner className="w-8 h-8" />
                       </div>
-                    ) : balances.length === 0 ? (
-                      <div className="text-center py-12">
-                        <Package className="w-12 h-12 mx-auto text-[var(--c-muted-fg)] mb-3" />
-                        <p className="text-[var(--c-muted-fg)]">کالایی یافت نشد</p>
-                        <p className="text-sm text-[var(--c-muted-fg)] mt-1">
-                          ابتدا از بخش مدیریت فارم، نهاده‌ها را تخصیص دهید
-                        </p>
-                      </div>
                     ) : (
-                      <div className="space-y-2">
-                        {balances.map((balance, index) => (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {balances.map((balance) => (
                           <div
                             key={balance.item_id}
-                            className="p-4 rounded-lg border border-[var(--c-border)] hover:bg-[var(--c-muted)] transition-colors"
+                            className={`p-4 rounded-lg border-2 transition-all ${
+                              balance.has_initial
+                                ? 'border-green-300 bg-green-50 dark:bg-green-900/10 dark:border-green-800'
+                                : 'border-purple-300 bg-purple-50 dark:bg-purple-900/10 dark:border-purple-800'
+                            }`}
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3">
-                                  <div className="text-sm font-medium text-[var(--c-muted-fg)]">
-                                    {toPersianNumbers(index + 1)}
-                                  </div>
-                                  <div>
-                                    <h4 className="font-medium text-[var(--c-fg)]">{balance.item_name}</h4>
-                                    <p className="text-xs text-[var(--c-muted-fg)]">
-                                      {balance.item_category === 'feed' ? 'نهاده' : 'بسته‌بندی'} | واحد: {balance.item_unit}
-                                    </p>
-                                  </div>
-                                </div>
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h4 className="font-medium text-[var(--c-fg)]">{balance.item_name}</h4>
+                                <p className="text-xs text-[var(--c-muted-fg)]">
+                                  {balance.item_category === 'feed' ? 'نهاده' : 'بسته‌بندی'} | {balance.item_unit}
+                                </p>
                               </div>
-
-                              <div className="flex items-center gap-4">
-                                {balance.has_initial ? (
-                                  <div className="text-center">
-                                    <p className="text-xs text-[var(--c-muted-fg)]">موجودی اولیه</p>
-                                    <p className="text-lg font-bold text-green-600">
-                                      {toPersianNumbers(balance.initial_qty.toLocaleString())}
-                                    </p>
-                                  </div>
-                                ) : (
-                                  <div className="text-center">
-                                    <p className="text-xs text-[var(--c-muted-fg)]">موجودی اولیه</p>
-                                    <p className="text-lg font-bold text-amber-600">-</p>
-                                  </div>
-                                )}
-
-                                {!isReadOnly && (
-                                  <div className="flex gap-2 flex-wrap">
-                                    {!balance.has_initial ? (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-purple-600 border-purple-300"
-                                        onClick={() => openAddModal('initial', balance.item_id)}
-                                      >
-                                        <Plus className="w-4 h-4 ml-1" />
-                                        موجودی اولیه
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        disabled
-                                        className="text-green-600 border-green-300"
-                                      >
-                                        <CheckCircle className="w-4 h-4 ml-1" />
-                                        ثبت شده
-                                      </Button>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
+                              {balance.has_initial ? (
+                                <CheckCircle className="w-5 h-5 text-green-600" />
+                              ) : (
+                                <AlertTriangle className="w-5 h-5 text-purple-600" />
+                              )}
                             </div>
+
+                            {balance.has_initial ? (
+                              <div className="text-center py-2">
+                                <p className="text-xs text-[var(--c-muted-fg)]">موجودی اولیه</p>
+                                <p className="text-2xl font-bold text-green-600">
+                                  {toPersianNumbers(balance.initial_qty.toLocaleString())}
+                                </p>
+                                <p className="text-xs text-[var(--c-muted-fg)]">{balance.item_unit}</p>
+                              </div>
+                            ) : (
+                              !isReadOnly && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full text-purple-600 border-purple-300"
+                                  onClick={() => {
+                                    setFormData({ ...formData, item_id: balance.item_id });
+                                    openAddModal('initial');
+                                  }}
+                                >
+                                  <Plus className="w-4 h-4 ml-1" />
+                                  ثبت موجودی اولیه
+                                </Button>
+                              )
+                            )}
                           </div>
                         ))}
                       </div>
@@ -884,52 +869,36 @@ export default function InventoryPage() {
               </div>
 
               <div className="p-6 space-y-4">
-                {formData.item_id ? (
-                  <div>
-                    <label className="text-sm font-medium text-[var(--c-fg)] mb-1 block">کالا</label>
-                    <div className="px-3 py-2 rounded-md border border-[var(--c-border)] bg-[var(--c-muted)] text-[var(--c-fg)] font-medium">
-                      {farmItems.find(i => i.id === formData.item_id)?.name} ({farmItems.find(i => i.id === formData.item_id)?.unit})
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="text-sm font-medium text-[var(--c-fg)] mb-1 block">کالا *</label>
-                    <select
-                      value={formData.item_id}
-                      onChange={(e) => setFormData({ ...formData, item_id: e.target.value })}
-                      className="w-full px-3 py-2 rounded-md border border-[var(--c-border)] bg-[var(--c-bg)] text-[var(--c-fg)]"
-                    >
-                      <option value="">انتخاب کنید</option>
-                      {filteredItems.map((item) => {
-                        const hasInit = hasInitialStock(item.id);
-                        const disabled = modalType === 'initial' && hasInit;
-                        return (
-                          <option key={item.id} value={item.id} disabled={disabled}>
-                            {item.name} ({item.unit}) {disabled ? '✓ ثبت شده' : ''}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                )}
+                <div>
+                  <label className="text-sm font-medium text-[var(--c-fg)] mb-1 block">کالا *</label>
+                  <select
+                    value={formData.item_id}
+                    onChange={(e) => setFormData({ ...formData, item_id: e.target.value })}
+                    className="w-full px-3 py-2 rounded-md border border-[var(--c-border)] bg-[var(--c-bg)] text-[var(--c-fg)]"
+                  >
+                    <option value="">انتخاب کنید</option>
+                    {filteredItems.map((item) => {
+                      const hasInit = hasInitialStock(item.id);
+                      const disabled = modalType === 'initial' && hasInit;
+                      return (
+                        <option key={item.id} value={item.id} disabled={disabled}>
+                          {item.name} ({item.unit}) {disabled ? '✓ ثبت شده' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
 
                 <div>
                   <label className="text-sm font-medium text-[var(--c-fg)] mb-1 block">مقدار *</label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    className="no-spinners w-full px-3 py-2 rounded-md border border-[var(--c-border)] bg-[var(--c-bg)] text-[var(--c-fg)] font-sans text-lg"
-                    value={formData.quantity ? toPersianNumbers(formData.quantity) : ''}
-                    onChange={(e) => {
-                      let val = e.target.value;
-                      // Convert Persian digits to Latin
-                      val = val.replace(/[۰-۹]/g, (d) => {
-                        return String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
-                      });
-                      setFormData({ ...formData, quantity: val });
-                    }}
+                  <Input
+                    type="number"
+                    value={formData.quantity}
+                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                     placeholder="۰"
-                    dir="rtl"
+                    min="0"
+                    step="0.001"
+                    dir="ltr"
                   />
                 </div>
 
@@ -937,21 +906,13 @@ export default function InventoryPage() {
                   <>
                     <div>
                       <label className="text-sm font-medium text-[var(--c-fg)] mb-1 block">قیمت واحد (ریال)</label>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className="no-spinners w-full px-3 py-2 rounded-md border border-[var(--c-border)] bg-[var(--c-bg)] text-[var(--c-fg)] font-sans text-lg"
-                        value={formData.unit_price ? toPersianNumbers(formData.unit_price) : ''}
-                        onChange={(e) => {
-                          let val = e.target.value;
-                          // Convert Persian digits to Latin
-                          val = val.replace(/[۰-۹]/g, (d) => {
-                            return String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
-                          });
-                          setFormData({ ...formData, unit_price: val });
-                        }}
+                      <Input
+                        type="number"
+                        value={formData.unit_price}
+                        onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })}
                         placeholder="۰"
-                        dir="rtl"
+                        min="0"
+                        dir="ltr"
                       />
                     </div>
                     <div>

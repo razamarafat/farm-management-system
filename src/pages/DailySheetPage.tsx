@@ -1,8 +1,7 @@
 import { motion } from 'framer-motion';
 import {
   ArrowRight, Save, CheckCircle, AlertTriangle, Loader2,
-  Beaker, Building2, Calculator, RotateCcw,
-  Download,
+  Beaker, Building2, Calculator, RotateCcw, FileSpreadsheet,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useState } from 'react';
@@ -14,20 +13,13 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { JalaliDatePicker } from '@/components/ui/JalaliDatePicker';
 import { toPersianDigits } from '@/utils/persianNumbers';
 import { gregorianToJalali, jalaliToGregorian } from '@/utils/jalaliDate';
-import { exportDailySheetToExcel } from '@/utils/excelExportPro';
 import {
-  CATEGORY_LABELS, STATUS_LABELS, STATUS_COLORS,
+  CATEGORY_LABELS, STATUS_LABELS, STATUS_COLORS, toNumber,
   type VoucherCategory,
 } from '@/types/consumption.types';
 import { useDailySheet } from '@/hooks/useDailySheet';
 import DailySheetTable from '@/components/consumption/DailySheetTable';
 import { toast } from 'sonner';
-
-const toNumber = (value: string | number | null | undefined) => {
-  if (value === null || value === undefined || value === '') return 0;
-  const num = typeof value === 'string' ? parseFloat(value) : value;
-  return isNaN(num) ? 0 : num;
-};
 
 interface DailySheetPageProps {
   category: VoucherCategory;
@@ -40,7 +32,6 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
   const [missingItems, setMissingItems] = useState<string[]>([]);
   const [showMissingDialog, setShowMissingDialog] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(false);
-  const [pendingRevert, setPendingRevert] = useState(false);
 
   const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0];
   const farmParam = searchParams.get('farm');
@@ -177,16 +168,9 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
             <ArrowRight className="w-5 h-5" />
           </Button>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-[var(--c-fg)]">
-                {isReadOnly ? 'مشاهده' : 'ثبت'} حواله {CATEGORY_LABELS[category]}
-              </h1>
-              {isSubmitted && (
-                <span className="px-2 py-1 rounded text-xs font-semibold bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                  ✓ ثبت شده
-                </span>
-              )}
-            </div>
+            <h1 className="text-xl font-bold text-[var(--c-fg)]">
+              {isReadOnly ? 'مشاهده' : 'ثبت'} حواله {CATEGORY_LABELS[category]}
+            </h1>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-sm text-[var(--c-muted-fg)]">تاریخ:</span>
               <JalaliDatePicker
@@ -298,10 +282,11 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
                   {hallConfigs.map(hall => (
                     <div
                       key={hall.hallNumber}
-                      className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${hall.isSelected
+                      className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${
+                        hall.isSelected
                           ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
                           : 'border-[var(--c-border)] bg-[var(--c-card)] hover:border-gray-400'
-                        }`}
+                      }`}
                       onClick={() => canEdit && toggleHall(hall.hallNumber)}
                     >
                       <input
@@ -380,8 +365,8 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
         <Card className="p-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="text-center">
-              <p className="text-xs text-[var(--c-muted-fg)] mb-1">اقلام با مصرف</p>
-              <p className="text-lg font-bold text-[var(--c-fg)]">{toPersianDigits(items.filter(i => i.consumed_qty > 0 || i.waste_qty > 0).length)}</p>
+              <p className="text-xs text-[var(--c-muted-fg)] mb-1">تعداد اقلام</p>
+              <p className="text-lg font-bold text-[var(--c-fg)]">{toPersianDigits(items.length)}</p>
             </div>
             <div className="text-center">
               <p className="text-xs text-[var(--c-muted-fg)] mb-1">مجموع مصرف</p>
@@ -409,19 +394,14 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
 
           <div className="flex gap-3">
             {isSubmitted && canEdit && (
-              <Button variant="outline" onClick={() => setPendingRevert(true)} disabled={isSaving} className="flex items-center gap-2">
+              <Button variant="outline" onClick={revertSheet} disabled={isSaving} className="flex items-center gap-2">
                 <RotateCcw className="w-4 h-4" />
                 برگشت به پیش‌نویس
               </Button>
             )}
 
-            <Button
-              variant="primary"
-              onClick={async () => await exportDailySheetToExcel(items, `daily_sheet_${category}`)}
-              disabled={isSaving || items.length === 0}
-              className="flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
+            <Button variant="outline" disabled className="flex items-center gap-2">
+              <FileSpreadsheet className="w-4 h-4" />
               خروجی اکسل
             </Button>
 
@@ -465,20 +445,6 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
           setPendingSubmit(false);
           await submitSheet();
         }}
-      />
-
-      <ConfirmDialog
-        isOpen={pendingRevert}
-        onClose={() => setPendingRevert(false)}
-        title="برگشت حواله"
-        message="این عملیات حواله را به حالت پیش‌نویس برگشت می‌دهد کل تعاملات حذف خواهند شد. آیا اطمینان دارید؟"
-        confirmLabel="برگشت"
-        cancelLabel="انصراف"
-        onConfirm={async () => {
-          setPendingRevert(false);
-          await revertSheet();
-        }}
-        variant="destructive"
       />
     </motion.div>
   );

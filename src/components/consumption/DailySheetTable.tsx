@@ -69,7 +69,6 @@ function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine
   // Calculate totals
   const totalConsumed = items.reduce((s, i) => s + i.consumed_qty, 0);
   const totalWaste = items.reduce((s, i) => s + i.waste_qty, 0);
-  const totalAdjustment = items.reduce((s, i) => s + i.adjustment_qty, 0);
   const totalPurchase = items.reduce((s, i) => s + i.today_purchase, 0);
 
   return (
@@ -95,7 +94,6 @@ function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine
             </th>
             <th className="px-3 py-3 text-center font-semibold text-blue-700 dark:text-blue-400 w-28">خرید امروز</th>
             <th className="px-3 py-3 text-center font-semibold text-orange-700 dark:text-orange-400 w-28">ضایعات</th>
-            <th className="px-3 py-3 text-center font-semibold text-indigo-700 dark:text-indigo-400 w-28">تعدیل</th>
             <th className="px-3 py-3 text-center font-semibold text-[var(--c-fg)] w-32">مانده انبار</th>
             <th className="px-3 py-3 text-center font-semibold text-[var(--c-fg)] min-w-[140px]">توضیحات</th>
             <th className="px-3 py-3 text-center font-semibold text-[var(--c-fg)] w-12">🔔</th>
@@ -171,16 +169,6 @@ function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine
                   />
                 </td>
 
-                {/* Adjustment */}
-                <td className="px-3 py-2 text-center">
-                  <NumericCell
-                    value={item.adjustment_qty}
-                    onChange={(val) => onUpdateLine(item.id, 'adjustment_qty', toNumber(val))}
-                    disabled={!canEdit}
-                    highlight="text-indigo-600 dark:text-indigo-400"
-                  />
-                </td>
-
                 {/* Remaining Balance */}
                 <td className="px-3 py-2 text-center">
                   <div className="flex flex-col items-center gap-1">
@@ -240,10 +228,7 @@ function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine
             <td className="px-3 py-3 text-center text-orange-600">
               {totalWaste > 0 ? toPersianDigits(totalWaste.toFixed(2)) : '—'}
             </td>
-            <td className="px-3 py-3 text-center text-indigo-600">
-              {totalAdjustment !== 0 ? toPersianDigits(totalAdjustment.toFixed(2)) : '—'}
-            </td>
-            <td className="px-3 py-3" colSpan={2}></td>
+            <td className="px-3 py-3" colSpan={3}></td>
           </tr>
         </tfoot>
       </table>

@@ -225,7 +225,6 @@ export interface Database {
           hall_numbers: string | null;
           consumed_qty: number;
           waste_qty: number;
-          adjustment_qty: number;
           notes: string | null;
           hall_consumed: Json | null;
           formula_id: string | null;
@@ -241,7 +240,6 @@ export interface Database {
           hall_numbers?: string | null;
           consumed_qty?: number;
           waste_qty?: number;
-          adjustment_qty?: number;
           notes?: string | null;
           hall_consumed?: Json | null;
           formula_id?: string | null;
@@ -257,7 +255,6 @@ export interface Database {
           hall_numbers?: string | null;
           consumed_qty?: number;
           waste_qty?: number;
-          adjustment_qty?: number;
           notes?: string | null;
           hall_consumed?: Json | null;
           formula_id?: string | null;
@@ -367,9 +364,9 @@ export interface Database {
           reference_no: string | null;
           notes: string | null;
           created_by: string | null;
-          attachment_url: string | null;
-          supplier_id: string | null;
           created_at: string;
+          supplier_id: string | null;
+          attachment_url: string | null;
         };
         Insert: {
           id?: string;
@@ -387,9 +384,9 @@ export interface Database {
           reference_no?: string | null;
           notes?: string | null;
           created_by?: string | null;
-          attachment_url?: string | null;
-          supplier_id?: string | null;
           created_at?: string;
+          supplier_id?: string | null;
+          attachment_url?: string | null;
         };
         Update: {
           id?: string;
@@ -407,9 +404,36 @@ export interface Database {
           reference_no?: string | null;
           notes?: string | null;
           created_by?: string | null;
-          attachment_url?: string | null;
-          supplier_id?: string | null;
           created_at?: string;
+          supplier_id?: string | null;
+          attachment_url?: string | null;
+        };
+        Relationships: [];
+      };
+      suppliers: {
+        Row: {
+          id: string;
+          name: string;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
         };
         Relationships: [];
       };

@@ -47,7 +47,7 @@ export const UserCard = ({ user, index, onEdit, onDelete, onToggleStatus }: User
         </div>
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground text-xs">تلفن</span>
-          <span className="font-mono">{user.phone ? toPersianDigits(user.phone) : '—'}</span>
+          <span className="font-mono" dir="ltr">{user.phone ? toPersianDigits(user.phone) : '—'}</span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground text-xs">آخرین ورود</span>

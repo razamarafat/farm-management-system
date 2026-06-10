@@ -28,8 +28,7 @@ export const FarmForm = ({ isOpen, onClose, onSuccess, farm }: FarmFormProps) =>
     setValue,
     watch,
     formState: { errors },
-  } = useForm<CreateFarmInput>({
-    // @ts-ignore
+  } = useForm({
     resolver: zodResolver(createFarmSchema),
     defaultValues: {
       name: farm?.name || '',
@@ -91,7 +90,7 @@ export const FarmForm = ({ isOpen, onClose, onSuccess, farm }: FarmFormProps) =>
         </div>
       }
     >
-      <form id="farm-form" onSubmit={handleSubmit(onSubmit as any)} className="space-y-4">
+      <form id="farm-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <Input label="نام فارم" {...register('name')} error={errors.name?.message} />
         <Input label="کد فارم" {...register('code')} error={errors.code?.message} />
         <Input label="آدرس" {...register('address')} error={errors.address?.message} />

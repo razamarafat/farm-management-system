@@ -4,25 +4,32 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { cn } from '@/utils/cn';
 
 export const DateTimeDisplay = ({ className }: { className?: string }) => {
-  const [date, setDate] = useState<string>('');
-  const [time, setTime] = useState<string>('');
+  const [dateTime, setDateTime] = useState<string>('');
   const isDesktop = useMediaQuery('(min-width: 1024px)');
 
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
+      // On desktop show full date time, on mobile just time? 
+      // Prompt says: "DateTime (text-sm, muted, full format desktop, time only mobile)"
+      // Let's rely on CSS/Media Query logic or the hook.
+      // But getJalaliDateTime returns full string.
+      // Let's just return full string and format it or handle inside.
+      // For simplicity in this component, I'll use the utility.
       
       if (window.innerWidth >= 1024) {
-        const full = getJalaliDateTime(now);
-        const parts = full.split(' ');
-        setDate(parts[0] || full);
-        setTime(parts[1] || '');
+         setDateTime(getJalaliDateTime(now));
       } else {
-        // Just time for mobile
-        const full = getJalaliDateTime(now);
-        const parts = full.split(' ');
-        setDate('');
-        setTime(parts[1] || full);
+         // Just time for mobile. 
+         // getJalaliDateTime is "yyyy/MM/dd HH:mm"
+         // Let's just extract time or create a new util.
+         // Or just use basic Date for time part since numbers are Persianized via util anyway?
+         // Let's stick to getJalaliDateTime and maybe truncate or split.
+         const full = getJalaliDateTime(now);
+         // full is "۱۴۰۲/۱۰/۱۰ ۱۲:۳۰"
+         // split by space
+         const parts = full.split(' ');
+         setDateTime(parts[1] || full);
       }
     };
 
@@ -32,33 +39,6 @@ export const DateTimeDisplay = ({ className }: { className?: string }) => {
     return () => clearInterval(timer);
   }, [isDesktop]);
 
-  // Desktop: show vertical layout with date in box and gap
-  if (isDesktop) {
-    return (
-      <div
-        className={cn(
-          "flex flex-col items-center gap-1",
-          className
-        )}
-      >
-        {/* Date at top in a box */}
-        <div
-          className="text-sm font-semibold text-foreground border-2 border-primary rounded-lg px-3 py-1 bg-card/80 shadow-sm"
-          style={{ borderColor: 'var(--c-primary)' }}
-        >
-          {date}
-        </div>
-        {/* Time below with small gap */}
-        <div
-          className="text-sm font-semibold text-foreground bg-card/80"
-        >
-          {time}
-        </div>
-      </div>
-    );
-  }
-
-  // Mobile: show just time
   return (
     <div
       className={cn(
@@ -66,7 +46,7 @@ export const DateTimeDisplay = ({ className }: { className?: string }) => {
         className
       )}
     >
-      {time}
+      {dateTime}
     </div>
   );
 };

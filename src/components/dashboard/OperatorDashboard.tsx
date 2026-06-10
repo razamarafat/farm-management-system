@@ -32,9 +32,9 @@ const OperatorDashboard = () => {
         />
         <Tile
           icon={ShoppingCart}
-          label="خرید و انتقال"
+          label="ثبت خرید/انتقال"
           color="green"
-          to="/operator/purchases"
+          to="/operator/purchase"
         />
         <Tile
           icon={FileText}

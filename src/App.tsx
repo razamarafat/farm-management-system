@@ -3,6 +3,7 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from '@/router';
 import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/hooks/useTheme';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 
 export function App() {
   const { initialize, checkSessionExpiry } = useAuthStore();
@@ -12,6 +13,15 @@ export function App() {
 
   useEffect(() => {
     initialize();
+    // Seed admin user on first run only
+    const seeded = localStorage.getItem('admin_seeded');
+    if (!seeded) {
+      import('@/utils/seedAdmin').then((m) => {
+        m.seedAdmin().then(() => {
+          localStorage.setItem('admin_seeded', 'true');
+        });
+      });
+    }
   }, [initialize]);
 
   // Check session expiry every minute for non-admin users
@@ -22,5 +32,9 @@ export function App() {
     return () => clearInterval(interval);
   }, [checkSessionExpiry]);
 
-  return <RouterProvider router={router} />;
+  return (
+    <ErrorBoundary>
+      <RouterProvider router={router} />
+    </ErrorBoundary>
+  );
 }

@@ -53,9 +53,8 @@ export const UserForm = ({ mode, user, isOpen, onClose, onSuccess }: UserFormPro
     setValue,
     setError,
     formState: { errors, isDirty },
-  } = useForm<any>({
-    // @ts-ignore
-    resolver: zodResolver(schema),
+  } = useForm({
+    resolver: zodResolver(schema as any),
     defaultValues: {
       username: user?.username || '',
       password: '',
@@ -156,10 +155,10 @@ export const UserForm = ({ mode, user, isOpen, onClose, onSuccess }: UserFormPro
     onClose();
   };
 
-  const onSubmit = async (values: CreateUserInput | UpdateUserInput) => {
+  const handleFormSubmit = async (values: Record<string, unknown>) => {
     try {
       if (!isEdit) {
-        const data = values as CreateUserInput;
+        const data = values as unknown as CreateUserInput;
         const { data: existing, error: existingError } = await supabase
           .from('profiles')
           .select('id')
@@ -177,7 +176,7 @@ export const UserForm = ({ mode, user, isOpen, onClose, onSuccess }: UserFormPro
         toast.success(`کاربر ${data.firstName} ${data.lastName} با موفقیت ایجاد شد`);
         onSuccess();
       } else if (user) {
-        const data = values as UpdateUserInput;
+        const data = values as unknown as UpdateUserInput;
         if (data.changePassword && data.newPassword !== confirmNewPassword) {
           toast.error('رمز عبور و تکرار آن یکسان نیستند');
           return;
@@ -207,7 +206,7 @@ export const UserForm = ({ mode, user, isOpen, onClose, onSuccess }: UserFormPro
           </div>
         }
       >
-        <form id="user-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form id="user-form" onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           {isEdit && user && (
             <div className="text-xs text-muted-foreground">
               تاریخ ایجاد: {getJalaliDate(new Date(user.created_at))} | آخرین ورود:{' '}

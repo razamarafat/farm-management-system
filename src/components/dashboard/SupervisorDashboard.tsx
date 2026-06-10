@@ -26,9 +26,9 @@ const SupervisorDashboard = () => {
         />
         <Tile
           icon={ShoppingCart}
-          label="خرید و انتقال"
+          label="مشاهده خریدها"
           color="green"
-          to="/supervisor/purchases"
+          to="/supervisor/purchase"
         />
         <Tile
           icon={FileText}

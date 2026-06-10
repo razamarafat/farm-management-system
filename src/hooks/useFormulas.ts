@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 
 export interface FormulaItem {
@@ -50,59 +49,41 @@ export function useFormulas(farmId: string | null) {
     setIsLoading(true);
     setError(null);
     try {
-      // ═══════════════════════════════════════════════════════════
-      // بهینه‌سازی: از ۱۶۱+ کوئری به ۱ کوئری واحد با JOIN
-      // Supabase به ما اجازه می‌دهد جداول مرتبط را در یک درخواست بخوانیم
-      // ═══════════════════════════════════════════════════════════
       const { data: rawFormulas, error: fetchErr } = await supabaseAdmin
         .from('farm_feed_formulas')
-        .select(`
-          id,
-          farm_id,
-          formula_no,
-          name,
-          mixer_weight,
-          is_active,
-          created_at,
-          updated_at,
-          farm_formula_items (
-            id,
-            formula_id,
-            item_id,
-            qty_per_mixer,
-            farm_items (
-              name,
-              unit
-            )
-          )
-        `)
+        .select('*')
         .eq('farm_id', farmId)
         .order('formula_no', { ascending: true });
 
       if (fetchErr) throw fetchErr;
 
-      // ساختار داده را مانند قبل ایجاد می‌کنیم تا هیچ چیزی در UI نشکند
-      const results: Formula[] = (rawFormulas || []).map((f) => {
-        const rawItems = (f.farm_formula_items as unknown as Array<{
-          id: string;
-          formula_id: string;
-          item_id: string;
-          qty_per_mixer: number;
-          farm_items: { name: string; unit: string } | null;
-        }>) || [];
+      const results: Formula[] = [];
+      for (const f of rawFormulas || []) {
+        const { data: rawItems } = await supabaseAdmin
+          .from('farm_formula_items')
+          .select('*')
+          .eq('formula_id', f.id);
 
-        const enriched: FormulaItem[] = rawItems.map((ri) => ({
-          id: ri.id,
-          formula_id: ri.formula_id,
-          item_id: ri.item_id,
-          qty_per_mixer: Number(ri.qty_per_mixer) || 0,
-          item_name: ri.farm_items?.name || 'نامشخص',
-          item_unit: ri.farm_items?.unit || 'کیلوگرم',
-        }));
+        const enriched: FormulaItem[] = [];
+        for (const ri of rawItems || []) {
+          const { data: fi } = await supabaseAdmin
+            .from('farm_items')
+            .select('name, unit')
+            .eq('id', ri.item_id)
+            .maybeSingle();
+
+          enriched.push({
+            id: ri.id,
+            formula_id: ri.formula_id,
+            item_id: ri.item_id,
+            qty_per_mixer: Number(ri.qty_per_mixer) || 0,
+            item_name: fi?.name || 'نامشخص',
+            item_unit: fi?.unit || 'کیلوگرم',
+          });
+        }
 
         const totalWeight = enriched.reduce((s, i) => s + i.qty_per_mixer, 0);
-
-        return {
+        results.push({
           id: f.id,
           farm_id: f.farm_id,
           formula_no: f.formula_no,
@@ -113,8 +94,8 @@ export function useFormulas(farmId: string | null) {
           updated_at: f.updated_at,
           items: enriched,
           total_weight: totalWeight,
-        };
-      });
+        });
+      }
 
       setFormulas(results);
     } catch (err) {
@@ -171,14 +152,8 @@ export function useFarmFeedItems(farmId: string | null) {
 
 export function useFormulaActions(farmId: string | null) {
   const [isSaving, setIsSaving] = useState(false);
-  const { profile } = useAuthStore();
-  const isSupervisor = profile?.role === 'supervisor';
 
   const createFormula = async (input: FormulaInput): Promise<boolean> => {
-    if (isSupervisor) {
-      toast.error('شما مجوز ایجاد فرمول را ندارید');
-      return false;
-    }
     if (!farmId) return false;
     setIsSaving(true);
     try {
@@ -237,10 +212,6 @@ export function useFormulaActions(farmId: string | null) {
   };
 
   const updateFormula = async (formulaId: string, input: FormulaInput): Promise<boolean> => {
-    if (isSupervisor) {
-      toast.error('شما مجوز ویرایش فرمول را ندارید');
-      return false;
-    }
     if (!farmId) return false;
     setIsSaving(true);
     try {
@@ -286,10 +257,6 @@ export function useFormulaActions(farmId: string | null) {
   };
 
   const deleteFormula = async (formulaId: string): Promise<boolean> => {
-    if (isSupervisor) {
-      toast.error('شما مجوز حذف فرمول را ندارید');
-      return false;
-    }
     setIsSaving(true);
     try {
       await supabaseAdmin.from('farm_formula_items').delete().eq('formula_id', formulaId);
@@ -307,10 +274,6 @@ export function useFormulaActions(farmId: string | null) {
   };
 
   const toggleFormulaStatus = async (formulaId: string, currentActive: boolean): Promise<boolean> => {
-    if (isSupervisor) {
-      toast.error('شما مجوز تغییر وضعیت فرمول را ندارید');
-      return false;
-    }
     try {
       const { error } = await supabaseAdmin
         .from('farm_feed_formulas')
@@ -327,10 +290,6 @@ export function useFormulaActions(farmId: string | null) {
   };
 
   const duplicateFormula = async (formula: Formula, newNo: number): Promise<boolean> => {
-    if (isSupervisor) {
-      toast.error('شما مجوز کپی فرمول را ندارید');
-      return false;
-    }
     if (!farmId) return false;
     setIsSaving(true);
     try {

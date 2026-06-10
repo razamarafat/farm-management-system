@@ -116,7 +116,6 @@ export interface DailySheetRow {
   hall_numbers: string;
   consumed_qty: number;
   waste_qty: number;
-  adjustment_qty: number;
   notes: string;
   current_balance: number;
   today_purchase: number;
@@ -165,7 +164,6 @@ export interface SaveDailySheetLinePayload {
   hall_numbers: string;
   consumed_qty: number;
   waste_qty: number;
-  adjustment_qty: number;
   notes: string;
   hall_consumed?: Record<string, number>;
 }
