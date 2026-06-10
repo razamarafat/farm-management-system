@@ -1,1 +1,17 @@
 /node_modules
+
+# Environment variables - contains secrets, DO NOT commit
+.env
+.env.local
+.env.production
+
+# Build output
+/dist
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
