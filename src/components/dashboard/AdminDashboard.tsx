@@ -70,9 +70,8 @@ const AdminDashboard = () => {
         <Tile
           icon={Wheat}
           label="تعریف نهاده‌ها"
-          color="slate"
+          color="amber"
           to="/admin/inputs"
-          disabled
         />
         <Tile
           icon={Package}

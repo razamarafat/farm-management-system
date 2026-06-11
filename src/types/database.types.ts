@@ -437,6 +437,42 @@ export interface Database {
         };
         Relationships: [];
       };
+      inputs: {
+        Row: {
+          id: string;
+          name: string;
+          category: ItemCategory;
+          default_unit: string;
+          description: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          category?: ItemCategory;
+          default_unit?: string;
+          description?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          category?: ItemCategory;
+          default_unit?: string;
+          description?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
