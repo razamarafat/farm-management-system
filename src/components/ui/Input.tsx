@@ -12,22 +12,33 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm font-medium text-foreground mb-1">
+          <label className="block text-sm font-medium text-[var(--c-fg)] mb-1.5">
             {label}
           </label>
         )}
         <input
           type={type}
           className={cn(
-            "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors",
-            error && "border-destructive focus-visible:ring-destructive",
+            /* Base — rounded-lg (10px), clean border, subtle focus ring */
+            "flex h-11 w-full rounded-[10px] border-2 border-[var(--c-input)]",
+            "bg-[var(--c-card)] px-3.5 py-2.5 text-sm",
+            "text-[var(--c-fg)] placeholder:text-[var(--c-muted-fg)]",
+            "ring-offset-[var(--c-bg)]",
+            "transition-all duration-200 ease-out",
+            "file:border-0 file:bg-transparent file:text-sm file:font-medium",
+            /* Focus */
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--c-ring)] focus-visible:ring-offset-2 focus-visible:border-[var(--c-primary)]",
+            /* Disabled */
+            "disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-[var(--c-muted)]",
+            /* Error */
+            error && "border-[var(--c-destructive)] focus-visible:ring-[var(--c-destructive)] focus-visible:border-[var(--c-destructive)]",
             className
           )}
           ref={ref}
           {...props}
         />
         {error && (
-          <p className="mt-1 text-xs text-destructive">{error}</p>
+          <p className="mt-1.5 text-xs text-[var(--c-destructive)] font-medium">{error}</p>
         )}
       </div>
     );

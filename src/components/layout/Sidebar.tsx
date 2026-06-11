@@ -68,7 +68,7 @@ export const Sidebar = () => {
       {/* Backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-[fadeIn_150ms_ease-out]"
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm animate-[fadeIn_200ms_ease-out]"
           onClick={closeSidebar}
           aria-hidden="true"
         />
@@ -77,75 +77,42 @@ export const Sidebar = () => {
       {/* Sidebar panel */}
       <aside
         ref={sidebarRef}
-        style={{
-          backgroundColor: 'var(--c-card)',
-          borderColor: 'var(--c-border)',
-        }}
         className={`
           fixed top-0 bottom-0 right-0 z-50
-          w-[85vw] sm:w-[280px]
-          border-l
+          w-[85vw] sm:w-[288px]
+          border-l border-[var(--c-border)]
           flex flex-col
-          shadow-2xl
-          transition-transform duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]
+          shadow-[var(--modal-shadow)]
+          transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]
           ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}
         `}
+        style={{ backgroundColor: 'var(--c-card)' }}
       >
         {/* Header with close button */}
-        <div
-          className="flex items-center justify-between px-4 h-14 border-b shrink-0"
-          style={{ borderColor: 'var(--c-border)' }}
-        >
-          <span
-            className="text-sm font-bold"
-            style={{ color: 'var(--c-fg)' }}
-          >
-            منوی کاربری
-          </span>
+        <div className="flex items-center justify-between px-5 h-16 border-b border-[var(--c-border)] shrink-0">
+          <span className="text-sm font-bold text-[var(--c-fg)]">منوی کاربری</span>
           <button
             onClick={closeSidebar}
-            className="
-              w-9 h-9 rounded-lg flex items-center justify-center
-              transition-all duration-150
-              hover:scale-105 active:scale-95
-            "
-            style={{
-              color: 'var(--c-muted-fg)',
-              backgroundColor: 'transparent',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--c-muted)';
-              e.currentTarget.style.color = 'var(--c-fg)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = 'var(--c-muted-fg)';
-            }}
+            className="w-9 h-9 rounded-[10px] flex items-center justify-center transition-all duration-150 hover:bg-[var(--c-muted)] text-[var(--c-muted-fg)] hover:text-[var(--c-fg)] hover:scale-105 active:scale-95"
             aria-label="بستن منو"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
         {/* User info */}
-        <div
-          className="px-6 py-6 border-b flex flex-col items-center gap-3 shrink-0"
-          style={{ borderColor: 'var(--c-border)' }}
-        >
+        <div className="px-5 py-6 border-b border-[var(--c-border)] flex flex-col items-center gap-3 shrink-0">
           <div
-            className="w-16 h-16 rounded-full flex items-center justify-center"
+            className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-[0_4px_12px_rgba(37,99,235,0.15)]"
             style={{
-              backgroundColor: 'color-mix(in srgb, var(--c-primary) 15%, transparent)',
-              color: 'var(--c-primary)',
+              background: 'linear-gradient(135deg, var(--c-primary), var(--c-secondary))',
+              color: 'white',
             }}
           >
-            <User size={30} />
+            <User size={28} />
           </div>
           <div className="text-center">
-            <h3
-              className="font-bold text-base"
-              style={{ color: 'var(--c-fg)' }}
-            >
+            <h3 className="font-bold text-base text-[var(--c-fg)]">
               {profile?.first_name} {profile?.last_name || profile?.username}
             </h3>
             <div className="flex items-center justify-center gap-2 mt-2">
@@ -154,10 +121,7 @@ export const Sidebar = () => {
               </Badge>
             </div>
             {profile?.farm_id && (
-              <div
-                className="flex items-center justify-center gap-1 mt-2 text-sm"
-                style={{ color: 'var(--c-muted-fg)' }}
-              >
+              <div className="flex items-center justify-center gap-1 mt-2 text-sm text-[var(--c-muted-fg)]">
                 <Warehouse size={14} />
                 <span>فارم نمونه</span>
               </div>
@@ -168,20 +132,14 @@ export const Sidebar = () => {
         {/* Nav area */}
         <div className="flex-1 p-4 overflow-y-auto">
           <nav className="space-y-1">
-            <div
-              className="text-center text-sm mt-4"
-              style={{ color: 'var(--c-muted-fg)' }}
-            >
+            <div className="text-center text-sm mt-4 text-[var(--c-muted-fg)]">
               فهرست دسترسی‌ها
             </div>
           </nav>
         </div>
 
         {/* Logout */}
-        <div
-          className="p-4 border-t shrink-0"
-          style={{ borderColor: 'var(--c-border)' }}
-        >
+        <div className="p-4 border-t border-[var(--c-border)] shrink-0">
           <Button
             variant="destructive"
             className="w-full gap-2 h-11"
@@ -203,13 +161,6 @@ export const Sidebar = () => {
         onConfirm={confirmLogout}
         variant="destructive"
       />
-
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
     </>
   );
 };

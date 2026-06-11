@@ -6,7 +6,7 @@ import { cn } from '@/utils/cn';
 interface TileProps {
   icon: LucideIcon;
   label: string;
-  color: 'blue' | 'green' | 'orange' | 'purple' | 'teal' | 'red' | 'indigo' | 'amber' | 'cyan' | 'slate';
+  color: 'blue' | 'green' | 'orange' | 'purple' | 'teal' | 'red' | 'indigo' | 'amber' | 'cyan' | 'slate' | 'rose';
   to?: string;
   onClick?: () => void;
   disabled?: boolean;

@@ -16,17 +16,34 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={isLoading || disabled}
         className={cn(
-          "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background",
+          /* Base — rounded-lg (10px border-radius), smooth transitions, focus ring */
+          "inline-flex items-center justify-center rounded-[10px] font-medium",
+          "transition-all duration-200 ease-out",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--c-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--c-bg)]",
+          "disabled:opacity-50 disabled:pointer-events-none",
+          "active:scale-[0.97]",
+          /* Variants */
           {
-            "bg-primary text-primary-foreground hover:bg-primary/90": variant === "primary",
-            "bg-secondary text-secondary-foreground hover:bg-secondary/80": variant === "secondary",
-            "border border-input bg-background hover:bg-accent hover:text-accent-foreground": variant === "outline",
-            "hover:bg-accent hover:text-accent-foreground": variant === "ghost",
-            "bg-destructive text-destructive-foreground hover:bg-destructive/90": variant === "destructive",
-            "h-10 py-2 px-4": size === "default",
-            "h-9 px-3 rounded-md text-xs": size === "sm",
-            "h-11 px-8 rounded-md": size === "lg",
-            "h-10 w-10": size === "icon",
+            /* Primary — BluBank blue, subtle shadow, hover brightness */
+            "bg-[var(--c-primary)] text-[var(--c-primary-fg)] shadow-[0_2px_8px_color-mix(in_srgb,var(--c-primary)_25%,transparent)] hover:shadow-[0_4px_16px_color-mix(in_srgb,var(--c-primary)_35%,transparent)] hover:brightness-105":
+              variant === "primary",
+            /* Secondary — deep navy */
+            "bg-[var(--c-secondary)] text-[var(--c-secondary-fg)] hover:brightness-110":
+              variant === "secondary",
+            /* Outline — clean border, hover fills with primary tint */
+            "border-2 border-[var(--c-border)] bg-transparent text-[var(--c-fg)] hover:bg-[var(--c-primary-light)] hover:border-[var(--c-primary)] hover:text-[var(--c-primary)]":
+              variant === "outline",
+            /* Ghost — no border, subtle hover */
+            "text-[var(--c-fg)] hover:bg-[var(--c-muted)]":
+              variant === "ghost",
+            /* Destructive */
+            "bg-[var(--c-destructive)] text-[var(--c-destructive-fg)] shadow-[0_2px_8px_color-mix(in_srgb,var(--c-destructive)_20%,transparent)] hover:shadow-[0_4px_16px_color-mix(in_srgb,var(--c-destructive)_30%,transparent)] hover:brightness-105":
+              variant === "destructive",
+            /* Sizes */
+            "h-11 px-5 text-sm": size === "default",
+            "h-9 px-3.5 text-xs rounded-[8px]": size === "sm",
+            "h-12 px-8 text-base rounded-[12px]": size === "lg",
+            "h-11 w-11": size === "icon",
           },
           className
         )}

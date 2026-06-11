@@ -40,7 +40,7 @@ export const ConfirmDialog = ({
         </div>
       }
     >
-      <p className="text-sm text-muted-foreground">{message}</p>
+      <p className="text-sm text-[var(--c-muted-fg)] leading-relaxed">{message}</p>
     </Modal>
   );
 };
