@@ -33,13 +33,13 @@ const OperatorDashboard = () => {
         <Tile
           icon={ShoppingCart}
           label="ثبت خرید/انتقال"
-          color="green"
+          color="indigo"
           to="/operator/purchase"
         />
         <Tile
           icon={FileText}
           label="گزارشات"
-          color="orange"
+          color="cyan"
           to="/operator/reports"
         />
         <Tile

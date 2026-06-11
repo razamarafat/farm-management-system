@@ -33,13 +33,13 @@ const AdminDashboard = () => {
         <Tile
           icon={ShoppingCart}
           label="خرید و انتقال"
-          color="green"
+          color="indigo"
           to="/admin/purchase"
         />
         <Tile
           icon={FileText}
           label="گزارشات"
-          color="orange"
+          color="cyan"
           to="/admin/reports"
         />
         <Tile
@@ -58,7 +58,7 @@ const AdminDashboard = () => {
         <Tile
           icon={Users}
           label="مدیریت کاربران"
-          color="red"
+          color="rose"
           to="/admin/users"
         />
         <Tile
@@ -70,21 +70,21 @@ const AdminDashboard = () => {
         <Tile
           icon={Wheat}
           label="تعریف نهاده‌ها"
-          color="amber"
+          color="slate"
           to="/admin/inputs"
           disabled
         />
         <Tile
           icon={Package}
           label="اقلام بسته‌بندی"
-          color="cyan"
+          color="slate"
           to="/admin/packaging"
           disabled
         />
         <Tile
           icon={Truck}
           label="تامین‌کنندگان"
-          color="slate"
+          color="blue"
           to="/admin/suppliers"
         />
         <Tile

@@ -27,13 +27,13 @@ const SupervisorDashboard = () => {
         <Tile
           icon={ShoppingCart}
           label="مشاهده خریدها"
-          color="green"
+          color="indigo"
           to="/supervisor/purchase"
         />
         <Tile
           icon={FileText}
           label="گزارشات"
-          color="orange"
+          color="cyan"
           to="/supervisor/reports"
         />
         <Tile
