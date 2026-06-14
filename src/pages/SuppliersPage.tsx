@@ -20,7 +20,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
 import { toPersianNumbers } from '@/utils/persianNumbers';
-import { exportSuppliersToExcel } from '@/utils/excelExportPro';
+import { exportSuppliersToExcel } from '@/utils/excelExport';
 import type { Supplier, SupplierFilters, SupplierInsert } from '@/types/supplier.types';
 
 export default function SuppliersPage() {

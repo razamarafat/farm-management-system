@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -96,7 +97,7 @@ export const LoginForm = () => {
         }
       }
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error('Login error:', error);
       const errorMessage = error instanceof Error ? error.message : '';
       toast.error(errorMessage || 'نام کاربری یا رمز عبور اشتباه است');
     } finally {

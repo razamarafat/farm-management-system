@@ -24,7 +24,7 @@ import { JalaliDatePicker } from '@/components/ui/JalaliDatePicker';
 import { toPersianNumbers } from '@/utils/persianNumbers';
 import { gregorianToJalali, jalaliToGregorian } from '@/utils/jalaliDate';
 import { TXN_TYPE_LABELS, TXN_TYPE_COLORS, type TransactionType } from '@/types/inventory.types';
-import { exportInventoryTransactionsToExcel } from '@/utils/excelExportPro';
+import { exportInventoryTransactionsToExcel } from '@/utils/excelExport';
 
 export default function InventoryItemHistoryPage() {
     const { itemId } = useParams<{ itemId: string }>();
@@ -148,7 +148,7 @@ export default function InventoryItemHistoryPage() {
                                         <label className="text-xs text-[var(--c-muted-fg)] mb-1 block">نوع تراکنش</label>
                                         <select
                                             value={filters.txn_type}
-                                            onChange={(e) => setFilters({ ...filters, txn_type: e.target.value as any })}
+                                            onChange={(e) => setFilters({ ...filters, txn_type: e.target.value as typeof filters.txn_type })}
                                             className="w-full h-9 px-3 rounded-md border border-[var(--c-border)] bg-[var(--c-bg)] text-[var(--c-fg)] text-sm"
                                         >
                                             <option value="all">همه انواع</option>

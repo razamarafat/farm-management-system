@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
@@ -40,7 +41,7 @@ export const useFarms = (filters: FarmFilters) => {
       if (fetchError) throw fetchError;
       setFarms((data || []) as Farm[]);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       setError('خطا در دریافت اطلاعات');
     } finally {
       setIsLoading(false);

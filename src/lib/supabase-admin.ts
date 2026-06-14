@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database.types';
 
@@ -18,7 +19,7 @@ const isValidUrl = (value?: string) => {
 const hasValidConfig = isValidUrl(supabaseUrl);
 
 if (!hasValidConfig) {
-  console.error('Supabase URL is not valid. The application will run in offline mode.');
+  logger.error('Supabase URL is not valid. The application will run in offline mode.');
 }
 
 // IMPORTANT SECURITY NOTE:

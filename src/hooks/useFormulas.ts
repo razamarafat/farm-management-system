@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { useState, useEffect, useCallback } from 'react';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { toast } from 'sonner';
@@ -99,7 +100,7 @@ export function useFormulas(farmId: string | null) {
 
       setFormulas(results);
     } catch (err) {
-      console.error('Fetch formulas error:', err);
+      logger.error('Fetch formulas error:', err);
       setError('خطا در دریافت فرمول‌ها');
     } finally {
       setIsLoading(false);
@@ -139,7 +140,7 @@ export function useFarmFeedItems(farmId: string | null) {
           }))
         );
       } catch (err) {
-        console.error('Fetch farm items error:', err);
+        logger.error('Fetch farm items error:', err);
       } finally {
         setIsLoading(false);
       }
@@ -203,7 +204,7 @@ export function useFormulaActions(farmId: string | null) {
       toast.success('فرمول با موفقیت ایجاد شد');
       return true;
     } catch (err) {
-      console.error('Create formula error:', err);
+      logger.error('Create formula error:', err);
       toast.error('خطا در ایجاد فرمول');
       return false;
     } finally {
@@ -248,7 +249,7 @@ export function useFormulaActions(farmId: string | null) {
       toast.success('فرمول بروزرسانی شد');
       return true;
     } catch (err) {
-      console.error('Update formula error:', err);
+      logger.error('Update formula error:', err);
       toast.error('خطا در بروزرسانی فرمول');
       return false;
     } finally {
@@ -265,7 +266,7 @@ export function useFormulaActions(farmId: string | null) {
       toast.success('فرمول حذف شد');
       return true;
     } catch (err) {
-      console.error('Delete formula error:', err);
+      logger.error('Delete formula error:', err);
       toast.error('خطا در حذف فرمول');
       return false;
     } finally {
@@ -283,7 +284,7 @@ export function useFormulaActions(farmId: string | null) {
       toast.success(currentActive ? 'فرمول غیرفعال شد' : 'فرمول فعال شد');
       return true;
     } catch (err) {
-      console.error('Toggle formula error:', err);
+      logger.error('Toggle formula error:', err);
       toast.error('خطا در تغییر وضعیت');
       return false;
     }
@@ -322,7 +323,7 @@ export function useFormulaActions(farmId: string | null) {
       toast.success(`فرمول کپی شد به شماره ${newNo}`);
       return true;
     } catch (err) {
-      console.error('Duplicate formula error:', err);
+      logger.error('Duplicate formula error:', err);
       toast.error('خطا در کپی فرمول');
       return false;
     } finally {

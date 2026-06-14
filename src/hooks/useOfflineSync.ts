@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
@@ -118,7 +119,7 @@ export function useOfflineSync() {
             await deleteSyncedChange(change.id);
           }
         } catch (err) {
-          console.error('Failed to sync change:', change.id, err);
+          logger.error('Failed to sync change:', change.id, err);
           // Don't delete failed changes, they'll be retried
         }
       }
@@ -134,7 +135,7 @@ export function useOfflineSync() {
         toast.success('همگام‌سازی با موفقیت انجام شد');
       }
     } catch (err) {
-      console.error('Sync failed:', err);
+      logger.error('Sync failed:', err);
       toast.error('خطا در همگام‌سازی');
     } finally {
       syncInProgressRef.current = false;

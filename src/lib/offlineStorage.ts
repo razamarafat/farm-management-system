@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 /**
  * Offline Storage using IndexedDB
  * Handles offline queue for daily sheet changes
@@ -24,7 +25,7 @@ let db: IDBDatabase | null = null;
 export async function initOfflineDB(): Promise<boolean> {
   return new Promise((resolve) => {
     if (!window.indexedDB) {
-      console.warn('IndexedDB not supported');
+      logger.warn('IndexedDB not supported');
       resolve(false);
       return;
     }
@@ -32,7 +33,7 @@ export async function initOfflineDB(): Promise<boolean> {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onerror = () => {
-      console.error('Failed to open IndexedDB');
+      logger.error('Failed to open IndexedDB');
       resolve(false);
     };
 
@@ -67,7 +68,7 @@ export async function addPendingChange(
   }
 
   if (!db) {
-    console.error('IndexedDB not available');
+    logger.error('IndexedDB not available');
     return null;
   }
 
@@ -122,7 +123,7 @@ export async function getPendingChanges(): Promise<PendingChange[]> {
     };
 
     request.onerror = () => {
-      console.error('Failed to get pending changes');
+      logger.error('Failed to get pending changes');
       resolve([]);
     };
   });

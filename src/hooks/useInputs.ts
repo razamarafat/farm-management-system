@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { useState, useEffect, useCallback } from 'react';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { useAuthStore } from '@/store/authStore';
@@ -38,7 +39,7 @@ export function useInputs(filters: InputFilters) {
       if (fetchError) throw fetchError;
       setInputs((data || []) as Input[]);
     } catch (err) {
-      console.error('Error fetching inputs:', err);
+      logger.error('Error fetching inputs:', err);
       setError('خطا در دریافت اطلاعات نهاده‌ها');
     } finally {
       setIsLoading(false);
@@ -73,7 +74,7 @@ export function useActiveInputs(category?: 'feed' | 'packaging') {
         const { data } = await query;
         setInputs((data || []) as Input[]);
       } catch (err) {
-        console.error('Error fetching active inputs:', err);
+        logger.error('Error fetching active inputs:', err);
       } finally {
         setIsLoading(false);
       }
@@ -120,7 +121,7 @@ export function useCreateInput() {
       toast.success('نهاده جدید با موفقیت ثبت شد');
       return true;
     } catch (err) {
-      console.error('Error creating input:', err);
+      logger.error('Error creating input:', err);
       toast.error('خطا در ثبت نهاده جدید');
       return false;
     } finally {
@@ -166,7 +167,7 @@ export function useUpdateInput() {
       toast.success('اطلاعات نهاده بروزرسانی شد');
       return true;
     } catch (err) {
-      console.error('Error updating input:', err);
+      logger.error('Error updating input:', err);
       toast.error('خطا در بروزرسانی نهاده');
       return false;
     } finally {
@@ -209,7 +210,7 @@ export function useDeleteInput() {
       toast.success('نهاده با موفقیت حذف شد');
       return true;
     } catch (err) {
-      console.error('Error deleting input:', err);
+      logger.error('Error deleting input:', err);
       toast.error('خطا در حذف نهاده');
       return false;
     } finally {
@@ -232,7 +233,7 @@ export function useToggleInputStatus() {
       toast.success(current ? 'نهاده غیرفعال شد' : 'نهاده فعال شد');
       return true;
     } catch (err) {
-      console.error('Error toggling input status:', err);
+      logger.error('Error toggling input status:', err);
       toast.error('خطا در تغییر وضعیت نهاده');
       return false;
     }

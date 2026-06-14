@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { useState, useEffect, useCallback } from 'react';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { useAuthStore } from '@/store/authStore';
@@ -34,7 +35,7 @@ export function useSuppliers(filters: SupplierFilters) {
       if (fetchError) throw fetchError;
       setSuppliers((data || []) as Supplier[]);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       setError('خطا در دریافت اطلاعات تأمین‌کنندگان');
     } finally {
       setIsLoading(false);
@@ -63,7 +64,7 @@ export function useActiveSuppliers() {
           .order('name', { ascending: true });
         setSuppliers((data || []) as Supplier[]);
       } catch (err) {
-        console.error('Error fetching suppliers:', err);
+        logger.error('Error fetching suppliers:', err);
       } finally {
         setIsLoading(false);
       }

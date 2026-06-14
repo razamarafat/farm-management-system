@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
@@ -52,13 +53,13 @@ export const useUsers = (filters: UserFilters) => {
 
       const { data, error: fetchError } = await query;
       if (fetchError) {
-        console.error('Fetch users error:', fetchError);
+        logger.error('Fetch users error:', fetchError);
         throw fetchError;
       }
 
       setUsers((data || []) as unknown as ProfileWithFarm[]);
     } catch (err) {
-      console.error('useUsers error:', err);
+      logger.error('useUsers error:', err);
       setError('خطا در دریافت اطلاعات کاربران');
     } finally {
       setIsLoading(false);
@@ -130,7 +131,7 @@ export const useCreateUser = () => {
         });
 
         if (authError || !authData.user) {
-          console.error('Auth create error:', authError);
+          logger.error('Auth create error:', authError);
           const msg = authError?.message?.includes('already been registered')
             ? 'این نام کاربری قبلا استفاده شده'
             : 'خطا در ایجاد کاربر. لطفا دوباره تلاش کنید';
@@ -154,7 +155,7 @@ export const useCreateUser = () => {
         }, { onConflict: 'id' });
 
       if (profileError) {
-        console.error('Profile insert error:', profileError);
+        logger.error('Profile insert error:', profileError);
         // Cleanup: delete the auth user if we just created it
         if (!existingAuthUser && authUserId) {
           await supabaseAdmin.auth.admin.deleteUser(authUserId);
@@ -197,7 +198,7 @@ export const useUpdateUser = () => {
         .eq('id', userId);
 
       if (profileError) {
-        console.error('Profile update error:', profileError);
+        logger.error('Profile update error:', profileError);
         throw new Error('خطا در بروزرسانی اطلاعات کاربر');
       }
 
@@ -207,7 +208,7 @@ export const useUpdateUser = () => {
           password: input.newPassword,
         });
         if (passError) {
-          console.error('Password update error:', passError);
+          logger.error('Password update error:', passError);
           throw new Error('خطا در تغییر رمز عبور');
         }
       }
@@ -243,7 +244,7 @@ export const useDeleteUser = () => {
           .update({ is_active: false })
           .eq('id', userId);
         if (error) {
-          console.error('Soft delete error:', error);
+          logger.error('Soft delete error:', error);
           throw new Error('خطا در غیرفعالسازی کاربر');
         }
         await logActivity('user_deactivated', userId);
@@ -256,12 +257,12 @@ export const useDeleteUser = () => {
         .delete()
         .eq('id', userId);
       if (profileError) {
-        console.error('Hard delete profile error:', profileError);
+        logger.error('Hard delete profile error:', profileError);
         throw new Error('خطا در حذف کاربر');
       }
       const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
       if (authError) {
-        console.error('Hard delete auth error:', authError);
+        logger.error('Hard delete auth error:', authError);
       }
       await logActivity('user_deleted', userId);
       return true;
@@ -281,7 +282,7 @@ export const useToggleUserStatus = () => {
         .update({ is_active: !currentStatus })
         .eq('id', userId);
       if (error) {
-        console.error('Toggle status error:', error);
+        logger.error('Toggle status error:', error);
         throw error;
       }
       await logActivity(currentStatus ? 'user_deactivated' : 'user_activated', userId);
@@ -305,7 +306,7 @@ export const useResetPassword = () => {
       const newPass = customPassword || generateRandomPassword(8);
       const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, { password: newPass });
       if (error) {
-        console.error('Reset password error:', error);
+        logger.error('Reset password error:', error);
         throw error;
       }
       await logActivity('password_reset', userId);
