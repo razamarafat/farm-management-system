@@ -5,7 +5,7 @@ const ROOT = process.cwd();
 const IGNORE_DIRS = new Set(['.git', 'node_modules', 'dist']);
 const MARKERS = [/^<<<<<<< /m, /^=======$/m, /^>>>>>>> /m];
 
-function walk(dir: string, files: string[] = []): string[] {
+function walk(dir, files = []) {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
     const st = statSync(full);
@@ -19,7 +19,7 @@ function walk(dir: string, files: string[] = []): string[] {
 }
 
 const candidates = walk(ROOT).filter((p) => /\.(ts|tsx|js|jsx|css|md|html|json|cjs)$/i.test(p));
-const conflicts: string[] = [];
+const conflicts = [];
 
 for (const file of candidates) {
   const txt = readFileSync(file, 'utf8');

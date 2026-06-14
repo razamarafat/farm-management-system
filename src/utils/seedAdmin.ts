@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
 /**
@@ -41,7 +42,7 @@ export async function seedAdmin() {
     const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD;
 
     if (!adminUsername || !adminPassword) {
-      console.info(
+      logger.info(
         'seedAdmin: VITE_ADMIN_USERNAME or VITE_ADMIN_PASSWORD not set. ' +
         'Skipping admin seed. Set these in your .env file to bootstrap an admin user.'
       );
@@ -50,7 +51,7 @@ export async function seedAdmin() {
 
     const urlValue = import.meta.env.VITE_SUPABASE_URL;
     if (!urlValue || urlValue.includes('placeholder') || urlValue === 'https://') {
-      console.info(
+      logger.info(
         'seedAdmin: VITE_SUPABASE_URL is missing or still a placeholder. ' +
         'Skipping admin seed until Supabase is configured.'
       );
@@ -68,7 +69,7 @@ export async function seedAdmin() {
     if (checkError) {
       // Table may not exist yet (fresh database without migrations).
       // Exit silently — the admin can be seeded later.
-      console.warn(
+      logger.warn(
         'seedAdmin: Could not query profiles table:',
         checkError.message,
         '(the table may not exist yet — run migrations first)'
@@ -77,7 +78,7 @@ export async function seedAdmin() {
     }
 
     if (existingAdmins && existingAdmins.length > 0) {
-      console.info('seedAdmin: Admin user already exists in profiles. Nothing to do.');
+      logger.info('seedAdmin: Admin user already exists in profiles. Nothing to do.');
       return;
     }
 
@@ -101,7 +102,7 @@ export async function seedAdmin() {
       // Auth user exists but has no profile row (possibly from an incomplete
       // previous seed attempt). Reuse the existing auth identity.
       userId = existingAuthUser.id;
-      console.info(
+      logger.info(
         'seedAdmin: Found existing auth user for',
         email,
         '— updating metadata and creating profile.'
@@ -112,7 +113,7 @@ export async function seedAdmin() {
       });
     } else {
       // No auth user found — create a fresh one.
-      console.info('seedAdmin: Creating new admin auth user:', email);
+      logger.info('seedAdmin: Creating new admin auth user:', email);
 
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -122,12 +123,12 @@ export async function seedAdmin() {
       });
 
       if (authError) {
-        console.error('seedAdmin: Error creating admin auth user:', authError.message);
+        logger.error('seedAdmin: Error creating admin auth user:', authError.message);
         return;
       }
 
       if (!authData.user) {
-        console.error('seedAdmin: No user returned from createUser');
+        logger.error('seedAdmin: No user returned from createUser');
         return;
       }
 
@@ -150,13 +151,13 @@ export async function seedAdmin() {
       );
 
     if (profileError) {
-      console.error('seedAdmin: Error creating admin profile:', profileError.message);
+      logger.error('seedAdmin: Error creating admin profile:', profileError.message);
     } else {
-      console.info('seedAdmin: Admin user seeded successfully.');
+      logger.info('seedAdmin: Admin user seeded successfully.');
     }
   } catch (err) {
     // Silently catch all errors — never crash the app due to seed failure.
-    console.warn(
+    logger.warn(
       'seedAdmin: Unexpected error (skipped):',
       err instanceof Error ? err.message : 'Unknown error'
     );

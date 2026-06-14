@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -70,7 +71,7 @@ export function FileUpload({
       
       await uploadFile(compressed.file);
     } catch (err) {
-      console.error('Compression error:', err);
+      logger.error('Compression error:', err);
       setError('خطا در فشرده‌سازی تصویر');
     } finally {
       setIsCompressing(false);
@@ -102,7 +103,7 @@ export function FileUpload({
       onChange(publicUrl);
       toast.success('تصویر با موفقیت آپلود شد');
     } catch (err) {
-      console.error('Upload error:', err);
+      logger.error('Upload error:', err);
       setError('خطا در آپلود تصویر');
       toast.error('خطا در آپلود تصویر');
     } finally {
@@ -161,7 +162,7 @@ export function FileUpload({
             .remove([path]);
         }
       } catch (err) {
-        console.error('Error removing file:', err);
+        logger.error('Error removing file:', err);
       }
     }
     setPreviewUrl(null);

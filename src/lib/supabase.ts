@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database.types';
 
@@ -17,7 +18,7 @@ const isValidUrl = (value?: string) => {
 const hasValidConfig = isValidUrl(supabaseUrl) && !!supabaseAnonKey;
 
 if (!hasValidConfig) {
-  console.error('Supabase URL یا کلید ناشناس معتبر نیست. برنامه بدون اتصال به دیتابیس اجرا می‌شود.');
+  logger.error('Supabase URL یا کلید ناشناس معتبر نیست. برنامه بدون اتصال به دیتابیس اجرا می‌شود.');
 }
 
 export const supabase = createClient<Database>(

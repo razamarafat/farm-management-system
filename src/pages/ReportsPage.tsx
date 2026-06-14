@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns-jalali';
@@ -22,7 +23,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { toast } from 'sonner';
 import { toPersianNumbers, formatRial } from '@/utils/persianNumbers';
 import { formatJalaliDate, jalaliToGregorian } from '@/utils/jalaliDate';
-import { exportToExcelPro } from '@/utils/excelExportPro';
+import { exportToExcel as exportToExcelPro } from '@/utils/excelExport';
 
 interface Farm {
   id: string;
@@ -476,7 +477,7 @@ export default function ReportsPage() {
         setReportData(processedData);
       }
     } catch (err) {
-      console.error('Error generating report:', err);
+      logger.error('Error generating report:', err);
       toast.error('خطا در تولید گزارش');
     } finally {
       setIsLoading(false);

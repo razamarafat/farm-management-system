@@ -7,6 +7,18 @@
 
 # Build output
 /dist
+*.tsbuildinfo
+
+# Vite cache
+/.vite
+
+# Logs
+*.log
+npm-debug.log*
+
+# Generated analysis / tooling artifacts (do NOT commit)
+repomix-output.xml
+allcode.txt
 
 # OS files
 .DS_Store

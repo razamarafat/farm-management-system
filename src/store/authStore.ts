@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AuthState } from '@/types/auth.types';
@@ -62,7 +63,7 @@ export const useAuthStore = create<AuthState>()(
             set({ user: null, profile: null, isAuthenticated: false });
           }
         } catch (error) {
-          console.error('Auth initialization error:', error);
+          logger.error('Auth initialization error:', error);
           set({ user: null, profile: null, isAuthenticated: false });
         } finally {
           set({ isLoading: false });

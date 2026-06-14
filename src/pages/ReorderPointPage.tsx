@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -140,7 +141,7 @@ export default function ReorderPointPage() {
       });
       setLastPurchasePriceMap(latestPriceMap);
     } catch (err) {
-      console.error('Error fetching last purchase prices:', err);
+      logger.error('Error fetching last purchase prices:', err);
       setLastPurchasePriceMap({});
     }
   }, []);
@@ -185,7 +186,7 @@ export default function ReorderPointPage() {
           }
         }
       } catch (err) {
-        console.error('Error loading farms:', err);
+        logger.error('Error loading farms:', err);
       }
     };
 
@@ -277,7 +278,7 @@ export default function ReorderPointPage() {
       setEditValue('');
       refetch();
     } catch (err) {
-      console.error('Error updating reorder point:', err);
+      logger.error('Error updating reorder point:', err);
       toast.error('خطا در بروزرسانی نقطه سفارش');
     } finally {
       setIsSubmitting(false);

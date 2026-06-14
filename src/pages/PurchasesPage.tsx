@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -291,7 +292,7 @@ export default function PurchasesPage() {
         goBackToCards();
       }
     } catch (err) {
-      console.error('Error submitting:', err);
+      logger.error('Error submitting:', err);
       toast.error('خطا در ثبت اطلاعات');
     } finally {
       setIsSubmitting(false);

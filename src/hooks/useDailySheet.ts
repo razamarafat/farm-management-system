@@ -1,3 +1,4 @@
+import { logger } from '@/utils/logger';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { supabaseAdmin } from '@/lib/supabase-admin';
@@ -310,7 +311,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
     } catch (err) {
       const message = err instanceof Error ? err.message : 'خطای ناشناخته';
       setError(message);
-      console.error('Fetch daily sheet error:', err);
+      logger.error('Fetch daily sheet error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -462,7 +463,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (err) {
-      console.error('Save draft error:', err);
+      logger.error('Save draft error:', err);
       setSaveStatus('error');
       toast.error('خطا در ذخیره');
     } finally {
@@ -554,7 +555,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
       return true;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'خطا در ثبت نهایی';
-      console.error('Submit error:', err);
+      logger.error('Submit error:', err);
       toast.error(message);
       return false;
     } finally {
@@ -582,7 +583,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
       await fetchData();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'خطا در برگشت حواله';
-      console.error('Revert error:', err);
+      logger.error('Revert error:', err);
       toast.error(message);
     } finally {
       setIsSaving(false);
