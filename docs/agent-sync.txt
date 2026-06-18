@@ -1,0 +1,3 @@
+# Farm-Management-System — Agent Sync Marker
+<!-- Agent Sync Verified: 2026-06-18T10:21:48Z -->
+This file is a non-functional marker used to verify agent write access.
