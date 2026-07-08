@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Users } from 'lucide-react';
 import { Farm, FarmStaffProfile } from '@/types/farm.types';
 import { Card } from '@/components/ui/Card';
@@ -11,7 +11,7 @@ interface FarmStaffPanelProps {
   farm: Farm;
 }
 
-export const FarmStaffPanel = ({ farm }: FarmStaffPanelProps) => {
+const FarmStaffPanelInner = ({ farm }: FarmStaffPanelProps) => {
   const [staff, setStaff] = useState<FarmStaffProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -68,3 +68,11 @@ export const FarmStaffPanel = ({ farm }: FarmStaffPanelProps) => {
     </Card>
   );
 };
+
+FarmStaffPanelInner.displayName = 'FarmStaffPanelInner';
+
+const FarmStaffPanel = memo(FarmStaffPanelInner);
+FarmStaffPanel.displayName = 'FarmStaffPanel';
+
+export { FarmStaffPanel };
+export default FarmStaffPanel;

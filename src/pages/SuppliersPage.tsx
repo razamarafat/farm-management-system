@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users,
@@ -20,7 +20,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
 import { toPersianNumbers } from '@/utils/persianNumbers';
-import { exportSuppliersToExcel } from '@/utils/excelExportPro';
+import { triggerServerExport } from '@/lib/excelServer';
 import type { Supplier, SupplierFilters, SupplierInsert } from '@/types/supplier.types';
 
 export default function SuppliersPage() {
@@ -39,6 +39,53 @@ export default function SuppliersPage() {
   });
   const [isHardDelete, setIsHardDelete] = useState(false);
   const [usageWarning, setUsageWarning] = useState<{ hasUsage: boolean; count: number } | null>(null);
+  // Excel export state — disable the export button + show a spinner while
+  // the BFF is generating the .xlsx blob on the server.
+  const [isExporting, setIsExporting] = useState(false);
+
+  // ===========================================================================
+  // Server-side Excel export — TASK 09 invariant: NO client-side xlsx generation.
+  // Delegates to src/lib/excelServer.ts → POST /api/export/RPT_SUPPLIERS,
+  // which is SECURITY INVOKER and reads suppliers + inventory_transactions via
+  // the user's JWT so RLS handles the farm-scope naturally. We forward the
+  // page's current filter set: the raw search box text (already debounced in
+  // useSuppliers for the view; we send the latest typed value so the export
+  // reflects user INTENT, not the slightly-old view), and the literal status
+  // toggle — 'all' → null (no scope), 'active' → true, 'inactive' → false.
+  // `is_active: false` is preserved via the comparison (not `body.X || null`)
+  // so the SQL filter stays correct on the inactive-only path.
+  // ===========================================================================
+  const onExportClick = useCallback(async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    const toastId = toast.loading('در حال ساخت فایل اکسل…');
+    try {
+      const { fileName, rowCount } = await triggerServerExport(
+        'RPT_SUPPLIERS',
+        {
+          // Mirror the view-side filter (useSuppliers does
+          // filters.search.trim()) so the export can't catch a
+          // whitespace-only string the view would have hidden.
+          search: filters.search.trim() || null,
+          is_active:
+            filters.status === 'all'
+              ? null
+              : filters.status === 'active',
+        },
+      );
+      toast.success(
+        `فایل اکسل آماده شد: ${fileName}` +
+        (rowCount != null ? ` (${rowCount} ردیف)` : ''),
+        { id: toastId },
+      );
+    } catch (e) {
+      const msg =
+        e instanceof Error ? e.message : 'خطای ناشناخته در ساخت فایل اکسل';
+      toast.error(msg, { id: toastId });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [filters.search, filters.status, isExporting]);
 
   const { suppliers, isLoading, refetch } = useSuppliers(filters);
   const { createSupplier, isCreating } = useCreateSupplier();
@@ -104,7 +151,9 @@ export default function SuppliersPage() {
   };
 
   const handleToggleStatus = async (supplier: Supplier) => {
-    await toggleStatus(supplier.id, supplier.is_active);
+    // useToggleSupplierStatus returns the new is_active flag from the
+    // RPC so the page no longer needs to pass the prior value.
+    await toggleStatus(supplier.id);
     refetch();
   };
 
@@ -260,11 +309,16 @@ export default function SuppliersPage() {
       {suppliers.length > 0 && (
         <div className="flex justify-end">
           <Button
-            onClick={async () => await exportSuppliersToExcel(suppliers, 'suppliers')}
+            onClick={onExportClick}
             className="bg-green-600 hover:bg-green-700 text-white border-none"
             size="sm"
+            disabled={isExporting}
           >
-            <Download className="w-4 h-4 ml-1" />
+            {isExporting ? (
+              <span className="inline-block w-4 h-4 ml-1 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 ml-1" />
+            )}
             خروجی اکسل
           </Button>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -24,7 +24,8 @@ import { JalaliDatePicker } from '@/components/ui/JalaliDatePicker';
 import { toPersianNumbers } from '@/utils/persianNumbers';
 import { gregorianToJalali, jalaliToGregorian } from '@/utils/jalaliDate';
 import { TXN_TYPE_LABELS, TXN_TYPE_COLORS, type TransactionType } from '@/types/inventory.types';
-import { exportInventoryTransactionsToExcel } from '@/utils/excelExportPro';
+import { triggerServerExport } from '@/lib/excelServer';
+import { toast } from 'sonner';
 
 export default function InventoryItemHistoryPage() {
     const { itemId } = useParams<{ itemId: string }>();
@@ -52,6 +53,64 @@ export default function InventoryItemHistoryPage() {
         date_from: filters.date_from ? jalaliToGregorian(filters.date_from) : '',
         date_to: filters.date_to ? jalaliToGregorian(filters.date_to) : '',
     }), [filters, itemId]);
+
+    // Excel export state — disable the export button + show a spinner while
+    // the BFF drains the keyset (single-shot for a narrow item filter set,
+    // bounded by the global ledger streaming path on the server).
+    const [isExporting, setIsExporting] = useState(false);
+
+    // ===========================================================================
+    // Server-side Excel export — TASK 09 invariant: NO client-side xlsx generation.
+    // delegates to src/lib/excelServer.ts → POST /api/export/RPT_INVENTORY_LEDGER.
+    // Filters passed forward are the FULL page-level filter set, NOT just the
+    // visible 15 rows — operators can hit «download» to walk the whole audit
+    // trail for the item, not a single page. We forward item_id, the optional
+    // farm scope, the optional category, the Jalali-converted date range, and
+    // the single selected txn_type (or [] when 'all' to skip the post-filter).
+    // ===========================================================================
+    const onExportClick = useCallback(async () => {
+        if (isExporting) return;
+        setIsExporting(true);
+        const toastId = toast.loading('در حال ساخت فایل اکسل…');
+        try {
+            const { fileName, rowCount } = await triggerServerExport(
+                'RPT_INVENTORY_LEDGER',
+                {
+                    date_from: gregorianFilters.date_from || undefined,
+                    date_to: gregorianFilters.date_to || undefined,
+                    farm_id: farmId,
+                    item_id: itemId ?? null,
+                    category:
+                        gregorianFilters.category === 'all'
+                            ? null
+                            : gregorianFilters.category,
+                    txnTypes:
+                        gregorianFilters.txn_type === 'all'
+                            ? []
+                            : [String(gregorianFilters.txn_type)],
+                },
+            );
+            toast.success(
+                `فایل اکسل آماده شد: ${fileName}` +
+                (rowCount != null ? ` (${rowCount} ردیف)` : ''),
+                { id: toastId },
+            );
+        } catch (e) {
+            const msg =
+                e instanceof Error ? e.message : 'خطای ناشناخته در ساخت فایل اکسل';
+            toast.error(msg, { id: toastId });
+        } finally {
+            setIsExporting(false);
+        }
+    }, [
+        farmId,
+        gregorianFilters.category,
+        gregorianFilters.date_from,
+        gregorianFilters.date_to,
+        gregorianFilters.txn_type,
+        isExporting,
+        itemId,
+    ]);
 
     const {
         transactions,
@@ -109,12 +168,16 @@ export default function InventoryItemHistoryPage() {
                         فیلترها
                     </Button>
                     <Button
-                        onClick={async () => await exportInventoryTransactionsToExcel(transactions, `history_${itemInfo?.name || 'item'}`)}
+                        onClick={onExportClick}
                         className="bg-green-600 hover:bg-green-700 text-white border-none"
                         size="sm"
-                        disabled={transactions.length === 0}
+                        disabled={transactions.length === 0 || isExporting}
                     >
-                        <Download className="w-4 h-4 ml-1" />
+                        {isExporting ? (
+                            <span className="inline-block w-4 h-4 ml-1 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                            <Download className="w-4 h-4 ml-1" />
+                        )}
                         خروجی اکسل
                     </Button>
                 </div>

@@ -99,7 +99,10 @@ const FormulaManagementPage = () => {
   };
 
   const handleToggle = async (f: Formula) => {
-    const ok = await toggleFormulaStatus(f.id, f.is_active);
+    // useFormulaActions().toggleFormulaStatus returns the new is_active
+    // flag from the RPC so the page no longer needs to pass the prior
+    // value.
+    const ok = await toggleFormulaStatus(f.id);
     if (ok) refetch();
   };
 

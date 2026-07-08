@@ -1,5 +1,42 @@
-import { format, addDays, parse } from 'date-fns-jalali';
+import { format, addDays, parse, isValid } from 'date-fns-jalali';
 import { toPersianDigits, toEnglishDigits } from './persianNumbers';
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function getTodayIso(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatGregorianIso(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function isValidIsoDate(value: string): boolean {
+  if (!ISO_DATE_RE.test(value)) return false;
+  const [year, month, day] = value.split('-').map((part) => Number(part));
+  const date = new Date(year, month - 1, day);
+  return (
+    Number.isFinite(date.getTime()) &&
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
+function parseValidJalali(value: string): Date | null {
+  const english = toEnglishDigits(value).trim();
+  if (!english) return null;
+  const normalized = english.replace(/-/g, '/');
+  const date = parse(normalized, 'yyyy/MM/dd', new Date());
+  return isValid(date) ? date : null;
+}
 
 export function getJalaliDate(date: Date = new Date()): string {
   const d = format(date, 'yyyy/MM/dd');
@@ -40,39 +77,27 @@ export function formatJalaliDate(jalaliDate: string): string {
 
 // Add days to a Jalali date string
 export function addDaysToJalali(jalaliDate: string, days: number): string {
-  const english = toEnglishDigits(jalaliDate);
-  try {
-    const date = parse(english, 'yyyy/MM/dd', new Date());
-    const newDate = addDays(date, days);
-    return format(newDate, 'yyyy/MM/dd');
-  } catch {
-    return jalaliDate;
-  }
+  const date = parseValidJalali(jalaliDate);
+  if (!date) return jalaliDate;
+  const newDate = addDays(date, days);
+  return isValid(newDate) ? format(newDate, 'yyyy/MM/dd') : jalaliDate;
 }
 
 // Convert Jalali date string to Gregorian ISO format (yyyy-MM-dd)
 export function jalaliToGregorian(jalaliDate: string): string {
-  const english = toEnglishDigits(jalaliDate);
-  try {
-    const date = parse(english, 'yyyy/MM/dd', new Date());
-    // Format as ISO date
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  } catch {
-    return new Date().toISOString().split('T')[0];
-  }
+  const english = toEnglishDigits(jalaliDate).trim();
+  if (isValidIsoDate(english)) return english;
+
+  const date = parseValidJalali(english);
+  return date ? formatGregorianIso(date) : getTodayIso();
 }
 
 // Convert Gregorian ISO date to Jalali
 export function gregorianToJalali(isoDate: string): string {
-  try {
-    const date = new Date(isoDate);
-    return format(date, 'yyyy/MM/dd');
-  } catch {
-    return getJalaliToday();
-  }
+  if (!isValidIsoDate(isoDate)) return getJalaliToday();
+  const [year, month, day] = isoDate.split('-').map((part) => Number(part));
+  const date = new Date(year, month - 1, day);
+  return format(date, 'yyyy/MM/dd');
 }
 
 // Format Jalali date for display (with Persian digits and weekday)

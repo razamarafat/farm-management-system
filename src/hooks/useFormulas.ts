@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabase } from '@/lib/supabase';
+import { rpc } from '@/utils/rpc';
+import { rpcError } from '@/utils/rpcError';
 import { toast } from 'sonner';
 
 export interface FormulaItem {
@@ -49,29 +51,26 @@ export function useFormulas(farmId: string | null) {
     setIsLoading(true);
     setError(null);
     try {
-      const { data: rawFormulas, error: fetchErr } = await supabaseAdmin
+      const { data: rawFormulas, error: fetchErr } = await supabase
         .from('farm_feed_formulas')
         .select('*')
         .eq('farm_id', farmId)
         .order('formula_no', { ascending: true });
-
       if (fetchErr) throw fetchErr;
 
       const results: Formula[] = [];
       for (const f of rawFormulas || []) {
-        const { data: rawItems } = await supabaseAdmin
+        const { data: rawItems } = await supabase
           .from('farm_formula_items')
           .select('*')
           .eq('formula_id', f.id);
-
         const enriched: FormulaItem[] = [];
         for (const ri of rawItems || []) {
-          const { data: fi } = await supabaseAdmin
+          const { data: fi } = await supabase
             .from('farm_items')
             .select('name, unit')
             .eq('id', ri.item_id)
             .maybeSingle();
-
           enriched.push({
             id: ri.id,
             formula_id: ri.formula_id,
@@ -81,7 +80,6 @@ export function useFormulas(farmId: string | null) {
             item_unit: fi?.unit || 'کیلوگرم',
           });
         }
-
         const totalWeight = enriched.reduce((s, i) => s + i.qty_per_mixer, 0);
         results.push({
           id: f.id,
@@ -96,7 +94,6 @@ export function useFormulas(farmId: string | null) {
           total_weight: totalWeight,
         });
       }
-
       setFormulas(results);
     } catch (err) {
       console.error('Fetch formulas error:', err);
@@ -106,9 +103,7 @@ export function useFormulas(farmId: string | null) {
     }
   }, [farmId]);
 
-  useEffect(() => {
-    fetchFormulas();
-  }, [fetchFormulas]);
+  useEffect(() => { fetchFormulas(); }, [fetchFormulas]);
 
   return { formulas, isLoading, error, refetch: fetchFormulas };
 }
@@ -122,7 +117,7 @@ export function useFarmFeedItems(farmId: string | null) {
     const load = async () => {
       setIsLoading(true);
       try {
-        const { data } = await supabaseAdmin
+        const { data } = await supabase
           .from('farm_items')
           .select('id, name, unit, priority')
           .eq('farm_id', farmId)
@@ -132,11 +127,8 @@ export function useFarmFeedItems(farmId: string | null) {
 
         setItems(
           (data || []).map((i) => ({
-            id: i.id,
-            name: i.name,
-            unit: i.unit,
-            priority: i.priority,
-          }))
+            id: i.id, name: i.name, unit: i.unit, priority: i.priority,
+          })),
         );
       } catch (err) {
         console.error('Fetch farm items error:', err);
@@ -153,58 +145,28 @@ export function useFarmFeedItems(farmId: string | null) {
 export function useFormulaActions(farmId: string | null) {
   const [isSaving, setIsSaving] = useState(false);
 
+  const validItemsJsonb = (input: FormulaInput) =>
+    input.items
+      .filter((i) => i.qty_per_mixer > 0)
+      .map((i) => ({ item_id: i.item_id, qty_per_mixer: Number(i.qty_per_mixer) || 0 }));
+
   const createFormula = async (input: FormulaInput): Promise<boolean> => {
     if (!farmId) return false;
     setIsSaving(true);
     try {
-      const { data: existing } = await supabaseAdmin
-        .from('farm_feed_formulas')
-        .select('id')
-        .eq('farm_id', farmId)
-        .eq('formula_no', input.formula_no)
-        .maybeSingle();
-
-      if (existing) {
-        toast.error(`فرمول شماره ${input.formula_no} قبلاً وجود دارد`);
-        return false;
-      }
-
-      const insertData: Record<string, unknown> = {
-        farm_id: farmId,
-        formula_no: input.formula_no,
-        name: input.name || null,
-        mixer_weight: input.mixer_weight,
-        is_active: input.is_active,
-      };
-
-      const { data: formula, error: createErr } = await supabaseAdmin
-        .from('farm_feed_formulas')
-        .insert(insertData as never)
-        .select('id')
-        .single();
-
-      if (createErr || !formula) throw createErr || new Error('خطا در ایجاد فرمول');
-
-      const validItems = input.items.filter((i) => i.qty_per_mixer > 0);
-      if (validItems.length > 0) {
-        const itemRows = validItems.map((item) => ({
-          formula_id: (formula as { id: string }).id,
-          item_id: item.item_id,
-          qty_per_mixer: item.qty_per_mixer,
-        }));
-
-        const { error: itemsErr } = await supabaseAdmin
-          .from('farm_formula_items')
-          .insert(itemRows as never[]);
-
-        if (itemsErr) throw itemsErr;
-      }
-
+      const { error } = await rpc('rpc_admin_create_formula', {
+        p_farm_id:     farmId,
+        p_formula_no:  input.formula_no,
+        p_name:        input.name ?? '',
+        p_mixer_weight: Number(input.mixer_weight) || 0,
+        p_is_active:   !!input.is_active,
+        p_items:       validItemsJsonb(input),
+      });
+      if (error) throw error;
       toast.success('فرمول با موفقیت ایجاد شد');
       return true;
     } catch (err) {
-      console.error('Create formula error:', err);
-      toast.error('خطا در ایجاد فرمول');
+      toast.error(rpcError(err) || 'خطا در ایجاد فرمول');
       return false;
     } finally {
       setIsSaving(false);
@@ -215,41 +177,22 @@ export function useFormulaActions(farmId: string | null) {
     if (!farmId) return false;
     setIsSaving(true);
     try {
-      const updateData: Record<string, unknown> = {
-        name: input.name || null,
-        mixer_weight: input.mixer_weight,
-        is_active: input.is_active,
-      };
-
-      const { error: updateErr } = await supabaseAdmin
-        .from('farm_feed_formulas')
-        .update(updateData as never)
-        .eq('id', formulaId);
-
-      if (updateErr) throw updateErr;
-
-      await supabaseAdmin.from('farm_formula_items').delete().eq('formula_id', formulaId);
-
-      const validItems = input.items.filter((i) => i.qty_per_mixer > 0);
-      if (validItems.length > 0) {
-        const itemRows = validItems.map((item) => ({
-          formula_id: formulaId,
-          item_id: item.item_id,
-          qty_per_mixer: item.qty_per_mixer,
-        }));
-
-        const { error: itemsErr } = await supabaseAdmin
-          .from('farm_formula_items')
-          .insert(itemRows as never[]);
-
-        if (itemsErr) throw itemsErr;
-      }
-
+      // rpc_admin_update_formula replaces the items atomically, so the
+      // call sends whatever items the user authored — partial-update of
+      // header fields isn't supported by the RPC signature; the form
+      // always supplies the full FormulaInput.
+      const { error } = await rpc('rpc_admin_update_formula', {
+        p_formula_id:   formulaId,
+        p_name:         input.name ?? '',
+        p_mixer_weight: Number(input.mixer_weight) || 0,
+        p_is_active:    !!input.is_active,
+        p_items:        validItemsJsonb(input),
+      });
+      if (error) throw error;
       toast.success('فرمول بروزرسانی شد');
       return true;
     } catch (err) {
-      console.error('Update formula error:', err);
-      toast.error('خطا در بروزرسانی فرمول');
+      toast.error(rpcError(err) || 'خطا در بروزرسانی فرمول');
       return false;
     } finally {
       setIsSaving(false);
@@ -259,32 +202,30 @@ export function useFormulaActions(farmId: string | null) {
   const deleteFormula = async (formulaId: string): Promise<boolean> => {
     setIsSaving(true);
     try {
-      await supabaseAdmin.from('farm_formula_items').delete().eq('formula_id', formulaId);
-      const { error } = await supabaseAdmin.from('farm_feed_formulas').delete().eq('id', formulaId);
+      const { error } = await rpc('rpc_admin_delete_formula', { p_formula_id: formulaId });
       if (error) throw error;
       toast.success('فرمول حذف شد');
       return true;
     } catch (err) {
-      console.error('Delete formula error:', err);
-      toast.error('خطا در حذف فرمول');
+      toast.error(rpcError(err) || 'خطا در حذف فرمول');
       return false;
     } finally {
       setIsSaving(false);
     }
   };
 
-  const toggleFormulaStatus = async (formulaId: string, currentActive: boolean): Promise<boolean> => {
+  const toggleFormulaStatus = async (formulaId: string): Promise<boolean> => {
     try {
-      const { error } = await supabaseAdmin
-        .from('farm_feed_formulas')
-        .update({ is_active: !currentActive } as never)
-        .eq('id', formulaId);
+      const { data, error } = await rpc<{ is_active: boolean }>(
+        'rpc_admin_toggle_formula',
+        { p_formula_id: formulaId },
+      );
       if (error) throw error;
-      toast.success(currentActive ? 'فرمول غیرفعال شد' : 'فرمول فعال شد');
+      const next = (data && (data as { is_active?: boolean }).is_active) ?? null;
+      toast.success(next === false ? 'فرمول غیرفعال شد' : 'فرمول فعال شد');
       return true;
     } catch (err) {
-      console.error('Toggle formula error:', err);
-      toast.error('خطا در تغییر وضعیت');
+      toast.error(rpcError(err) || 'خطا در تغییر وضعیت');
       return false;
     }
   };
@@ -293,37 +234,15 @@ export function useFormulaActions(farmId: string | null) {
     if (!farmId) return false;
     setIsSaving(true);
     try {
-      const insertData: Record<string, unknown> = {
-        farm_id: farmId,
-        formula_no: newNo,
-        name: formula.name ? `${formula.name} (کپی)` : `کپی فرمول ${formula.formula_no}`,
-        mixer_weight: formula.mixer_weight,
-        is_active: true,
-      };
-
-      const { data: newF, error: createErr } = await supabaseAdmin
-        .from('farm_feed_formulas')
-        .insert(insertData as never)
-        .select('id')
-        .single();
-
-      if (createErr || !newF) throw createErr;
-
-      if (formula.items.length > 0) {
-        const itemRows = formula.items.map((item) => ({
-          formula_id: (newF as { id: string }).id,
-          item_id: item.item_id,
-          qty_per_mixer: item.qty_per_mixer,
-        }));
-
-        await supabaseAdmin.from('farm_formula_items').insert(itemRows as never[]);
-      }
-
+      const { error } = await rpc('rpc_admin_duplicate_formula', {
+        p_source_formula_id: formula.id,
+        p_new_no: newNo,
+      });
+      if (error) throw error;
       toast.success(`فرمول کپی شد به شماره ${newNo}`);
       return true;
     } catch (err) {
-      console.error('Duplicate formula error:', err);
-      toast.error('خطا در کپی فرمول');
+      toast.error(rpcError(err) || 'خطا در کپی فرمول');
       return false;
     } finally {
       setIsSaving(false);

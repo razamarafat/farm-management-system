@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '@/store/authStore';
 import AccessDenied from '@/components/shared/AccessDenied';
 import { Spinner } from '@/components/ui/Spinner';
@@ -8,7 +9,13 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
-  const { isAuthenticated, profile, isLoading } = useAuthStore();
+  const { isAuthenticated, profile, isLoading } = useAuthStore(
+    useShallow((state) => ({
+      isAuthenticated: state.isAuthenticated,
+      profile: state.profile,
+      isLoading: state.isLoading,
+    }))
+  );
   const location = useLocation();
 
   if (isLoading) {

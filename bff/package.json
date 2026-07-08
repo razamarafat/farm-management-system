@@ -1,0 +1,18 @@
+{
+  "name": "morvarid-farm-bff",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Render Web Service BFF for Supabase auth.admin operations. Holds the service-role key server-side only; the SPA talks to it from the authenticated admin's browser session.",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs"
+  },
+  "engines": {
+    "node": ">=22.12.0 <23"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.95.3"
+  }
+}

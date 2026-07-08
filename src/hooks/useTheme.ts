@@ -1,8 +1,14 @@
 import { useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useUIStore } from '@/store/uiStore';
 
 export function useTheme() {
-  const { theme, setTheme } = useUIStore();
+  const { theme, setTheme } = useUIStore(
+    useShallow((state) => ({
+      theme: state.theme,
+      setTheme: state.setTheme,
+    }))
+  );
 
   useEffect(() => {
     const root = window.document.documentElement;

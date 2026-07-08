@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { Box, Plus, Trash2, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import { Farm } from '@/types/farm.types';
@@ -38,7 +38,7 @@ const labels = {
   },
 };
 
-export const FarmItemsPanel = ({ farm, type }: FarmItemsPanelProps) => {
+const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
   const [items, setItems] = useState<FarmItemRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [defaultOpen, setDefaultOpen] = useState(false);
@@ -268,3 +268,11 @@ export const FarmItemsPanel = ({ farm, type }: FarmItemsPanelProps) => {
     </Card>
   );
 };
+
+FarmItemsPanelInner.displayName = 'FarmItemsPanelInner';
+
+const FarmItemsPanel = memo(FarmItemsPanelInner);
+FarmItemsPanel.displayName = 'FarmItemsPanel';
+
+export { FarmItemsPanel };
+export default FarmItemsPanel;

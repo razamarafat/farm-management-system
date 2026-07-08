@@ -1,0 +1,256 @@
+<task>
+  <role>
+    You are a Principal Engineer performing the FINAL MASTER INTEGRATION AUDIT
+    for the Reports & Excel Export system. This is the last gate before this
+    work can be declared production-ready. Two major verification passes have
+    already happened before this one:
+      (1) A 14-task feature audit (application/UI/export layer)
+      (2) A live database audit with full API access (schema, RLS, reconciliation,
+          performance — fixes applied directly to the live Supabase project)
+    Your job now is NOT to re-litigate either of those passes in isolation.
+    Your job is to verify the SEAM between them: does the application, running
+    against the NOW-VERIFIED-AND-FIXED live database, actually work correctly,
+    end-to-end, exactly as a real user would experience it? Database fixes can
+    silently break application assumptions (changed function signatures, new
+    RLS restrictions, renamed columns). Application fixes can silently rely on
+    database behavior that was never actually confirmed. You must catch both.
+  </role>
+
+  <context>
+    Repository: https://github.com/razamarafat/farm-management-system
+
+    CONSOLIDATED SCOPE — everything that was supposed to be built and must now
+    be re-verified as a WORKING WHOLE:
+
+    [Foundations]
+    - docs/reports/report-catalog.md — report catalog + KPI definitions
+    - DB reporting layer: reporting_inventory_balance_as_of,
+      reporting_inventory_ledger, reporting_consumption_summary,
+      reporting_inventory_aging, reporting_pareto_classification,
+      reporting_suppliers_list — all SECURITY INVOKER, RLS-gated, indexed
+    - Reports SPA shell: /reports route, ReportSelector, filter bar
+      (date range + farm/hall/item/supplier multi-select + presets),
+      ReportTable (sticky header, column toggle, sort, server pagination),
+      Saved Views persistence
+
+    [6 Reports — each must work fully in the browser]
+    - Inventory Valuation Summary (as-of date, drilldown to ledger panel)
+    - Inventory Ledger (running balance, keyset pagination, group-by item)
+    - Consumption Analytics (group-by day/item/hall/formula, variance highlight)
+    - Inventory Aging (buckets, dead-stock flag)
+    - ABC/Pareto Classification (basis toggle, reorder suggestions)
+    - Suppliers list (added during gap closure)
+
+    [Export Engine — server-side, ExcelJS, must work for ALL 6 reports]
+    - services/export-api (BFF): JWT auth, RBAC via profiles.role, registry-driven
+    - XLSX Template System: styles, freeze panes, RTL, totals, reconciliation
+      row, conditional formatting, streaming for large exports
+    - Frontend must trigger REAL downloads for ALL 6 reports via
+      triggerServerExport — including the 3 that were previously broken
+      (Valuation, Ledger, Consumption) and were supposedly fixed in the
+      gap-closure pass
+
+    [Guardrails]
+    - contracts-test.mjs, template-test.mjs (must still pass, and now must be
+      re-run against the LIVE database's actual current schema, not just
+      static fixtures, wherever they touch real RPC calls)
+    - reconciliation-test.mjs, perf-budget.mjs — must now be run FOR REAL
+      against the live database (this was the main gap in the prior audit —
+      confirm the DB audit actually exercised these, and if the DB audit
+      already produced real passing numbers, cite that evidence directly
+      here rather than re-running from scratch, but you must verify that
+      evidence is actually valid and current, not stale)
+
+    [Prior findings to explicitly close out]
+    - G1: 3 export buttons that were non-functional (Valuation, Ledger,
+      Consumption) — confirm they now work with REAL browser-level proof
+    - G2: Executive Summary internal contradictions — confirm the current
+      state of documentation is accurate and non-contradictory
+    - G3/G4/G5: DB-level reconciliation, RLS impersonation, schema drift —
+      confirm the DB audit's fixes are correctly reflected in application
+      behavior now (e.g., if an RLS policy was tightened, does the app still
+      function correctly for legitimate users?)
+    - G6: deferred "MINOR" bugs (TZ drift, label cosmetics) — confirm final
+      disposition (fixed or genuinely justified as deferred with evidence)
+    - G7: SPA test suite — confirm it exists, runs, and passes
+    - G8: bundle size — confirm current state vs. the investigated baseline
+  </context>
+
+  <mandate>
+    END-TO-END, ZERO-TRUST, SEAM-FOCUSED VERIFICATION:
+    - Do not accept "the DB audit already proved this" or "the app audit
+      already proved this" as sufficient on its own. Prove the FULL CHAIN:
+      real user action in the UI → real network request → real RPC call
+      against the live (now-fixed) database → real data returned → real
+      correct rendering or real correct file download.
+    - Any discrepancy between what the DB audit assumed about the application
+      and what the application audit assumed about the database is a
+      CRITICAL finding — these integration seams are exactly where prior
+      "14/14 PASS" claims went wrong before.
+    - Every verdict must cite: (a) the specific prior audit/fix this depends
+      on, (b) fresh evidence from THIS session proving it still holds true
+      end-to-end, right now, against the current state of the repo and the
+      current state of the live database.
+  </mandate>
+
+  <workflow>
+    <phase name="0. BASELINE RE-CONFIRMATION">
+      Run and paste raw output:
+        - npx tsc --noEmit
+        - npm run build (note bundle size — compare to G8's documented baseline)
+        - npm run test:contracts / test:template (backend)
+        - npm test (frontend, if G7 was completed — must exist and pass now)
+      If ANY of these fail, STOP and fix before proceeding — this is a
+      non-negotiable entry gate, exactly as in the original audits.
+    </phase>
+
+    <phase name="1. CONSOLIDATED REQUIREMENTS CHECKLIST">
+      Build ONE master table, deduplicating everything from the 14 original
+      task definitions_of_done + the DB audit's required objects + the 8
+      gap-closure workstreams, with columns:
+        ID | Requirement | Source (which original task/workstream) |
+        Current Status | Evidence Reference
+
+      This table is your single source of truth for the rest of this audit —
+      every remaining phase must map back to a row in this table, and every
+      row must end this audit with a final status of PASS, FAIL, or
+      EXPLICITLY-JUSTIFIED-OUT-OF-SCOPE (never silently dropped).
+    </phase>
+
+    <phase name="2. END-TO-END USER JOURNEY TESTS (the core of this audit)">
+      For EACH of the 6 reports, execute and document the FULL real journey,
+      not isolated layer checks:
+
+        ### JOURNEY: <Report Name>
+        1) Load /reports, select this report — paste the actual network
+           request(s) fired and their real response status/shape.
+        2) Apply a non-trivial filter combination (date range + at least one
+           optional filter) — confirm the request reflects debounced,
+           correct filter values; paste the real request payload.
+        3) Confirm the rendered table matches what a DIRECT SQL query against
+           the live database returns for the same filters (paste both the
+           UI-rendered values and the raw SQL query + result, and confirm
+           they match exactly — this is the actual proof that DB fixes and
+           app behavior are in sync).
+        4) Trigger pagination (if applicable) — confirm page 2 does not
+           duplicate or skip rows relative to page 1 (paste both pages' first/
+           last row keys).
+        5) Trigger the Export button — paste real proof of file download
+           (network response: status 200, correct Content-Type, non-zero
+           file size).
+        6) Open/validate the downloaded file (via the ExcelJS round-trip
+           check used in template-test.mjs) — paste PASS confirmation.
+        7) Confirm the exported file's totals match the on-screen totals
+           AND match the direct SQL aggregate for the same filters (three-way
+           match: UI, export, raw DB — this closes the loop the prior audits
+           never fully closed).
+        8) If this report has a drilldown (Valuation → ledger panel), open it
+           and confirm it loads real, correct, scoped data.
+
+      Do this for: Valuation Summary, Inventory Ledger, Consumption Analytics,
+      Inventory Aging, Pareto Classification, Suppliers.
+    </phase>
+
+    <phase name="3. RLS/RBAC RE-CONFIRMATION AT THE APPLICATION LAYER">
+      The DB audit already live-tested RLS at the SQL layer. Now confirm the
+      APPLICATION correctly surfaces this:
+        - Log in (or simulate) as a lower-privileged role (e.g., operator) in
+          the actual running app, and confirm the UI correctly hides/disables
+          reports and export buttons that role should not access (per
+          allowedRoles) — paste actual UI state, not just code review.
+        - Confirm that even if a restricted UI element were bypassed (e.g.,
+          direct API call from browser devtools), the server/DB still
+          correctly rejects it — paste the actual rejected request/response.
+    </phase>
+
+    <phase name="4. REGRESSION CHECK — DID DB FIXES BREAK ANYTHING?">
+      - For every migration/fix applied during the DB audit (pull the actual
+        list from that audit's Fixed Issues Log), explicitly check: does any
+        application code (hooks, types, registry) still reference the OLD
+        function signature, old column name, or old behavior?
+        Grep for usages and confirm alignment; paste evidence.
+      - Confirm src/types/database.types.ts (or equivalent) reflects the
+        CURRENT live schema exactly — regenerate types from the live DB if
+        a generator exists, and diff against what's committed; flag any drift.
+    </phase>
+
+    <phase name="5. GAP-CLOSURE VERIFICATION (G1–G8 final disposition)">
+      For each of G1 through G8 from the prior gap-closure task, state the
+      FINAL, current, freshly-re-verified status (not the previously-claimed
+      status) with fresh evidence from this session:
+        G1 (3 export buttons) — re-confirmed working in Phase 2 above? cite it.
+        G2 (summary honesty) — will be resolved by this audit's own final
+           report; confirm no new contradictions were introduced.
+        G3 (live reconciliation) — cite the DB audit's real numbers; confirm
+           they are current (re-run once more here if any doubt).
+        G4 (live RLS impersonation) — cite DB audit results; cross-check with
+           Phase 3 above.
+        G5 (schema drift) — cite DB audit's live drift check; confirm no NEW
+           drift has been introduced by any changes made since.
+        G6 (deferred MINOR bugs) — confirm final disposition with evidence.
+        G7 (SPA tests) — confirm they exist, run, and pass (Phase 0).
+        G8 (bundle size) — confirm current size vs. investigated baseline.
+    </phase>
+
+    <phase name="6. FINAL MASTER SIGN-OFF REPORT">
+      Produce docs/reports/final-master-audit.md containing:
+        1) Executive summary — MECHANICALLY DERIVED from the master
+           requirements table in Phase 1 (show the arithmetic: X PASS +
+           Y FAIL + Z OUT-OF-SCOPE = total requirements count). No hand-typed
+           "looks good" numbers.
+        2) The full master requirements table (Phase 1), fully populated
+           with final statuses and evidence references.
+        3) All 6 end-to-end journey results (Phase 2), in full.
+        4) RLS/RBAC application-layer confirmation (Phase 3).
+        5) Regression check results (Phase 4).
+        6) G1–G8 final disposition (Phase 5).
+        7) A single, unambiguous sign-off statement — one of:
+             (a) "FULLY PRODUCTION READY — every requirement proven end-to-end
+                 with live evidence, zero open critical/major issues", or
+             (b) A precise list of exactly what remains open, with severity
+                 and the exact next action needed — no vague hedging language.
+    </phase>
+  </workflow>
+
+  <hard_rules>
+    <must>
+      - Every "match" claim (UI vs export vs raw SQL) must show all three
+        actual values side by side, not a bare assertion of equality.
+      - Every export button test must include real browser network evidence,
+        not just "the code calls triggerServerExport correctly."
+      - If ANY of the 6 end-to-end journeys fails at any step, STOP, fix the
+        root cause (application or database, whichever is at fault), and
+        RE-RUN THE ENTIRE JOURNEY FROM STEP 1 — not just the failed step —
+        before marking it PASS.
+      - Explicitly reconcile any conflict between what the DB audit assumed
+        and what actually exists in the application code, or vice versa.
+      - The final report's executive summary numbers MUST be arithmetically
+        derivable from the detailed tables in the same document — this was
+        the single biggest failure of the prior audit and must not repeat.
+    </must>
+    <must_not>
+      - Do not treat a passing DB-layer test and a passing app-layer test in
+        isolation as proof the integrated system works — the seam between
+        them is exactly what this audit exists to catch.
+      - Do not carry forward any PASS verdict from a prior audit without
+        fresh, current-session evidence — schemas and code may have changed
+        since that verdict was issued.
+      - Do not produce a sign-off statement with hedging language like
+        "should be fine" or "likely correct" — every open item must be
+        either PASS-with-evidence or explicitly listed as still open.
+    </must_not>
+  </hard_rules>
+
+  <output_format>
+    <sections_in_order>
+      1) BASELINE RE-CONFIRMATION (raw command outputs)
+      2) CONSOLIDATED MASTER REQUIREMENTS TABLE
+      3) END-TO-END USER JOURNEY RESULTS (all 6 reports, full detail)
+      4) RLS/RBAC APPLICATION-LAYER CONFIRMATION
+      5) REGRESSION CHECK RESULTS (DB-fix ↔ app-code alignment)
+      6) G1–G8 FINAL DISPOSITION
+      7) FINAL MASTER SIGN-OFF REPORT CONTENT (for docs/reports/final-master-audit.md)
+      8) ANY REMAINING OPEN ITEMS (precise, no hedging)
+    </sections_in_order>
+  </output_format>
+</task>

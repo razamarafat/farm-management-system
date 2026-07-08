@@ -1,5 +1,6 @@
+import { memo } from 'react';
 import { motion } from 'framer-motion';
-import { LucideIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/utils/cn';
 
@@ -12,13 +13,19 @@ interface TileProps {
   disabled?: boolean;
 }
 
-export const Tile = ({ icon: Icon, label, color, to, onClick, disabled }: TileProps) => {
+// Hoisted to module scope so identity is stable across renders.
+// Handing framer-motion fresh inline objects per render caused it to
+// re-create animation variants on every parent render.
+const TILE_HOVER = { scale: 1.02, y: -2 } as const;
+const TILE_TAP = { scale: 0.98 } as const;
+
+const TileInner = ({ icon: Icon, label, color, to, onClick, disabled }: TileProps) => {
   const content = (
     <div className="relative flex flex-col justify-between h-full">
       <div className={cn(
         "absolute top-0 right-0 p-2 rounded-full",
         // Using CSS variables from theme.css for dynamic colors
-        "bg-[var(--tile-border)] bg-opacity-30" 
+        "bg-[var(--tile-border)] bg-opacity-30"
       )}>
         <Icon className="w-6 h-6" style={{ color: `var(--tile-color)` }} />
       </div>
@@ -41,30 +48,36 @@ export const Tile = ({ icon: Icon, label, color, to, onClick, disabled }: TilePr
     return <div className={containerClasses}>{content}</div>;
   }
 
-  const MotionWrapper = motion.div;
-
   if (to) {
     return (
       <Link to={to} className="block h-full">
-        <MotionWrapper
+        <motion.div
           className={containerClasses}
-          whileHover={{ scale: 1.02, y: -2 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={TILE_HOVER}
+          whileTap={TILE_TAP}
         >
           {content}
-        </MotionWrapper>
+        </motion.div>
       </Link>
     );
   }
 
   return (
-    <MotionWrapper
+    <motion.div
       className={containerClasses}
       onClick={onClick}
-      whileHover={{ scale: 1.02, y: -2 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={TILE_HOVER}
+      whileTap={TILE_TAP}
     >
       {content}
-    </MotionWrapper>
+    </motion.div>
   );
 };
+
+TileInner.displayName = 'Tile';
+
+// Wrap with React.memo: every prop compares by reference. Lucide icons
+// are module-level imports so their identity is stable. `to`, `label`,
+// `color`, `disabled` are primitives. Dashboard grids stay bouncy on
+// only the rows whose props actually changed.
+export const Tile = memo(TileInner);

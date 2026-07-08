@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useShallow } from 'zustand/react/shallow';
 import { Eye, EyeOff, Lock, User as UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -16,7 +17,13 @@ export const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { setUser, setProfile, setSessionStart } = useAuthStore();
+  const { setUser, setProfile, setSessionStart } = useAuthStore(
+    useShallow((state) => ({
+      setUser: state.setUser,
+      setProfile: state.setProfile,
+      setSessionStart: state.setSessionStart,
+    }))
+  );
 
   const {
     register,

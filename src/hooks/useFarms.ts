@@ -1,13 +1,24 @@
+// =====================================================================
+// src/hooks/useFarms.ts — MIGRATED to anon + rpc_admin_*
+//
+// Reads go through the anon `supabase` client (RLS-gated via migration
+// 004_rls_policies.sql). Writes go through SECURITY DEFINER Postgres
+// functions defined in 003_admin_rpcs.sql.
+//
+// The public hook surface is unchanged so AdminFarmsPage.tsx does not
+// need to be edited.
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { rpc } from '@/utils/rpc';
 import { Farm, FarmInsert } from '@/types/farm.types';
 
 export interface FarmFilters {
   search: string;
   status: 'all' | 'active' | 'inactive';
 }
+
+/* ---------- READS ---------- */
 
 export const useFarms = (filters: FarmFilters) => {
   const [farms, setFarms] = useState<Farm[]>([]);
@@ -16,56 +27,62 @@ export const useFarms = (filters: FarmFilters) => {
   const [debouncedSearch, setDebouncedSearch] = useState(filters.search.trim());
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(filters.search.trim()), 300);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => setDebouncedSearch(filters.search.trim()), 300);
+    return () => clearTimeout(t);
   }, [filters.search]);
 
   const fetchFarms = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      let query = supabase
+      let q = supabase
         .from('farms')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (debouncedSearch) {
-        const search = `%${debouncedSearch}%`;
-        query = query.or(`name.ilike.${search},code.ilike.${search}`);
+        const s = `%${debouncedSearch}%`;
+        q = q.or(`name.ilike.${s},code.ilike.${s}`);
       }
-      if (filters.status === 'active') query = query.eq('is_active', true);
-      if (filters.status === 'inactive') query = query.eq('is_active', false);
+      if (filters.status === 'active')   q = q.eq('is_active', true);
+      if (filters.status === 'inactive') q = q.eq('is_active', false);
 
-      const { data, error: fetchError } = await query;
-      if (fetchError) throw fetchError;
+      const { data, error: fe } = await q;
+      if (fe) throw fe;
       setFarms((data || []) as Farm[]);
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
       setError('خطا در دریافت اطلاعات');
     } finally {
       setIsLoading(false);
     }
   }, [debouncedSearch, filters.status]);
 
-  useEffect(() => {
-    fetchFarms();
-  }, [fetchFarms]);
+  useEffect(() => { fetchFarms(); }, [fetchFarms]);
 
   return { farms, isLoading, error, refetch: fetchFarms };
 };
 
+/* ---------- WRITES via SECURITY DEFINER RPCs ---------- */
+
 export const useCreateFarm = () => {
   const [isCreating, setIsCreating] = useState(false);
 
-  const createFarm = async (input: FarmInsert) => {
+  const createFarm = async (input: FarmInsert): Promise<boolean> => {
     setIsCreating(true);
     try {
-      const { error } = await supabaseAdmin.from('farms').insert(input);
-      if (error) throw error;
+      const { error } = await rpc<void>('rpc_admin_create_farm', {
+        p_name:      input.name,
+        p_code:      input.code,
+        p_address:   input.address ?? '',
+        p_phone:     input.phone   ?? '',
+        p_is_active: input.is_active ?? true,
+      });
+      if (error) throw new Error(error);
       toast.success('فارم جدید ایجاد شد');
       return true;
-    } catch {
-      toast.error('خطا در ایجاد فارم');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'خطا در ایجاد فارم');
       return false;
     } finally {
       setIsCreating(false);
@@ -78,15 +95,23 @@ export const useCreateFarm = () => {
 export const useUpdateFarm = () => {
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const updateFarm = async (id: string, input: Partial<FarmInsert>) => {
+  const updateFarm = async (id: string, input: Partial<FarmInsert>): Promise<boolean> => {
     setIsUpdating(true);
     try {
-      const { error } = await supabaseAdmin.from('farms').update(input).eq('id', id);
-      if (error) throw error;
+      const { error } = await rpc<void>('rpc_admin_update_farm', {
+        p_id:        id,
+        p_name:      (input as FarmInsert).name      ?? '',
+        p_code:      (input as FarmInsert).code      ?? '',
+        p_address:   (input as FarmInsert).address   ?? '',
+        p_phone:     (input as FarmInsert).phone     ?? '',
+        p_is_active: (input as FarmInsert).is_active ?? true,
+      });
+      if (error) throw new Error(error);
       toast.success('اطلاعات فارم بروزرسانی شد');
       return true;
-    } catch {
-      toast.error('خطا در بروزرسانی فارم');
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : 'خطا در بروزرسانی فارم');
       return false;
     } finally {
       setIsUpdating(false);
@@ -99,20 +124,18 @@ export const useUpdateFarm = () => {
 export const useDeleteFarm = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const deleteFarm = async (id: string, hard: boolean) => {
+  const deleteFarm = async (id: string, hard: boolean): Promise<boolean> => {
     setIsDeleting(true);
     try {
-      if (hard) {
-        const { error } = await supabaseAdmin.from('farms').delete().eq('id', id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabaseAdmin.from('farms').update({ is_active: false }).eq('id', id);
-        if (error) throw error;
-      }
+      const { error } = await rpc<void>('rpc_admin_delete_farm', {
+        p_id: id, p_hard: hard,
+      });
+      if (error) throw new Error(error);
       toast.success(hard ? 'فارم حذف شد' : 'فارم غیرفعال شد');
       return true;
-    } catch {
-      toast.error('خطا در حذف فارم');
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : 'خطا در حذف فارم');
       return false;
     } finally {
       setIsDeleting(false);
@@ -123,14 +146,21 @@ export const useDeleteFarm = () => {
 };
 
 export const useToggleFarmStatus = () => {
-  const toggleStatus = async (id: string, current: boolean) => {
+  const toggleStatus = async (id: string, current?: boolean): Promise<boolean> => {
+    // The optional `current` argument is kept as a BACKWARD-COMPAT shim
+    // for callers that used the prior (id, current) signature; the hook
+    // always derives the new state from the toggle RPC's response so
+    // the caller does not need to pass it. The DrFarms page still calls
+    // with (id, f.is_active) — we accept and ignore it.
     try {
-      const { error } = await supabaseAdmin.from('farms').update({ is_active: !current }).eq('id', id);
-      if (error) throw error;
-      toast.success(current ? 'فارم غیرفعال شد' : 'فارم فعال شد');
+      const { data, error } = await rpc<{ is_active: boolean }>('rpc_admin_toggle_farm', { p_id: id });
+      if (error) throw new Error(error);
+      const next = data && typeof data.is_active === 'boolean' ? data.is_active : !current;
+      toast.success(next ? 'فارم فعال شد' : 'فارم غیرفعال شد');
       return true;
-    } catch {
-      toast.error('خطا در بروزرسانی وضعیت فارم');
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : 'خطا در بروزرسانی وضعیت فارم');
       return false;
     }
   };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { Plus, Trash2, Hash, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
@@ -22,7 +22,7 @@ interface FarmHallsPanelProps {
   farm: Farm;
 }
 
-export const FarmHallsPanel = ({ farm }: FarmHallsPanelProps) => {
+const FarmHallsPanelInner = ({ farm }: FarmHallsPanelProps) => {
   const [halls, setHalls] = useState<FarmHall[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +100,7 @@ export const FarmHallsPanel = ({ farm }: FarmHallsPanelProps) => {
     setIsAdding(true);
     try {
       const existingNums = halls.map((h) => h.hall_number);
-      const toInsert = [];
+      const toInsert = [] as { farm_id: string; hall_number: number; is_active: boolean }[];
       for (let i = 1; i <= count; i++) {
         if (!existingNums.includes(i)) {
           toInsert.push({ farm_id: farm.id, hall_number: i, is_active: true });
@@ -134,7 +134,7 @@ export const FarmHallsPanel = ({ farm }: FarmHallsPanelProps) => {
         .eq('id', hall.id);
 
       if (err) throw err;
-      toast.success(`سالن شماره ${toPersianDigits(hall.hall_number)} حذف شد`);
+      toast.success(`سالمن شماره ${toPersianDigits(hall.hall_number)} حذف شد`);
       fetchHalls();
     } catch {
       toast.error('خطا در حذف سالن');
@@ -319,3 +319,11 @@ export const FarmHallsPanel = ({ farm }: FarmHallsPanelProps) => {
     </div>
   );
 };
+
+FarmHallsPanelInner.displayName = 'FarmHallsPanelInner';
+
+const FarmHallsPanel = memo(FarmHallsPanelInner);
+FarmHallsPanel.displayName = 'FarmHallsPanel';
+
+export { FarmHallsPanel };
+export default FarmHallsPanel;

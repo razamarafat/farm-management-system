@@ -111,7 +111,9 @@ export default function InputsPage() {
   };
 
   const handleToggleStatus = async (input: InputType) => {
-    await toggleStatus(input.id, input.is_active);
+    // useToggleInputStatus returns the new is_active flag from the RPC
+    // so the page no longer needs to pass the prior value.
+    await toggleStatus(input.id);
     refetch();
   };
 

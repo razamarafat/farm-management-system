@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { LogOut, User, Warehouse, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/store/uiStore';
@@ -8,8 +9,18 @@ import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 export const Sidebar = () => {
-  const { sidebarOpen, toggleSidebar } = useUIStore();
-  const { profile, logout } = useAuthStore();
+  const { sidebarOpen, toggleSidebar } = useUIStore(
+    useShallow((state) => ({
+      sidebarOpen: state.sidebarOpen,
+      toggleSidebar: state.toggleSidebar,
+    }))
+  );
+  const { profile, logout } = useAuthStore(
+    useShallow((state) => ({
+      profile: state.profile,
+      logout: state.logout,
+    }))
+  );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLDivElement>(null);

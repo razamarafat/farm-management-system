@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { format, addMonths, subMonths, startOfMonth, endOfMonth, getDay, parse, isSameDay } from 'date-fns-jalali';
-import { toPersianDigits } from '@/utils/persianNumbers';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, getDay, parse, isSameDay, isValid } from 'date-fns-jalali';
+import { toEnglishDigits, toPersianDigits } from '@/utils/persianNumbers';
 import { cn } from '@/utils/cn';
 
 interface JalaliDatePickerProps {
@@ -14,12 +14,15 @@ interface JalaliDatePickerProps {
 
 const WEEK_DAYS = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
 
+const parseValidJalali = (value: string) => {
+  const normalized = toEnglishDigits(value).trim().replace(/-/g, '/');
+  if (!normalized) return null;
+  const parsed = parse(normalized, 'yyyy/MM/dd', new Date());
+  return isValid(parsed) ? parsed : null;
+};
+
 const parseJalali = (value: string) => {
-  try {
-    return parse(value, 'yyyy/MM/dd', new Date());
-  } catch {
-    return new Date();
-  }
+  return parseValidJalali(value) ?? new Date();
 };
 
 const getMonthLabel = (date: Date) => format(date, 'MMMM yyyy');
@@ -32,11 +35,7 @@ const buildJalaliDate = (view: Date, day: number) => {
 };
 
 const convertJalaliToDate = (jalali: string) => {
-  try {
-    return parse(jalali, 'yyyy/MM/dd', new Date());
-  } catch {
-    return new Date();
-  }
+  return parseValidJalali(jalali) ?? new Date();
 };
 
 export const JalaliDatePicker = ({ value, onChange, placeholder = 'انتخاب تاریخ', className, disabled }: JalaliDatePickerProps) => {

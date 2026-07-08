@@ -4,7 +4,7 @@ import {
   Beaker, Building2, Calculator, RotateCcw, FileSpreadsheet,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -151,7 +151,12 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
   const isLocked = voucher.status === 'locked';
   const isSubmitted = voucher.status === 'submitted';
   const canEdit = (voucher.is_editable || isAdmin) && !isReadOnly;
-  const selectedHalls = hallConfigs.filter(h => h.isSelected);
+  // Memo so the prop identity is stable across parent renders — the
+  // already-memoised DailySheetTable depends on this for shallow equality.
+  const selectedHalls = useMemo(
+    () => hallConfigs.filter((h) => h.isSelected),
+    [hallConfigs]
+  );
   const totalMixers = selectedHalls.reduce((s, h) => s + h.mixerCount, 0);
 
   return (

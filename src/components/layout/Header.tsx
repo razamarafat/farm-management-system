@@ -6,8 +6,8 @@ import { ThemeToggle } from './ThemeToggle';
 import { DateTimeDisplay } from './DateTimeDisplay';
 
 export const Header = () => {
-  const { openSidebar } = useUIStore();
-  const { profile } = useAuthStore();
+  const openSidebar = useUIStore((state) => state.openSidebar);
+  const profile = useAuthStore((state) => state.profile);
   const location = useLocation();
   const navigate = useNavigate();
 

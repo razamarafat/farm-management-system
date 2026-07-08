@@ -23,7 +23,7 @@ const DailySheetPage = lazy(() => import('@/pages/DailySheetPage'));
 const FormulaManagementPage = lazy(() => import('@/pages/FormulaManagementPage'));
 const InventoryPage = lazy(() => import('@/pages/InventoryPage'));
 const PurchasesPage = lazy(() => import('@/pages/PurchasesPage'));
-const ReportsPage = lazy(() => import('@/pages/ReportsPage'));
+const ReportsHomePage = lazy(() => import('@/pages/ReportsHomePage'));
 const ReorderPointPage = lazy(() => import('@/pages/ReorderPointPage'));
 const SuppliersPage = lazy(() => import('@/pages/SuppliersPage'));
 const InventoryItemHistoryPage = lazy(() => import('@/pages/InventoryItemHistoryPage'));
@@ -101,7 +101,7 @@ export const routes: RouteObject[] = [
           },
           {
             path: 'reports',
-            element: <LazyPage><ReportsPage /></LazyPage>,
+            element: <LazyPage><ReportsHomePage /></LazyPage>,
           },
           {
             path: 'reorder',
@@ -164,7 +164,7 @@ export const routes: RouteObject[] = [
           },
           {
             path: 'reports',
-            element: <LazyPage><ReportsPage /></LazyPage>,
+            element: <LazyPage><ReportsHomePage /></LazyPage>,
           },
           {
             path: 'reorder',
@@ -219,7 +219,7 @@ export const routes: RouteObject[] = [
           },
           {
             path: 'reports',
-            element: <LazyPage><ReportsPage /></LazyPage>,
+            element: <LazyPage><ReportsHomePage /></LazyPage>,
           },
           {
             path: 'reorder',

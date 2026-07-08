@@ -1,0 +1,16 @@
+{
+  "comment": "Baseline count of files that legitimately still import @/lib/supabase-admin while the hook-migration PRs ship. The check:legacy-admin guard fails CI when currentCount > baseline.count OR any currently-importing file is not in baseline.files. Bump this file (or delete it along with src/lib/supabase-admin.ts once the count reaches zero).",
+  "count": 10,
+  "files": [
+    "src/lib/supabase-admin.ts",
+    "src/hooks/useFarms.ts (anchor comment; the file no longer imports the symbol — kept as a sentinel until the count drops to 0)",
+    "src/hooks/useUsers.ts",
+    "src/hooks/useInputs.ts",
+    "src/hooks/useSuppliers.ts",
+    "src/hooks/useFormulas.ts",
+    "src/hooks/useInventory.ts",
+    "src/hooks/useDailySheet.ts",
+    "src/components/farms/FarmItemsPanel.tsx",
+    "src/components/ui/FileUpload.tsx"
+  ]
+}

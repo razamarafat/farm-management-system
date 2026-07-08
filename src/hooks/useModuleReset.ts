@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useUIStore } from '@/store/uiStore';
 
 /*
@@ -12,7 +13,12 @@ export function useModuleReset(
   shouldRegister: boolean,
   resetFn: () => void
 ) {
-  const { registerModuleReset, clearModuleReset } = useUIStore();
+  const { registerModuleReset, clearModuleReset } = useUIStore(
+    useShallow((state) => ({
+      registerModuleReset: state.registerModuleReset,
+      clearModuleReset: state.clearModuleReset,
+    }))
+  );
   const resetFnRef = useRef(resetFn);
 
   // Always keep the ref in sync with the latest function

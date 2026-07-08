@@ -3,50 +3,49 @@ import { getJalaliDateTime } from '@/utils/jalaliDate';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { cn } from '@/utils/cn';
 
+type DateTimeParts = { date: string; time: string };
+
+const EMPTY_PARTS: DateTimeParts = { date: '', time: '' };
+
 export const DateTimeDisplay = ({ className }: { className?: string }) => {
-  const [dateTime, setDateTime] = useState<string>('');
+  const [parts, setParts] = useState<DateTimeParts>(EMPTY_PARTS);
   const isDesktop = useMediaQuery('(min-width: 1024px)');
 
   useEffect(() => {
     const updateTime = () => {
-      const now = new Date();
-      // On desktop show full date time, on mobile just time? 
-      // Prompt says: "DateTime (text-sm, muted, full format desktop, time only mobile)"
-      // Let's rely on CSS/Media Query logic or the hook.
-      // But getJalaliDateTime returns full string.
-      // Let's just return full string and format it or handle inside.
-      // For simplicity in this component, I'll use the utility.
-      
-      if (window.innerWidth >= 1024) {
-         setDateTime(getJalaliDateTime(now));
-      } else {
-         // Just time for mobile. 
-         // getJalaliDateTime is "yyyy/MM/dd HH:mm"
-         // Let's just extract time or create a new util.
-         // Or just use basic Date for time part since numbers are Persianized via util anyway?
-         // Let's stick to getJalaliDateTime and maybe truncate or split.
-         const full = getJalaliDateTime(now);
-         // full is "۱۴۰۲/۱۰/۱۰ ۱۲:۳۰"
-         // split by space
-         const parts = full.split(' ');
-         setDateTime(parts[1] || full);
-      }
+      // getJalaliDateTime produces e.g. "۱۴۰۵/۰۳/۳۰ ۱۴:۳۵"
+      const full = getJalaliDateTime(new Date());
+      const [date, time] = full.split(' ');
+      setParts({ date: date ?? '', time: time ?? '' });
     };
 
     updateTime();
     const timer = setInterval(updateTime, 1000 * 60); // every minute
 
     return () => clearInterval(timer);
-  }, [isDesktop]);
+  }, []);
 
   return (
     <div
+      aria-label="تاریخ و ساعت"
       className={cn(
-        "text-sm font-semibold text-foreground border border-border rounded-full px-3 py-1 bg-card/80 shadow-sm",
-        className
+        // Modern subtle container: soft card, rounded, light shadow.
+        // Works in both light + dark via bg-card/70 + theme tokens.
+        'flex flex-col items-center justify-center gap-0.5 rounded-xl border border-border/60 bg-card/70 px-3 py-1.5 shadow-[0_1px_2px_color-mix(in_srgb,var(--c-fg)_8%,transparent)] backdrop-blur-sm leading-tight',
+        'min-w-[64px]',
+        className,
       )}
     >
-      {dateTime}
+      {/* Time: primary line */}
+      <span className="text-[15px] font-bold text-foreground tabular-nums">
+        {parts.time || '—'}
+      </span>
+      {/* Date: secondary line, shown on desktop only */}
+      {isDesktop && parts.date && (
+        <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
+          {parts.date}
+        </span>
+      )}
     </div>
   );
 };

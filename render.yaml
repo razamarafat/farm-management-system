@@ -1,0 +1,59 @@
+# =====================================================================
+# render.yaml — Render Blueprint for Morvarid-Farm
+#
+# Render auto-discovers this file when "Apply render.yaml" is clicked in
+# the dashboard. The SPA stays a Static Site; the export engine is a
+# Node Web Service deployed alongside it.
+#
+# Wire to a secret group called `morvarid-prod-secrets` with keys:
+#   - SUPABASE_URL
+#   - SUPABASE_ANON_KEY
+#   - ALLOWED_ORIGIN
+#
+# Do NOT add SUPABASE_SECRET_KEY to this file. If a future feature
+# requires it, add it to the secret group in the Render dashboard, not
+# here.
+# =====================================================================
+
+services:
+  # Static SPA (existing).
+  - type: web
+    name: morvarid-farm-spa
+    runtime: static
+    rootDir: .
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+
+  # NEW — server-side XLSX export API.
+  - type: web
+    name: morvarid-export-api
+    runtime: node
+    rootDir: services/export-api
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        fromGroup: morvarid-prod-secrets
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        fromGroup: morvarid-prod-secrets
+        sync: false
+      - key: ALLOWED_ORIGIN
+        value: https://morvarid-farm-spa.onrender.com
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"

@@ -142,7 +142,7 @@ morvarid-farm/
 │   └── manifest.json                  # PWA manifest (lang fa, dir rtl)
 ├── scripts/
 │   ├── check-conflicts.ts             # CI: reject unresolved merge markers
-│   ├── check-env.ts                   # CI: verify env presence
+│   ├── check-env.mjs                  # CI: verify required VITE_* env presence
 │   └── migrations/
 │       ├── 001_create_inputs_table.sql
 │       └── 002_seed_admin_user.sql
@@ -585,6 +585,11 @@ project root:
 
 > **Never** commit real keys. Add `.env*` to `.gitignore`.
 
+A starter template lives at [`.env.example`](.env.example). A pre-build guard
+[`scripts/check-env.mjs`](scripts/check-env.mjs) is wired as
+`npm run check:env` and verifies the same variable names against your local
+`.env*` files.
+
 ---
 
 ## 🗄️ Database Setup
@@ -659,6 +664,18 @@ npm run build
 npx vite-bundle-visualizer
 ```
 
+### Deploy to Render (one-click Blueprint)
+
+The repository ships with a Render Blueprint at [`render.yaml`](render.yaml).
+In Render, choose **New → Blueprint**, point at this repo, and the Static Site
+will be created with the right Node version and publish path. Then set the
+three required `VITE_*` env vars in the service's **Environment** tab and add
+the new URL to Supabase → **Authentication → URL Configuration**.
+
+Full step-by-step guide (build settings, env-var table, Vite PUBLIC WARNING,
+Supabase URL allow-list, redirects/headers, troubleshooting, rollback):
+[`docs/deploy/render.md`](docs/deploy/render.md).
+
 ---
 
 ## 📜 Scripts
@@ -669,6 +686,7 @@ npx vite-bundle-visualizer
 | `npm run build` | Production single-file HTML to `dist/` |
 | `npm run preview` | Serve `dist/` locally for a sanity check |
 | `npm run check:conflicts` | Reject unresolved `<<<<<<<` markers |
+| `npm run check:env` | Verify required `VITE_*` env vars are set in `.env*` |
 
 ---
 

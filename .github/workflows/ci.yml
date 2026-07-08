@@ -28,3 +28,74 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Excel template self-test (pure Node, no DB)
+        run: npm --prefix services/export-api run test:template
+
+      - name: Registry contract test (pure Node, no DB)
+        run: npm --prefix services/export-api run test:contracts
+
+  reconciliation:
+    runs-on: ubuntu-latest
+    # Skip when DB secrets aren't configured. The reconciliation-test.mjs
+    # script itself also gates exit-code-zero on absent env, but hiding
+    # the job from the PR timeline keeps the workflow summary readable.
+    if: ${{ env.SUPABASE_TEST_URL != '' && env.SUPABASE_TEST_JWT != '' }}
+    needs: validate
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Root npm ci installs root deps; export-api has its own
+      # package.json with @supabase/supabase-js + exceljs which service
+      # scripts need at runtime.
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install export-api dependencies
+        working-directory: services/export-api
+        run: npm ci
+
+      - name: Balance invariant + online-totals parity
+        working-directory: services/export-api
+        env:
+          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_JWT: ${{ secrets.SUPABASE_TEST_JWT }}
+        run: node reconciliation-test.mjs
+
+  perf-budget:
+    runs-on: ubuntu-latest
+    # Same skip semantic as reconciliation.
+    if: ${{ env.SUPABASE_TEST_URL != '' && env.SUPABASE_TEST_JWT != '' }}
+    needs: validate
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install export-api dependencies
+        working-directory: services/export-api
+        run: npm ci
+
+      - name: Per-RPC p95 latency budget
+        working-directory: services/export-api
+        env:
+          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_JWT: ${{ secrets.SUPABASE_TEST_JWT }}
+        run: node perf-budget.mjs

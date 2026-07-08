@@ -6,8 +6,22 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "check:conflicts": "node scripts/check-conflicts.ts"
+    "preview": "vite preview --host",
+    "test": "node scripts/test-spa-reports.mjs",
+    "test:contracts": "npm --prefix services/export-api run test:contracts",
+    "test:template": "npm --prefix services/export-api run test:template",
+    "test:reconciliation": "npm --prefix services/export-api run test:reconciliation",
+    "test:perf": "npm --prefix services/export-api run test:perf",
+    "check:conflicts": "node scripts/check-conflicts.mjs",
+    "check:env": "node scripts/check-env.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "check:legacy-admin": "node scripts/check-legacy-admin.mjs --advisory",
+    "check:legacy-admin:strict": "node scripts/check-legacy-admin.mjs",
+    "check": "npm run check:conflicts && npm run check:env && npm run check:secrets && npm run check:legacy-admin:strict",
+    "check:all": "npm run check && npm run check:legacy-admin"
+  },
+  "engines": {
+    "node": ">=22.12.0 <23"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -24,7 +38,6 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "vite-plugin-pwa": "^1.2.0",
-    "xlsx": "^0.18.5",
     "zod": "^4.3.6",
     "zustand": "^5.0.11"
   },
