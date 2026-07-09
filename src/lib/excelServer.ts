@@ -18,18 +18,42 @@
 import { supabase } from '@/lib/supabase';
 
 /**
- * The 6 live reports that the server registry knows how to export.
- * Kept narrow on purpose; new entries require a corresponding
- * `registry.mjs` change server-side AND an exact-match entry here so
- * the TypeScript literal type is checked at the call site.
+ * The 12 live reports that the server registry knows how to export.
+ *
+ * - 6 LEGACY ids from the pre-redesign menu (Pass 1 retained them in
+ *   `reportColumns.ts` so existing deep-links still resolve). The
+ *   `registry.mjs` on the server has been kept for these IDs even
+ *   though no SPA tile surfaces them anymore — a Pass 3 sweep will
+ *   retire them.
+ * - 6 NEW v3 ids from Pass-2 cutover: every one corresponds to a
+ *   SECURITY INVOKER RPC in scripts/migrations/014_reporting_v3_enhancements.sql
+ *   + dialect in services/export-api/registry.mjs.
+ *
+ * Adding a new id requires:
+ *   - a corresponding rpcName entry in services/export-api/registry.mjs
+ *   - the matching SQL function in scripts/migrations/014+ or a follow-up
+ *   - the matching REPORT_CATALOG entry in src/types/report.types.ts
+ *   - the matching REPORT_COLUMNS entry in src/components/reports/reportColumns.ts
+ *
+ * The TypeScript literal type forces all four to land in the same turn —
+ * if you add a new id here without the others, the sections that
+ * reference the missing id will fail to type-check.
  */
 export type SupportedReportId =
+  // 6 legacy ids (Pass 1 retained).
   | 'RPT_INVENTORY_VALUATION_SUMMARY'
   | 'RPT_INVENTORY_LEDGER'
   | 'RPT_CONSUMPTION_ANALYTICS'
   | 'RPT_INVENTORY_AGING'
   | 'RPT_PARETO_CLASSIFICATION'
-  | 'RPT_SUPPLIERS';
+  | 'RPT_SUPPLIERS'
+  // 6 NEW v3 ids (Pass 2).
+  | 'RPT_INVENTORY_STOCK'
+  | 'RPT_CONSUMPTION_REPORT'
+  | 'RPT_SALES_TRANSFERS'
+  | 'RPT_PURCHASES'
+  | 'RPT_PACKAGING'
+  | 'RPT_REORDER_POINT';
 
 /**
  * Report-specific filter payload. The server's `registry.mjs` knows how

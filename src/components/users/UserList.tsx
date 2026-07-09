@@ -203,7 +203,7 @@ export const UserList = () => {
           <option value="all">همه</option>
           {farms.map((farm) => (
             <option key={farm.id} value={farm.id}>
-              {farm.name} ({farm.code})
+              {farm.name}
             </option>
           ))}
         </Select>

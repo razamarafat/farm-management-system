@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 import type {
@@ -29,8 +29,12 @@ export function useStockBalances(farmId: string | null, category: 'feed' | 'pack
     setError(null);
 
     try {
-      // Get all farm items
-      let itemsQuery = supabaseAdmin
+      // Get all farm items — uses JWT-bound `supabase` (NOT
+      // `supabaseAdmin`) so the request satisfies helper-based RLS
+      // policies introduced by migration 012_fix_profiles_recursion.sql.
+      // See FIX-voucher-entry bug: anon-keyed supabaseAdmin returned
+      // 0 rows because auth.uid() was NULL.
+      let itemsQuery = supabase
         .from('farm_items')
         .select('id, name, unit, category, reorder_point')
         .eq('farm_id', farmId)
@@ -45,7 +49,7 @@ export function useStockBalances(farmId: string | null, category: 'feed' | 'pack
       if (itemsError) throw itemsError;
 
       // Get all transactions for this farm
-      const { data: transactions, error: txnError } = await supabaseAdmin
+      const { data: transactions, error: txnError } = await supabase
         .from('inventory_transactions')
         .select('item_id, txn_type, qty_in, qty_out, txn_ts')
         .eq('farm_id', farmId);
@@ -143,8 +147,8 @@ export function useInventoryTransactions(farmId: string | null, filters: Invento
     setError(null);
 
     try {
-      // First get transactions
-      let query = supabaseAdmin
+      // First get transactions — JWT-bound `supabase` (same FIX).
+      let query = supabase
         .from('inventory_transactions')
         .select('*')
         .eq('farm_id', farmId)
@@ -180,7 +184,7 @@ export function useInventoryTransactions(farmId: string | null, filters: Invento
       let itemsMap = new Map<string, { id: string; name: string; unit: string; category: string }>();
 
       if (itemIds.length > 0) {
-        const { data: itemsData } = await supabaseAdmin
+        const { data: itemsData } = await supabase
           .from('farm_items')
           .select('id, name, unit, category')
           .in('id', itemIds);
@@ -232,7 +236,7 @@ export function useInventoryMutations(farmId: string | null) {
     setIsSubmitting(true);
     try {
       // Check if initial stock already exists for this item
-      const { data: existing } = await supabaseAdmin
+      const { data: existing } = await supabase
         .from('inventory_transactions')
         .select('id')
         .eq('farm_id', farmId)
@@ -245,7 +249,7 @@ export function useInventoryMutations(farmId: string | null) {
         return false;
       }
 
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('inventory_transactions')
         .insert({
           farm_id: farmId,
@@ -282,7 +286,7 @@ export function useInventoryMutations(farmId: string | null) {
     try {
       const totalPrice = input.unit_price ? input.quantity * input.unit_price : null;
 
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('inventory_transactions')
         .insert({
           farm_id: farmId,
@@ -324,7 +328,7 @@ export function useInventoryMutations(farmId: string | null) {
       const qtyIn = direction === 'in' ? input.quantity : 0;
       const qtyOut = direction === 'out' ? input.quantity : 0;
 
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('inventory_transactions')
         .insert({
           farm_id: farmId,
@@ -367,7 +371,7 @@ export function useInventoryMutations(farmId: string | null) {
       const qtyIn = input.quantity > 0 ? input.quantity : 0;
       const qtyOut = input.quantity < 0 ? Math.abs(input.quantity) : 0;
 
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('inventory_transactions')
         .insert({
           farm_id: farmId,
@@ -402,7 +406,7 @@ export function useInventoryMutations(farmId: string | null) {
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('inventory_transactions')
         .delete()
         .eq('id', transactionId);
@@ -441,7 +445,7 @@ export function useInventoryMutations(farmId: string | null) {
         updateData.total_price = updates.unit_price * updates.qty_in;
       }
 
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('inventory_transactions')
         .update(updateData)
         .eq('id', transactionId);
@@ -512,7 +516,7 @@ export function useItemInitialCheck(farmId: string | null) {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('inventory_transactions')
         .select('item_id')
         .eq('farm_id', farmId)

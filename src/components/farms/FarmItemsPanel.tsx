@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Toggle } from '@/components/ui/Toggle';
 import { Modal } from '@/components/ui/Modal';
 import { DEFAULT_FARM_INGREDIENTS } from '@/utils/constants';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabase } from '@/lib/supabase';
 
 interface FarmItemsPanelProps {
   farm: Farm;
@@ -50,9 +50,14 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
 
   const itemLabel = labels[type];
 
+  // Items CRUD uses JWT-bound `supabase` (NOT `supabaseAdmin`) so the
+  // request satisfies helper-based RLS policies introduced by migration
+  // 012_fix_profiles_recursion.sql. Without this swap, the admin
+  // "افزودن نهاده" / "افزودن قلم بسته‌بندی" flow silently fails to
+  // load the current list and fails every insert/update/delete.
   const loadItems = async () => {
     setIsLoading(true);
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('farm_items')
       .select('id, name, unit, priority, reorder_point, is_active')
       .eq('farm_id', farm.id)
@@ -101,7 +106,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
       is_active: true,
     }));
 
-    const { error } = await supabaseAdmin.from('farm_items').insert(payload as any);
+    const { error } = await supabase.from('farm_items').insert(payload as any);
     if (error) {
       toast.error('خطا در افزودن نهاده‌های پیش‌فرض');
       return;
@@ -119,7 +124,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
       return;
     }
 
-    const { error } = await supabaseAdmin.from('farm_items').insert({
+    const { error } = await supabase.from('farm_items').insert({
       farm_id: farm.id,
       category: type,
       name: manualName.trim(),
@@ -142,7 +147,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
   };
 
   const handleToggle = async (item: FarmItemRow) => {
-    const { error } = await supabaseAdmin
+    const { error } = await supabase
       .from('farm_items')
       .update({ is_active: !item.is_active })
       .eq('id', item.id);
@@ -156,7 +161,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
   };
 
   const handleDelete = async (itemId: string) => {
-    const { error } = await supabaseAdmin.from('farm_items').delete().eq('id', itemId);
+    const { error } = await supabase.from('farm_items').delete().eq('id', itemId);
     if (error) {
       toast.error('خطا در حذف آیتم');
       return;

@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { supabase } from '@/lib/supabase';
 
 export const Sidebar = () => {
   const { sidebarOpen, toggleSidebar } = useUIStore(
@@ -22,6 +23,7 @@ export const Sidebar = () => {
     }))
   );
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [farmName, setFarmName] = useState('');
   const navigate = useNavigate();
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -44,6 +46,39 @@ export const Sidebar = () => {
       document.body.style.overflow = '';
     };
   }, [sidebarOpen, closeSidebar]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadFarmName() {
+      if (!profile?.farm_id) {
+        setFarmName('');
+        return;
+      }
+
+      setFarmName('در حال دریافت نام فارم');
+      const { data, error } = await supabase
+        .from('farms')
+        .select('name')
+        .eq('id', profile.farm_id)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (error) {
+        console.error('Error loading sidebar farm name:', error);
+        setFarmName('فارم قابل شناسایی نیست');
+        return;
+      }
+
+      setFarmName(data?.name || 'فارم قابل شناسایی نیست');
+    }
+
+    loadFarmName();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.farm_id]);
 
   const handleLogout = async () => {
     setConfirmOpen(true);
@@ -134,7 +169,7 @@ export const Sidebar = () => {
             {profile?.farm_id && (
               <div className="flex items-center justify-center gap-1 mt-2 text-sm text-[var(--c-muted-fg)]">
                 <Warehouse size={14} />
-                <span>فارم نمونه</span>
+                <span>{farmName || 'در حال دریافت نام فارم'}</span>
               </div>
             )}
           </div>

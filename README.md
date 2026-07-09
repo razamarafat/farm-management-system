@@ -730,6 +730,12 @@ Supabase URL allow-list, redirects/headers, troubleshooting, rollback):
 - `npx tsc --noEmit` must stay at **0 errors**.
 - `npm run check:conflicts` must pass (no unresolved merge markers).
 - Keep the service-role key out of the source tree.
+- No agent or process may ever insert placeholder/demo/mock business entities
+  (farms, halls, users, items, suppliers) into the live application database,
+  including during testing. Any test accounts/entities created for verification
+  purposes (for example, RLS impersonation testing) must be fully deleted before
+  the task is considered complete, and their creation and deletion must both be
+  explicitly logged as evidence in that task's report.
 - Whenever the DB schema changes, add or update a migration under
   `scripts/migrations/` and **commit** the SQL file in the same PR.
 - For UI changes, capture before/after screenshots in the PR description.

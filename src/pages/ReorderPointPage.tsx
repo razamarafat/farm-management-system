@@ -19,6 +19,7 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { useStockBalances } from '@/hooks/useInventory';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -145,12 +146,17 @@ export default function ReorderPointPage() {
     }
   }, []);
 
-  // Fetch farms (admin: all, non-admin: assigned)
+  // Fetch farms (admin: all, non-admin: assigned) — uses `supabase`
+  // (NOT `supabaseAdmin`) so the request carries the user's JWT and
+  // satisfies RLS policies `is_current_user_admin()` /
+  // `current_user_farm_id() = id` introduced by migration
+  // 012_fix_profiles_recursion.sql. See FIX-farm-selector bug: empty
+  // dropdowns under anon-key reads because RLS denies NULL-JWT queries.
   useEffect(() => {
     const loadFarms = async () => {
       try {
         if (isAdmin) {
-          const { data } = await supabaseAdmin
+          const { data } = await supabase
             .from('farms')
             .select('id, name')
             .eq('is_active', true)
@@ -171,7 +177,7 @@ export default function ReorderPointPage() {
 
           const farmIdArray = [normalizedFarmId];
 
-          const { data } = await supabaseAdmin
+          const { data } = await supabase
             .from('farms')
             .select('id, name')
             .in('id', farmIdArray)

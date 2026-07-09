@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --host",
+    "lint": "eslint src/",
+    "lint:focus-hooks": "eslint src/ --quiet",
     "test": "node scripts/test-spa-reports.mjs",
     "test:contracts": "npm --prefix services/export-api run test:contracts",
     "test:template": "npm --prefix services/export-api run test:template",
@@ -47,8 +49,12 @@
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^15.15.0",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3",
+    "typescript-eslint": "^8.63.0",
     "vite": "7.2.4",
     "vite-plugin-singlefile": "2.3.0"
   }

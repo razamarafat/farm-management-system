@@ -8,6 +8,10 @@
 //
 // IMPORTANT: keep this file free of runtime side-effects. It's pure
 // type-shape + a tiny static catalog used by the tile-selector UI.
+//
+// === AUTHORITATIVE 6-REPORT CATALOG (approved 2026-07-08 redesign) ===
+// See docs/reports/reports-menu-redesign.md §3 for the mapping rationale.
+// 18 prior tile entries (6 ready + 12 stubs) collapsed into these 6.
 // =====================================================================
 
 import type { ReactNode } from 'react';
@@ -47,14 +51,14 @@ export interface ListOption {
   disabled?: boolean;
 }
 
-/** FilterBar state — every field is optional except `datePreset` or explicit dates. */
+/** FilterBar state — every field is optional. */
 export interface ReportFiltersState {
   datePreset: DateRangePreset;
   /** ISO "yyyy-MM-dd" — populated when datePreset === 'custom'. */
   dateFrom?: string;
   /** ISO "yyyy-MM-dd" — populated when datePreset === 'custom'. */
   dateTo?: string;
-  farmIds: string[]; // empty = scope-wide
+  farmIds: string[];
   hallIds: string[];
   itemIds: string[];
   supplierIds: string[];
@@ -62,10 +66,19 @@ export interface ReportFiltersState {
   categories: string[];
   /** Transaction-type filter — used by ledger / movement reports. Empty = all types. */
   txnTypes: string[];
-  /** Formula filter — used by consumption analytics. Empty = all formulas. */
+  /** Formula filter — used by consumption report. Empty = all formulas. */
   formulaIds: string[];
-  /** Pareto basis — used by RPT_PARETO_CLASSIFICATION. 'value' (default) | 'quantity'. */
-  abcBasis?: 'value' | 'quantity';
+  /** Consumption grouping axis. */
+  groupBy?: 'day' | 'item' | 'hall' | 'formula';
+  /**
+   * For packaging: hard-coded `category='packaging'`; for consumption: 'feed'.
+   * For the reorder report: 'value' | 'quantity' (basis for ABC).
+   */
+  categoryBasis?: 'feed' | 'packaging' | 'value' | 'quantity';
+  /** Reorder-point filter: only show items needing reorder. */
+  reorderNeededOnly?: boolean;
+  /** Reorder-point filter: only show items in this ABC class. */
+  abcClassFilter?: 'A' | 'B' | 'C' | null;
 }
 
 /** Sort definition held by the table. */
@@ -87,80 +100,81 @@ export interface SavedReportView {
 
 /** Static metadata for the tile selector. No data — just navigation. */
 export interface ReportDefinition {
-  id: string;                    // matches db-contract catalog IDs (RPT-001..RPT-014)
-  title: string;                 // Persian title
-  subtitle?: string;             // English / industry label
-  description: string;           // 1-line summary used in the tile body
-  icon: LucideIcon;              // lucide-react icon
+  id: string;
+  title: string;
+  subtitle?: string;
+  description: string;
+  icon: LucideIcon;
   group: 'inventory' | 'consumption' | 'purchase' | 'valuation' | 'kpi';
-  /** "ready" = framework demo wired; "stub" = tile clicks to empty-state placeholder. */
+  /** "ready" = wired to live data; "stub" = framework chrome only. */
   status: 'ready' | 'stub';
 }
 
-// ---------------------------------------------------------------------
-// 14-report catalog metadata (mirrors docs/reports/report-catalog.md).
-// Icon imports are intentionally deferred to the catalog consumer
-// (ReportsHomePage) to keep this file dependency-free.
-// ---------------------------------------------------------------------
 export type ReportCatalogEntry = Omit<ReportDefinition, 'icon'> & {
-  iconName: string; // lucide icon name, resolved by ReportsHomePage via iconMap
+  iconName: string;
 };
 
+// ---------------------------------------------------------------------
+// AUTHORITATIVE 6-REPORT CATALOG — matches services/export-api/registry.mjs
+// export IDs + the SQL RPC names in scripts/migrations/014_reporting_v3.sql
+// (Phase-3 cutover). Do not add ids outside this set; if a new report is
+// needed, run the design-review workflow before adding.
+// ---------------------------------------------------------------------
 export const REPORT_CATALOG: readonly ReportCatalogEntry[] = [
-  { id: 'RPT-001', title: 'موجودی فعلی انبار',          subtitle: 'Stock Balance (current)',
-    description: 'خلاصه موجودی به تفکیک کالا و فارم',
-    group: 'inventory',  status: 'ready', iconName: 'Warehouse' },
-  { id: 'RPT-002', title: 'گردش انبار',                  subtitle: 'Inventory Ledger (full)',
-    description: 'تمام حرکات انبار به ترتیب زمان برای یک کالا',
-    group: 'inventory',  status: 'stub',  iconName: 'ScrollText' },
-  { id: 'RPT-003', title: 'گردش خلاصه',                 subtitle: 'Consolidated Ledger',
-    description: 'حرکات روزانه با جمع موجودی لحظه‌ای',
-    group: 'inventory',  status: 'stub',  iconName: 'ListOrdered' },
-  { id: 'RPT_INVENTORY_LEDGER', title: 'گردش کامل انبار',    subtitle: 'Inventory Ledger (audit-grade)',
-    description: 'تمام حرکات انبار با موجودی لحظه‌ای — فیلتر بر اساس تاریخ، فارم، کالا، نوع تراکنش — با جستجو و گروه‌بندی بر اساس کالا',
-    group: 'inventory',  status: 'ready', iconName: 'ScrollText' },
-  { id: 'RPT-004', title: 'خرید و انتقال',               subtitle: 'Purchases & Transfers',
-    description: 'خریدها و انتقالات بین فارم‌ها',
-    group: 'purchase',   status: 'stub',  iconName: 'ShoppingCart' },
-  { id: 'RPT-005', title: 'مصرف روزانه',                subtitle: 'Daily Voucher Consumption',
-    description: 'مصرف روزانه بر اساس روز مصرف',
-    group: 'consumption',status: 'stub',  iconName: 'ClipboardList' },
-  { id: 'RPT_CONSUMPTION_ANALYTICS', title: 'تحلیل مصرف',          subtitle: 'Consumption Analytics',
-    description: 'خلاصه مصرف با امکان تغییر گروه‌بندی (روز/کالا/سالن/فرمول) + هشدار مصرف غیرعادی',
-    group: 'consumption',status: 'ready', iconName: 'LineChart' },
-  { id: 'RPT-006', title: 'خلاصه بر اساس سالن',         subtitle: 'Summary by Hall',
-    description: 'جمع مصرف هر سالن در بازه',
-    group: 'consumption',status: 'stub',  iconName: 'LayoutGrid' },
-  { id: 'RPT-007', title: 'خلاصه بر اساس کالا',         subtitle: 'Summary by Item',
-    description: 'جمع مصرف هر قلم در بازه',
-    group: 'consumption',status: 'stub',  iconName: 'Package' },
-  { id: 'RPT-008', title: 'ABC کلاس‌بندی',               subtitle: 'ABC Classification',
-    description: 'طبقه‌بندی اقلام پرمصرف / کم‌مصرف',
-    group: 'valuation',  status: 'stub',  iconName: 'BarChart3' },
-  { id: 'RPT_PARETO_CLASSIFICATION', title: 'طبقه‌بندی پارتو (ABC) + پیشنهاد سفارش', subtitle: 'Pareto Classification + Reorder Hints',
-    description: 'کلاس‌بندی A/B/C بر اساس مصرف دوره (ارزش یا مقدار) + سهم تجمعی — با پیشنهاد سفارش‌گذاری مبتنی بر نقطهٔ سفارش هر کالا',
-    group: 'valuation',  status: 'ready', iconName: 'PieChart' },
-  { id: 'RPT_INVENTORY_VALUATION_SUMMARY', title: 'ارزش موجودی', subtitle: 'Inventory Valuation Summary',
-    description: 'موجودی و ارزش ریالی هر کالا در تاریخ دلخواه — با کلیک روی کالا، گردش ۹۰ روز اخیر باز می‌شود',
-    group: 'valuation',  status: 'ready', iconName: 'BadgeDollarSign' },
-  { id: 'RPT-010', title: 'پیر شدگی کالا',               subtitle: 'Inventory Aging',
-    description: 'سن هر قلم در انبار بر اساس آخرین حرکت — با امکان فیلتر بر اساس بازهٔ سنی و شناسایی اقلام راکد',
-    group: 'inventory',  status: 'stub',  iconName: 'Clock' },
-  { id: 'RPT_INVENTORY_AGING', title: 'پیر شدگی موجودی + اقلام راکد', subtitle: 'Inventory Aging + Dead Stock',
-    description: 'هر کالا به تفکیک بازهٔ سنی (۰–۳۰ / ۳۱–۶۰ / ۶۱–۹۰ / ۹۰+) و علامت‌گذاری اقلام راکد — کالا روی ردیف، گردش کالا باز می‌شود',
-    group: 'inventory',  status: 'ready', iconName: 'Hourglass' },
-  { id: 'RPT-011', title: 'گردش انبار',                  subtitle: 'Inventory Turnover',
-    description: 'نسبت مصرف به موجودی میانگین',
-    group: 'kpi',        status: 'stub',  iconName: 'RefreshCw' },
-  { id: 'RPT-012', title: 'روزهای موجودی',               subtitle: 'Days-on-Hand',
-    description: 'چند روز تا رسیدن به نقطهٔ سفارش',
-    group: 'kpi',        status: 'stub',  iconName: 'Calendar' },
-  { id: 'RPT-013', title: 'نقطهٔ سفارش / موجودی اطمینان', subtitle: 'Reorder & Safety Stock',
-    description: 'پیشنهاد نقطهٔ سفارش با احتساب مصرف و زمان تحویل',
-    group: 'kpi',        status: 'stub',  iconName: 'AlertTriangle' },
-  { id: 'RPT-014', title: 'اقلام منفی / زیر صفر',       subtitle: 'Negative Stock Watch',
-    description: 'اقلامی که مصرف از موجودی اولیه پیشی گرفته',
-    group: 'kpi',        status: 'stub',  iconName: 'AlertOctagon' },
+  {
+    id: 'RPT_INVENTORY_STOCK',
+    title: 'موجودی انبار',
+    subtitle: 'Inventory Stock',
+    description: 'موجودی فعلی هر کالا + ارزش ریالی + سن حرکت + وضعیت راکد — با کلیک روی ردیف، گردش ۹۰ روز اخیر باز می‌شود',
+    group: 'inventory',
+    status: 'stub',
+    iconName: 'Warehouse',
+  },
+  {
+    id: 'RPT_CONSUMPTION_REPORT',
+    title: 'گزارش مصرف',
+    subtitle: 'Consumption Report',
+    description: 'مصرف با بازه تاریخی، انتخاب سالن، و ستون مانده انبار و ارزش ریالی + ردیف جمع — گروه‌بندی روز/کالا/سالن/فرمول',
+    group: 'consumption',
+    status: 'stub',
+    iconName: 'BarChart3',
+  },
+  {
+    id: 'RPT_SALES_TRANSFERS',
+    title: 'گزارش فروش و انتقال بین انبارها',
+    subtitle: 'Sales & Inter-Warehouse Transfers',
+    description: 'انتقالات بین فارم‌ها + (هنگام فعال‌شدن ثبت فروش) فروش‌ها — با فیلتر تاریخ و فارم مبدأ/مقصد',
+    group: 'purchase',
+    status: 'stub',
+    iconName: 'RefreshCw',
+  },
+  {
+    id: 'RPT_PURCHASES',
+    title: 'گزارش خریدها',
+    subtitle: 'Purchases Report',
+    description: 'خریدها با تأمین‌کننده، کالا، قیمت واحد و مبلغ کل — گروه‌بندی روز/تأمین‌کننده/کالا',
+    group: 'purchase',
+    status: 'stub',
+    iconName: 'ShoppingCart',
+  },
+  {
+    id: 'RPT_PACKAGING',
+    title: 'گزارش اقلام بسته‌بندی',
+    subtitle: 'Packaging Items Report',
+    description: 'مصرف اقلام بسته‌بندی + مانده انبار و ارزش ریالی — بدون فیلتر سالن (ردیابی در سطح فارم)',
+    group: 'consumption',
+    status: 'stub',
+    iconName: 'Package',
+  },
+  {
+    id: 'RPT_REORDER_POINT',
+    title: 'نقطه سفارش کالا',
+    subtitle: 'Reorder Point + ABC',
+    description: 'اقلام نیازمند سفارش با کلاس A/B/C (ارزش یا مقدار) — پیشنهاد اولویت‌بندی سفارش',
+    group: 'valuation',
+    status: 'stub',
+    iconName: 'AlertTriangle',
+  },
 ] as const;
 
 /** Default starting filter (matches the "ماه جاری" preset ergonomics). */
@@ -173,7 +187,10 @@ export const defaultReportFilters: ReportFiltersState = {
   categories: [],
   txnTypes: [],
   formulaIds: [],
-  abcBasis: 'value',
+  groupBy: 'item',
+  categoryBasis: 'value',
+  reorderNeededOnly: false,
+  abcClassFilter: null,
 };
 
 /** Common empty-state copy shared by all reports. */

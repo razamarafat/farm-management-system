@@ -48,6 +48,29 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
 
   const jalaliDate = gregorianToJalali(dateParam);
 
+  // ────────────────────────────────────────────────────────────────────
+  // Rules of Hooks: every HOOK below MUST be called unconditionally on
+  // every render, BEFORE any early-return. `hallConfigs` is always
+  // defined (the custom hook above returns `[]` while loading), so the
+  // two `useMemo` calls below are safe unconditionally. The two
+  // subsequent early-returns (`if (isLoading)`, `if (error)`,
+  // `if (!data)`) MUST NOT contain any hook call after them — that was
+  // the prior bug («Rendered more hooks than during the previous
+  // render.» from React when isLoading toggled).
+  // ────────────────────────────────────────────────────────────────────
+  // Memo so the prop identity stays stable across renders — the
+  // already-memoised DailySheetTable depends on this for shallow
+  // equality and will skip re-renders when only an unrelated piece of
+  // state changes.
+  const selectedHalls = useMemo(
+    () => hallConfigs.filter((h) => h.isSelected),
+    [hallConfigs]
+  );
+  const totalMixers = useMemo(
+    () => selectedHalls.reduce((s, h) => s + h.mixerCount, 0),
+    [selectedHalls]
+  );
+
   const goBack = () => {
     const basePath = profile?.role === 'admin' ? '/admin' : profile?.role === 'supervisor' ? '/supervisor' : '/operator';
     navigate(`${basePath}/consumption`);
@@ -151,13 +174,6 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
   const isLocked = voucher.status === 'locked';
   const isSubmitted = voucher.status === 'submitted';
   const canEdit = (voucher.is_editable || isAdmin) && !isReadOnly;
-  // Memo so the prop identity is stable across parent renders — the
-  // already-memoised DailySheetTable depends on this for shallow equality.
-  const selectedHalls = useMemo(
-    () => hallConfigs.filter((h) => h.isSelected),
-    [hallConfigs]
-  );
-  const totalMixers = selectedHalls.reduce((s, h) => s + h.mixerCount, 0);
 
   return (
     <motion.div

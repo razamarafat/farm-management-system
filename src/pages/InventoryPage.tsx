@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useStockBalances, useInventoryTransactions, useInventoryMutations, useItemInitialCheck } from '@/hooks/useInventory';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
@@ -100,10 +100,16 @@ export default function InventoryPage() {
   const { isSubmitting, addInitialStock, addPurchase, addTransfer, addAdjustment, deleteTransaction } = useInventoryMutations(selectedFarmId);
   const { hasInitialStock, refetch: refetchInitialCheck } = useItemInitialCheck(selectedFarmId);
 
-  // Load farms for admin
+  // Load farms for admin — uses the user-authenticated `supabase` client
+  // (NOT `supabaseAdmin`) so the request carries the admin's JWT and
+  // satisfies RLS policies `is_current_user_admin()` /
+  // `is_user_admin(auth.uid())` introduced by migration
+  // 012_fix_profiles_recursion.sql. `supabaseAdmin` is anon-keyed and
+  // would return 0 rows under those policies. (See FIX-farm-selector
+  // bug: dropdowns were empty.)
   useEffect(() => {
     if (isAdmin) {
-      supabaseAdmin
+      supabase
         .from('farms')
         .select('id, name, code')
         .eq('is_active', true)
@@ -117,10 +123,14 @@ export default function InventoryPage() {
     }
   }, [isAdmin]);
 
-  // Load farm items
+  // Load farm items for the «ثبت موجودی اولیه/خرید/انتقال» modal —
+  // uses JWT-bound `supabase` (NOT `supabaseAdmin`) so the request
+  // satisfies helper-based RLS policies introduced by migration
+  // 012_fix_profiles_recursion.sql. Without this swap, the item
+  // picker in the modal is empty even after the farm-selector swap.
   useEffect(() => {
     if (selectedFarmId) {
-      supabaseAdmin
+      supabase
         .from('farm_items')
         .select('id, name, unit, category')
         .eq('farm_id', selectedFarmId)
@@ -294,7 +304,7 @@ export default function InventoryPage() {
             <option value="">انتخاب فارم</option>
             {farms.map((farm) => (
               <option key={farm.id} value={farm.id}>
-                {farm.name} ({farm.code})
+                {farm.name}
               </option>
             ))}
           </select>

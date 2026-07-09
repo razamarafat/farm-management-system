@@ -7,7 +7,7 @@ import {
   ArrowRightLeft, AlertCircle, CheckCircle2
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabase } from '@/lib/supabase';
 import { useFormulas, useFormulaActions, useFarmFeedItems, Formula, FormulaInput } from '@/hooks/useFormulas';
 import { toast } from 'sonner';
 
@@ -42,10 +42,13 @@ const FormulaManagementPage = () => {
   const { createFormula, updateFormula, deleteFormula, toggleFormulaStatus, duplicateFormula, isSaving } =
     useFormulaActions(selectedFarmId);
 
-  // Fetch farms
+  // Fetch farms — uses `supabase` (NOT `supabaseAdmin`) so the request
+  // carries the admin's JWT and RLS policies from migration
+  // 012_fix_profiles_recursion.sql can resolve `is_current_user_admin()`.
+  // See FIX-farm-selector bug: dropdowns were empty under anon-key reads.
   useEffect(() => {
     const loadFarms = async () => {
-      const { data } = await supabaseAdmin
+      const { data } = await supabase
         .from('farms')
         .select('id, name, code')
         .eq('is_active', true)
@@ -210,7 +213,7 @@ const FormulaManagementPage = () => {
           >
             {farms.map((f) => (
               <option key={f.id} value={f.id}>
-                {f.name} ({f.code})
+                {f.name}
               </option>
             ))}
           </select>

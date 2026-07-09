@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { JalaliDatePicker } from '@/components/ui/JalaliDatePicker';
 import { getJalaliToday, addDaysToJalali, jalaliToGregorian } from '@/utils/jalaliDate';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabase } from '@/lib/supabase';
 
 export default function ConsumptionPage() {
   const navigate = useNavigate();
@@ -20,11 +20,16 @@ export default function ConsumptionPage() {
   const isReadOnly = profile?.role === 'supervisor';
   const isAdmin = profile?.role === 'admin';
 
+  // Load farms for admin — uses `supabase` (NOT `supabaseAdmin`) so the
+  // request carries the admin's JWT and satisfies RLS policies
+  // `is_current_user_admin()` / `is_user_admin(auth.uid())` introduced
+  // by migration 012_fix_profiles_recursion.sql. See FIX-farm-selector
+  // bug report: dropdowns were empty under the anon-key reads.
   useEffect(() => {
     const loadFarms = async () => {
       if (!isAdmin) return;
       setIsLoadingFarms(true);
-      const { data } = await supabaseAdmin
+      const { data } = await supabase
         .from('farms')
         .select('id, name, code')
         .eq('is_active', true)
@@ -140,7 +145,7 @@ export default function ConsumptionPage() {
                 <option value="">انتخاب فارم</option>
                 {adminFarms.map((farm) => (
                   <option key={farm.id} value={farm.id}>
-                    {farm.name} ({farm.code})
+                    {farm.name}
                   </option>
                 ))}
               </select>

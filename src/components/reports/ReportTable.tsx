@@ -18,6 +18,7 @@
 import { memo, useMemo } from 'react';
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Inbox } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { ReportColumnChooser } from './ReportColumnChooser';
 import { cn } from '@/utils/cn';
 import { toPersianDigits } from '@/utils/persianNumbers';
 import { REPORT_EMPTY_MESSAGE } from '@/types/report.types';
@@ -32,6 +33,17 @@ interface ReportTableProps<T extends Record<string, unknown> = Record<string, un
   rows: T[];
   /** If omitted, all columns are visible. Order here is the user's preferred order. */
   visibleColumns?: string[];
+  /**
+   * Optional callback fired when the user toggles a column's visibility.
+   * Currently a no-op forwarder — the actual column-visibility dropdown
+   * UX is planned for Pass 3. The prop is already wired from all 6 v3
+   * section files (Purchases / ReorderPoint / InventoryStock /
+   * ConsumptionReport / SalesTransfers / Packaging) so when the UX
+   * lands, no caller has to change.
+   * (Pass 2 follow-through on 015_advisor_fixes.sql +
+   * 014_reporting_v3_enhancements.sql.)
+   */
+  onVisibleColumnsChange?: (visibleColumns: string[]) => void;
   /** Defaults to 'id'. Used as the React key for memoized row components. */
   rowIdKey?: keyof T | string;
   isLoading?: boolean;
@@ -160,18 +172,21 @@ function ReportTableInner<T extends Record<string, unknown>>({
   onPageChange,
   sort,
   onSortChange,
+  onVisibleColumnsChange,
   emptyMessage,
   className,
   onRowClick,
 }: ReportTableProps<T>) {
   // Filter columns the parent wants shown, preserving visible column order.
   const activeColumns = useMemo<ColumnDef[]>(() => {
-    if (!visibleColumns || visibleColumns.length === 0) return columns;
+    if (!visibleColumns) return columns;
     const byKey = new Map(columns.map((c) => [c.key, c]));
     return visibleColumns
       .map((k) => byKey.get(k))
       .filter((c): c is ColumnDef => Boolean(c));
   }, [columns, visibleColumns]);
+
+  const chooserVisibleColumns = visibleColumns ?? columns.map((c) => c.key);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const firstIdx = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -198,6 +213,16 @@ function ReportTableInner<T extends Record<string, unknown>>({
         className,
       )}
     >
+      {onVisibleColumnsChange && columns.length > 0 && (
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-b border-[var(--c-border)] bg-[var(--c-card)]">
+          <ReportColumnChooser
+            columns={columns}
+            visibleColumns={chooserVisibleColumns}
+            onChange={onVisibleColumnsChange}
+          />
+        </div>
+      )}
+
       <div className="overflow-x-auto max-w-full">
         <table className="w-full text-sm border-collapse">
           <thead>

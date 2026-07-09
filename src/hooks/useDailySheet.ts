@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabase } from '@/lib/supabase';
 import {
   type VoucherCategory,
   type DailySheetData,
@@ -40,38 +40,45 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirtyLinesRef = useRef<Map<string, SaveDailySheetLinePayload>>(new Map());
 
-  // Fetch formulas for farm
+  // Fetch formulas for farm — uses `supabase` (NOT `supabaseAdmin`) so the
+  // request carries the user's JWT and satisfies helper-based RLS
+  // policies introduced by migration 012_fix_profiles_recursion.sql.
+  // See FIX-voucher-entry bug: dropdowns + voucher create were failing
+  // because anon-keyed supabaseAdmin returned 0 rows (RLS deny via NULL
+  // auth.uid()).
   const fetchFormulas = useCallback(async (): Promise<FarmFeedFormula[]> => {
     try {
-      const { data: formulas } = await supabaseAdmin
+      const { data: formulas } = await supabase
         .from('farm_feed_formulas')
         .select('*')
         .eq('farm_id', farmId)
         .eq('is_active', true)
         .order('formula_no', { ascending: false });
       return (formulas || []) as unknown as FarmFeedFormula[];
-    } catch {
+    } catch (err) {
+      console.error('[useDailySheet] fetchFormulas failed', err);
       return [];
     }
   }, [farmId]);
 
-  // Fetch formula items
+  // Fetch formula items — same JWT-bound swap pattern.
   const fetchFormulaItems = useCallback(async (formulaId: string): Promise<FormulaItem[]> => {
     try {
-      const { data: items } = await supabaseAdmin
+      const { data: items } = await supabase
         .from('farm_formula_items')
         .select('*')
         .eq('formula_id', formulaId);
       return (items || []) as unknown as FormulaItem[];
-    } catch {
+    } catch (err) {
+      console.error('[useDailySheet] fetchFormulaItems failed', err);
       return [];
     }
   }, []);
 
-  // Fetch halls for farm
+  // Fetch halls for farm — same JWT-bound swap pattern.
   const fetchHalls = useCallback(async (): Promise<HallConfig[]> => {
     try {
-      const { data: halls } = await supabaseAdmin
+      const { data: halls } = await supabase
         .from('farm_halls')
         .select('*')
         .eq('farm_id', farmId)
@@ -83,7 +90,8 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
         mixerCount: 1,
         isSelected: false,
       }));
-    } catch {
+    } catch (err) {
+      console.error('[useDailySheet] fetchHalls failed', err);
       return [];
     }
   }, [farmId]);
@@ -100,7 +108,15 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
     setError(null);
 
     try {
-      const client = supabaseAdmin;
+      // The hook uses the JWT-bound `supabase` client (not the
+      // deprecated anon-keyed `supabaseAdmin`) so every RLS predicate
+      // migrating to SECURITY DEFINER helpers in
+      // 012_fix_profiles_recursion.sql actually evaluates with a real
+      // auth.uid(). When this client was supabaseAdmin the FORMULA,
+      // HALL, ITEM, and VOUCHER queries returned 0 rows (RLS deny)
+      // — the user-facing symptom was «خطا در دریافت اطلاعات» on open
+      // and «خطا در ایجاد حواله» on submit.
+      const client = supabase;
 
       // 1. Get or create voucher
       let voucherId: string;
@@ -171,7 +187,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
         .select('id, item_id, formula_no, mixer_count, hall_numbers, consumed_qty, waste_qty, notes, hall_consumed, formula_id')
         .eq('voucher_id', voucherId);
 
-        // 4. Get stock balances
+  // 4. Get stock balances
   const { data: allTxns } = await client
     .from('inventory_transactions')
     .select('item_id, qty_in, qty_out, txn_type')
@@ -438,7 +454,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
       const lines = Array.from(dirtyLinesRef.current.values());
 
       for (const line of lines) {
-        await supabaseAdmin.from('daily_voucher_lines').upsert(
+        await supabase.from('daily_voucher_lines').upsert(
           {
             voucher_id: data.voucher.id,
             item_id: line.item_id,
@@ -509,7 +525,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
 
       // If admin override, allow resubmitting by clearing previous transactions
       if (ignoreEditWindow) {
-        await supabaseAdmin.from('inventory_transactions')
+        await supabase.from('inventory_transactions')
           .delete()
           .eq('source_type', 'daily_voucher')
           .eq('source_id', data.voucher.id);
@@ -518,7 +534,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
       // Create inventory transactions
       for (const item of data.items) {
         if (item.consumed_qty > 0) {
-          await supabaseAdmin.from('inventory_transactions').insert({
+          await supabase.from('inventory_transactions').insert({
             farm_id: data.voucher.farm_id,
             item_id: item.id,
             txn_date: data.voucher.voucher_date,
@@ -530,7 +546,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
           });
         }
         if (item.waste_qty > 0) {
-          await supabaseAdmin.from('inventory_transactions').insert({
+          await supabase.from('inventory_transactions').insert({
             farm_id: data.voucher.farm_id,
             item_id: item.id,
             txn_date: data.voucher.voucher_date,
@@ -544,7 +560,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
       }
 
       // Update voucher status
-      await supabaseAdmin.from('daily_vouchers').update({
+      await supabase.from('daily_vouchers').update({
         status: 'submitted' as const,
         submitted_at: new Date().toISOString(),
       }).eq('id', data.voucher.id);
@@ -567,12 +583,12 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
     if (!data) return;
     setIsSaving(true);
     try {
-      await supabaseAdmin.from('inventory_transactions')
+      await supabase.from('inventory_transactions')
         .delete()
         .eq('source_type', 'daily_voucher')
         .eq('source_id', data.voucher.id);
 
-      await supabaseAdmin.from('daily_vouchers').update({
+      await supabase.from('daily_vouchers').update({
         status: 'draft' as const,
         submitted_at: null,
         reverted_at: new Date().toISOString(),

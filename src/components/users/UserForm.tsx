@@ -328,7 +328,7 @@ export const UserForm = ({ mode, user, isOpen, onClose, onSuccess }: UserFormPro
               <option value="">فارم مورد نظر را انتخاب کنید</option>
               {farms.map((farm) => (
                 <option key={farm.id} value={farm.id}>
-                  {farm.name} ({farm.code})
+                  {farm.name}
                 </option>
               ))}
             </Select>

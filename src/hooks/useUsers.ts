@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+// NOTE: supabaseAdmin (`auth.admin.*` calls) is intentionally retained
+// below for the createUser / updateUserById / deleteUser paths.
+// auth.admin.* REQUIRES the service_role key, which supabaseAdmin no
+// longer carries on production renders (see lib/supabase-admin.ts
+// deprecation comment). The fix for those is the Render BFF route
+// documented in supabase-admin.ts — OUT OF SCOPE per the current task
+// (consumption / packaging voucher entry). The .from() queries below
+// were migrated to `supabase` to satisfy RLS with helper-based auth.uid().
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { CreateUserInput, ProfileWithFarm, UpdateUserInput, UserFilters } from '@/types/user.types';
 import { generateRandomPassword } from '@/utils/userHelpers';
@@ -36,7 +44,9 @@ export const useUsers = (filters: UserFilters) => {
     setIsLoading(true);
     setError(null);
     try {
-      let query = supabaseAdmin
+      // users list — uses JWT-bound `supabase` (NOT anon-keyed
+      // supabaseAdmin) so RLS via is_current_user_admin() passes.
+      let query = supabase
         .from('profiles')
         .select('id, username, role, first_name, last_name, phone, is_active, last_login_at, created_at, farm:farms(id, name, code)')
         .order('created_at', { ascending: false });
@@ -83,7 +93,7 @@ export const useCreateUser = () => {
       const email = `${input.username.toLowerCase().trim()}@morvarid.local`;
 
       // Step 1: Check if profile with this username already exists
-      const { data: existingProfile } = await supabaseAdmin
+      const { data: existingProfile } = await supabase
         .from('profiles')
         .select('id')
         .eq('username', input.username.toLowerCase().trim())
@@ -93,16 +103,18 @@ export const useCreateUser = () => {
         throw new Error('این نام کاربری قبلا استفاده شده');
       }
 
-      // Step 2: Check if auth user exists with this email
+      // Step 2: Check if auth user exists with this email (still uses
+      // supabaseAdmin.auth.admin.listUsers — service_role required,
+      // addressed by the Render BFF plan; see top-of-file note).
       let authUserId: string | null = null;
-      
+
       // Try to find existing auth user
       const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
       const existingAuthUser = usersData?.users?.find(u => u.email === email);
 
       if (existingAuthUser) {
         // Auth user exists - check if they have a profile
-        const { data: profileForAuth } = await supabaseAdmin
+        const { data: profileForAuth } = await supabase
           .from('profiles')
           .select('id')
           .eq('id', existingAuthUser.id)
@@ -139,8 +151,8 @@ export const useCreateUser = () => {
         authUserId = authData.user.id;
       }
 
-      // Step 3: Insert or update profile
-      const { error: profileError } = await supabaseAdmin
+      // Step 3: Insert or update profile (JWT-bound)
+      const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
           id: authUserId,
@@ -184,7 +196,7 @@ export const useUpdateUser = () => {
     setIsUpdating(true);
     setUpdateError(null);
     try {
-      const { error: profileError } = await supabaseAdmin
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           first_name: input.firstName.trim(),
@@ -238,7 +250,7 @@ export const useDeleteUser = () => {
     setIsDeleting(true);
     try {
       if (mode === 'soft') {
-        const { error } = await supabaseAdmin
+        const { error } = await supabase
           .from('profiles')
           .update({ is_active: false })
           .eq('id', userId);
@@ -250,8 +262,8 @@ export const useDeleteUser = () => {
         return true;
       }
 
-      // Hard delete
-      const { error: profileError } = await supabaseAdmin
+      // Hard delete (profile row uses JWT-bound client)
+      const { error: profileError } = await supabase
         .from('profiles')
         .delete()
         .eq('id', userId);
@@ -276,7 +288,7 @@ export const useDeleteUser = () => {
 export const useToggleUserStatus = () => {
   const toggleStatus = async (userId: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('profiles')
         .update({ is_active: !currentStatus })
         .eq('id', userId);

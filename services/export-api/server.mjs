@@ -50,11 +50,24 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   process.exit(1);
 }
 
+class DisabledRealtimeWebSocket {
+  constructor() {
+    throw new Error('Realtime is disabled in the export API runtime.');
+  }
+}
+
+const supabaseRuntimeOptions = {
+  auth: { persistSession: false, autoRefreshToken: false },
+  realtime: {
+    transport: globalThis.WebSocket || DisabledRealtimeWebSocket,
+  },
+};
+
 // One client for AUTH verification only. It uses the anon key + a brief
 // per-token exchange; it never sees the user's RLS-scoped queries because
 // each request gets its own scoped client (see buildScopedClient()).
 const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
+  ...supabaseRuntimeOptions,
 });
 
 const fastify = Fastify({
@@ -88,7 +101,7 @@ fastify.get('/health', async () => ({ status: 'ok', service: 'export-api' }));
 function buildScopedClient(jwt) {
   return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: `Bearer ${jwt}` } },
-    auth: { persistSession: false, autoRefreshToken: false },
+    ...supabaseRuntimeOptions,
   });
 }
 

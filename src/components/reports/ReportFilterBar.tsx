@@ -20,6 +20,7 @@ import { MultiSelectChips } from './MultiSelectChips';
 import { JalaliDatePicker } from '@/components/ui/JalaliDatePicker';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Select';
+import { Checkbox } from '@/components/ui/Checkbox';
 import { cn } from '@/utils/cn';
 import { toPersianDigits } from '@/utils/persianNumbers';
 import { getJalaliToday, jalaliToGregorian } from '@/utils/jalaliDate';
@@ -43,6 +44,15 @@ interface ReportFilterBarProps {
   txnTypeOptions?: ListOption[];
   /** Optional formula multi-select. Rendered only when provided. */
   formulaOptions?: ListOption[];
+  /** Optional consumption grouping select. */
+  groupByOptions?: ListOption[];
+  /** Optional ABC class select. */
+  abcClassOptions?: ListOption[];
+  /** Optional ABC basis select. */
+  basisOptions?: ListOption[];
+  /** Optional boolean toggle backed by filters.reorderNeededOnly. */
+  booleanFilterLabel?: string;
+  showDateFilter?: boolean;
   className?: string;
 }
 
@@ -76,6 +86,11 @@ function ReportFilterBarInner({
   categoryOptions,
   txnTypeOptions,
   formulaOptions,
+  groupByOptions,
+  abcClassOptions,
+  basisOptions,
+  booleanFilterLabel,
+  showDateFilter = true,
   className,
 }: ReportFilterBarProps) {
   const { from, to } = buildGregorianRange(filters.datePreset, filters.dateFrom, filters.dateTo);
@@ -109,23 +124,25 @@ function ReportFilterBarInner({
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {/* Date preset */}
-        <div>
-          <Select
-            label="بازه زمانی"
-            value={filters.datePreset}
-            onChange={(e) =>
-              onChange({ ...filters, datePreset: e.target.value as DateRangePreset })
-            }
-          >
-            <option value="today">امروز</option>
-            <option value="this_week">هفته جاری</option>
-            <option value="this_month">ماه جاری</option>
-            <option value="custom">دلخواه</option>
-          </Select>
-        </div>
+        {showDateFilter && (
+          <div>
+            <Select
+              label="بازه زمانی"
+              value={filters.datePreset}
+              onChange={(e) =>
+                onChange({ ...filters, datePreset: e.target.value as DateRangePreset })
+              }
+            >
+              <option value="today">امروز</option>
+              <option value="this_week">هفته جاری</option>
+              <option value="this_month">ماه جاری</option>
+              <option value="custom">دلخواه</option>
+            </Select>
+          </div>
+        )}
 
         {/* Custom date pickers */}
-        {filters.datePreset === 'custom' && (
+        {showDateFilter && filters.datePreset === 'custom' && (
           <>
             <div>
               <label className="text-sm font-medium text-[var(--c-fg)] mb-1.5 flex items-center gap-2">
@@ -153,7 +170,7 @@ function ReportFilterBarInner({
         )}
 
         {/* Today helper */}
-        {filters.datePreset === 'custom' && (
+        {showDateFilter && filters.datePreset === 'custom' && (
           <div className="flex items-end">
             <Button
               size="sm"
@@ -168,6 +185,27 @@ function ReportFilterBarInner({
             >
               امروز
             </Button>
+          </div>
+        )}
+
+        {groupByOptions && groupByOptions.length > 0 && (
+          <div>
+            <Select
+              label="گروه‌بندی"
+              value={filters.groupBy ?? 'item'}
+              onChange={(e) =>
+                onChange({
+                  ...filters,
+                  groupBy: e.target.value as ReportFiltersState['groupBy'],
+                })
+              }
+            >
+              {groupByOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
           </div>
         )}
 
@@ -249,7 +287,7 @@ function ReportFilterBarInner({
             </label>
             <MultiSelectChips
               values={filters.txnTypes}
-              onChange={(txnTypes) => onChange({ ...filters, txnTypes })}
+              onChange={(txnTypes) => onChange({ ...filters, txnTypes: txnTypes.slice(-1) })}
               options={txnTypeOptions}
               placeholder="همه انواع"
             />
@@ -290,6 +328,65 @@ function ReportFilterBarInner({
             >
               فیلتر در حالت «به تفکیک فرمول» اعمال می‌شود
             </p>
+          </div>
+        )}
+
+        {abcClassOptions && abcClassOptions.length > 0 && (
+          <div>
+            <Select
+              label="کلاس ABC"
+              value={filters.abcClassFilter ?? ''}
+              onChange={(e) =>
+                onChange({
+                  ...filters,
+                  abcClassFilter: e.target.value
+                    ? (e.target.value as NonNullable<ReportFiltersState['abcClassFilter']>)
+                    : null,
+                })
+              }
+            >
+              <option value="">همه کلاس‌ها</option>
+              {abcClassOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
+
+        {basisOptions && basisOptions.length > 0 && (
+          <div>
+            <Select
+              label="مبنای ABC"
+              value={filters.categoryBasis === 'quantity' ? 'quantity' : 'value'}
+              onChange={(e) =>
+                onChange({
+                  ...filters,
+                  categoryBasis: e.target.value as ReportFiltersState['categoryBasis'],
+                })
+              }
+            >
+              {basisOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
+
+        {booleanFilterLabel && (
+          <div className="flex items-end">
+            <div className="h-10 flex items-center">
+              <Checkbox
+                label={booleanFilterLabel}
+                checked={filters.reorderNeededOnly === true}
+                onChange={(e) =>
+                  onChange({ ...filters, reorderNeededOnly: e.target.checked })
+                }
+              />
+            </div>
           </div>
         )}
       </div>

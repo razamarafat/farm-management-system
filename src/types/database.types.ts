@@ -741,6 +741,147 @@ export interface Database {
           created_at: string;
         }>;
       };
+      // ----------------------------------------------------------------
+      // Pass 2 — 6 NEW v3 reporting_* RPCs
+      // (scripts/migrations/014_reporting_v3_enhancements.sql).
+      // Each mirrors the BFF's
+      // services/export-api/registry.mjs rpcName contract exactly.
+      // SECURITY INVOKER; RLS scopes per JWT.
+      // ----------------------------------------------------------------
+      reporting_inventory_stock: {
+        Args: {
+          p_as_of?: string;
+          p_farm_id?: string | null;
+          p_category?: string | null;
+          p_dead_stock_only?: boolean;
+        };
+        Returns: Array<{
+          farm_id: string;
+          farm_name: string;
+          item_id: string;
+          item_name: string;
+          item_category: string;
+          item_unit: string;
+          on_hand_qty: number;
+          unit_cost: number | null;
+          value_rial: number | null;
+          last_movement_date: string | null;
+          days_since_last_movement: number | null;
+          age_bucket: string | null;
+          is_dead_stock: boolean;
+          as_of_date: string;
+        }>;
+      };
+      reporting_consumption_report_v3: {
+        Args: {
+          p_date_from: string;
+          p_date_to: string;
+          p_farm_id?: string | null;
+          p_category?: string | null;
+          p_group_by?: string;
+          p_hall_ids?: string[];
+          p_formula_ids?: string[];
+        };
+        Returns: Array<{
+          group_key: string;
+          group_label: string;
+          item_category: string;
+          hall_name: string | null;
+          formula_name: string | null;
+          consumed_qty: number;
+          waste_qty: number;
+          unit_price: number | null;
+          rial_value: number | null;
+          closing_balance: number | null;
+          voucher_count: number;
+        }>;
+      };
+      reporting_sales_transfers_v3: {
+        Args: {
+          p_date_from?: string;
+          p_date_to?: string;
+          p_farm_id?: string | null;
+          p_item_id?: string | null;
+          p_txn_type?: string | null;
+        };
+        Returns: Array<{
+          txn_id: string;
+          txn_date: string;
+          txn_type: string;
+          source_farm: string | null;
+          dest_farm: string | null;
+          customer_name: string | null;
+          item_id: string;
+          item_name: string;
+          item_unit: string;
+          qty: number;
+          unit_price: number | null;
+          amount: number | null;
+          reference_no: string | null;
+        }>;
+      };
+      reporting_purchases_v3: {
+        Args: {
+          p_date_from?: string;
+          p_date_to?: string;
+          p_farm_id?: string | null;
+          p_supplier_id?: string | null;
+          p_item_id?: string | null;
+        };
+        Returns: Array<{
+          txn_id: string;
+          txn_date: string;
+          supplier_id: string | null;
+          supplier_name: string | null;
+          item_id: string;
+          item_name: string;
+          item_unit: string;
+          qty: number;
+          unit_price: number | null;
+          total_amount: number | null;
+          reference_no: string | null;
+        }>;
+      };
+      reporting_packaging_v3: {
+        Args: {
+          p_date_from?: string;
+          p_date_to?: string;
+          p_farm_id?: string | null;
+        };
+        Returns: Array<{
+          item_id: string;
+          item_name: string;
+          item_unit: string;
+          consumed_qty: number;
+          waste_qty: number;
+          rial_value: number | null;
+          closing_balance: number | null;
+        }>;
+      };
+      reporting_reorder_point_v3: {
+        Args: {
+          p_farm_id?: string | null;
+          p_basis?: string;
+          p_abc_class?: string | null;
+          p_reorder_needed_only?: boolean;
+        };
+        Returns: Array<{
+          item_id: string;
+          item_name: string;
+          farm_id: string;
+          farm_name: string | null;
+          item_unit: string;
+          item_category: string;
+          on_hand_qty: number;
+          reorder_point: number;
+          avg_daily_consumption: number | null;
+          abc_class: string | null;
+          reorder_recommended: boolean;
+          basis: string;
+          period_from: string | null;
+          period_to: string | null;
+        }>;
+      };
     };
     Enums: {
       user_role_enum: UserRole;

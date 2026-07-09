@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useModuleReset } from '@/hooks/useModuleReset';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabase } from '@/lib/supabase';
 import { useActiveSuppliers } from '@/hooks/useSuppliers';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -85,10 +85,13 @@ export default function PurchasesPage() {
   const { suppliers: activeSuppliers } = useActiveSuppliers();
 
 
-  // Load farms for admin
+  // Load farms for admin — uses `supabase` (NOT `supabaseAdmin`) so the
+  // request carries the admin's JWT and RLS policies from migration
+  // 012_fix_profiles_recursion.sql can resolve `is_current_user_admin()`.
+  // `supabaseAdmin` is anon-keyed and would return 0 rows.
   useEffect(() => {
     if (isAdmin) {
-      supabaseAdmin
+      supabase
         .from('farms')
         .select('id, name, code')
         .eq('is_active', true)
@@ -102,10 +105,10 @@ export default function PurchasesPage() {
     }
   }, [isAdmin]);
 
-  // Load other farms for transfers
+  // Load other farms for transfers — same JWT-bound client.
   useEffect(() => {
     if (selectedFarmId) {
-      supabaseAdmin
+      supabase
         .from('farms')
         .select('id, name, code')
         .eq('is_active', true)
@@ -120,7 +123,7 @@ export default function PurchasesPage() {
   // Load farm items
   useEffect(() => {
     if (selectedFarmId) {
-      supabaseAdmin
+      supabase
         .from('farm_items')
         .select('id, name, unit, category')
         .eq('farm_id', selectedFarmId)
@@ -211,7 +214,7 @@ export default function PurchasesPage() {
         const shippingCost = formData.shipping_cost ? parseFloat(formData.shipping_cost) : 0;
         const costPrice = totalPrice ? totalPrice + shippingCost : null;
         
-        const { error } = await supabaseAdmin
+        const { error } = await supabase
           .from('inventory_transactions')
           .insert({
             farm_id: selectedFarmId,
@@ -239,7 +242,7 @@ export default function PurchasesPage() {
           return;
         }
 
-        const { error } = await supabaseAdmin
+        const { error } = await supabase
           .from('inventory_transactions')
           .insert({
             farm_id: selectedFarmId,
@@ -266,7 +269,7 @@ export default function PurchasesPage() {
           return;
         }
 
-        const { error } = await supabaseAdmin
+        const { error } = await supabase
           .from('inventory_transactions')
           .insert({
             farm_id: selectedFarmId,
@@ -366,7 +369,7 @@ export default function PurchasesPage() {
             <option value="">انتخاب فارم</option>
             {farms.map((farm) => (
               <option key={farm.id} value={farm.id}>
-                {farm.name} ({farm.code})
+                {farm.name}
               </option>
             ))}
           </select>
