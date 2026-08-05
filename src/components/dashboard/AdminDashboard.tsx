@@ -38,7 +38,6 @@ const AdminDashboard = () => {
           label="لاگ فعالیت‌ها"
           color="slate"
           to="/admin/logs"
-          disabled
         />
         <Tile
           icon={Settings}

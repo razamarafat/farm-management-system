@@ -28,6 +28,7 @@ const ReorderPointPage = lazy(() => import('@/pages/ReorderPointPage'));
 const SuppliersPage = lazy(() => import('@/pages/SuppliersPage'));
 const InventoryItemHistoryPage = lazy(() => import('@/pages/InventoryItemHistoryPage'));
 const InputsPage = lazy(() => import('@/pages/InputsPage'));
+const AdminLogsPage = lazy(() => import('@/pages/AdminLogsPage'));
 
 function LazyPage({ children }: { children: ReactNode }) {
   return (
@@ -114,6 +115,10 @@ export const routes: RouteObject[] = [
           {
             path: 'inputs',
             element: <LazyPage><InputsPage /></LazyPage>,
+          },
+          {
+            path: 'logs',
+            element: <LazyPage><AdminLogsPage /></LazyPage>,
           },
           {
             path: '*',
