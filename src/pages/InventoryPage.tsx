@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
@@ -57,6 +57,10 @@ export default function InventoryPage() {
     isAdmin ? null : profile?.farm_id || null
   );
   const [farmItems, setFarmItems] = useState<FarmItem[]>([]);
+  const [isLoadingFarms, setIsLoadingFarms] = useState(false);
+  const [farmsError, setFarmsError] = useState(false);
+  const [isLoadingFarmItems, setIsLoadingFarmItems] = useState(false);
+  const [farmItemsError, setFarmItemsError] = useState(false);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<TabType>('balance');
@@ -105,45 +109,63 @@ export default function InventoryPage() {
 
   // Load farms for admin — uses the user-authenticated `supabase` client
   // (NOT `supabaseAdmin`) so the request carries the admin's JWT and
-  // satisfies RLS policies `is_current_user_admin()` /
-  // `is_user_admin(auth.uid())` introduced by migration
-  // 012_fix_profiles_recursion.sql. `supabaseAdmin` is anon-keyed and
-  // would return 0 rows under those policies. (See FIX-farm-selector
-  // bug: dropdowns were empty.)
-  useEffect(() => {
-    if (isAdmin) {
-      supabase
-        .from('farms')
-        .select('id, name, code')
-        .eq('is_active', true)
-        .order('name')
-        .then(({ data }) => {
-          setFarms(data || []);
-          if (data && data.length > 0 && !selectedFarmId) {
-            setSelectedFarmId(data[0].id);
-          }
-        });
+  // satisfies the existing RLS policies.
+  const loadFarms = useCallback(async () => {
+    if (!isAdmin) return;
+    setIsLoadingFarms(true);
+    setFarmsError(false);
+    const { data, error } = await supabase
+      .from('farms')
+      .select('id, name, code')
+      .eq('is_active', true)
+      .order('name');
+
+    setIsLoadingFarms(false);
+    if (error) {
+      console.error('Error loading inventory farms:', error);
+      setFarmsError(true);
+      toast.error('خطا در دریافت فهرست فارم‌ها');
+      return;
     }
+
+    setFarms(data || []);
+    setSelectedFarmId((current) => current || data?.[0]?.id || null);
   }, [isAdmin]);
 
-  // Load farm items for the «ثبت موجودی اولیه/خرید/انتقال» modal —
-  // uses JWT-bound `supabase` (NOT `supabaseAdmin`) so the request
-  // satisfies helper-based RLS policies introduced by migration
-  // 012_fix_profiles_recursion.sql. Without this swap, the item
-  // picker in the modal is empty even after the farm-selector swap.
   useEffect(() => {
-    if (selectedFarmId) {
-      supabase
-        .from('farm_items')
-        .select('id, name, unit, category')
-        .eq('farm_id', selectedFarmId)
-        .eq('is_active', true)
-        .order('priority')
-        .then(({ data }) => {
-          setFarmItems(data || []);
-        });
+    loadFarms();
+  }, [loadFarms]);
+
+  // Load farm items for the «ثبت موجودی اولیه/خرید/انتقال» modal.
+  const loadFarmItems = useCallback(async () => {
+    if (!selectedFarmId) {
+      setFarmItems([]);
+      return;
     }
+
+    setIsLoadingFarmItems(true);
+    setFarmItemsError(false);
+    const { data, error } = await supabase
+      .from('farm_items')
+      .select('id, name, unit, category')
+      .eq('farm_id', selectedFarmId)
+      .eq('is_active', true)
+      .order('priority');
+
+    setIsLoadingFarmItems(false);
+    if (error) {
+      console.error('Error loading inventory farm items:', error);
+      setFarmItemsError(true);
+      toast.error('خطا در دریافت اقلام فارم');
+      return;
+    }
+
+    setFarmItems(data || []);
   }, [selectedFarmId]);
+
+  useEffect(() => {
+    loadFarmItems();
+  }, [loadFarmItems]);
 
   // Stats
   const stats = {
@@ -300,18 +322,27 @@ export default function InventoryPage() {
 
         {/* Farm selector for admin */}
         {isAdmin && (
-          <select
-            value={selectedFarmId || ''}
-            onChange={(e) => setSelectedFarmId(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-[var(--c-border)] bg-[var(--c-bg)] text-[var(--c-fg)] min-w-[200px]"
-          >
-            <option value="">انتخاب فارم</option>
-            {farms.map((farm) => (
-              <option key={farm.id} value={farm.id}>
-                {farm.name}
-              </option>
-            ))}
-          </select>
+          <div>
+            <select
+              value={selectedFarmId || ''}
+              onChange={(e) => setSelectedFarmId(e.target.value)}
+              disabled={isLoadingFarms}
+              className="px-4 py-2 rounded-lg border border-[var(--c-border)] bg-[var(--c-bg)] text-[var(--c-fg)] min-w-[200px] disabled:opacity-50"
+            >
+              <option value="">انتخاب فارم</option>
+              {farms.map((farm) => (
+                <option key={farm.id} value={farm.id}>
+                  {farm.name}
+                </option>
+              ))}
+            </select>
+            {isLoadingFarms && <span className="block mt-1 text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
+            {farmsError && (
+              <button type="button" onClick={loadFarms} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                تلاش مجدد
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -629,13 +660,20 @@ export default function InventoryPage() {
                         <select
                           value={filters.item_id}
                           onChange={(e) => setFilters({ ...filters, item_id: e.target.value })}
-                          className="w-full px-3 py-2 rounded-md border border-[var(--c-border)] bg-[var(--c-bg)] text-[var(--c-fg)] text-sm"
+                          disabled={isLoadingFarmItems}
+                          className="w-full px-3 py-2 rounded-md border border-[var(--c-border)] bg-[var(--c-bg)] text-[var(--c-fg)] text-sm disabled:opacity-50"
                         >
                           <option value="all">همه کالاها</option>
                           {farmItems.map((item) => (
                             <option key={item.id} value={item.id}>{item.name}</option>
                           ))}
                         </select>
+                        {isLoadingFarmItems && <span className="block mt-1 text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
+                        {farmItemsError && (
+                          <button type="button" onClick={loadFarmItems} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                            تلاش مجدد
+                          </button>
+                        )}
                       </div>
                       <div className="w-40">
                         <label className="text-xs text-[var(--c-muted-fg)] mb-1 block">از تاریخ (شمسی)</label>
@@ -890,7 +928,8 @@ export default function InventoryPage() {
                   <select
                     value={formData.item_id}
                     onChange={(e) => setFormData({ ...formData, item_id: e.target.value })}
-                    className="w-full px-3 py-2 rounded-md border border-[var(--c-border)] bg-[var(--c-bg)] text-[var(--c-fg)]"
+                    disabled={isLoadingFarmItems}
+                    className="w-full px-3 py-2 rounded-md border border-[var(--c-border)] bg-[var(--c-bg)] text-[var(--c-fg)] disabled:opacity-50"
                   >
                     <option value="">انتخاب کنید</option>
                     {filteredItems.map((item) => {
@@ -903,6 +942,12 @@ export default function InventoryPage() {
                       );
                     })}
                   </select>
+                  {isLoadingFarmItems && <span className="mt-1 block text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
+                  {farmItemsError && (
+                    <button type="button" onClick={loadFarmItems} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                      تلاش مجدد
+                    </button>
+                  )}
                 </div>
 
                 <div>

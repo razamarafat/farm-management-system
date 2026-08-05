@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShoppingCart, 
@@ -49,6 +49,12 @@ export default function PurchasesPage() {
     isAdmin ? null : profile?.farm_id || null
   );
   const [farmItems, setFarmItems] = useState<FarmItem[]>([]);
+  const [isLoadingFarms, setIsLoadingFarms] = useState(false);
+  const [farmsError, setFarmsError] = useState(false);
+  const [isLoadingOtherFarms, setIsLoadingOtherFarms] = useState(false);
+  const [otherFarmsError, setOtherFarmsError] = useState(false);
+  const [isLoadingFarmItems, setIsLoadingFarmItems] = useState(false);
+  const [farmItemsError, setFarmItemsError] = useState(false);
 
   // Active tab: 'cards' | 'purchase' | 'transfer_in' | 'transfer_out'
   const [activeTab, setActiveTab] = useState<string>('cards');
@@ -85,56 +91,95 @@ export default function PurchasesPage() {
   const { suppliers: activeSuppliers } = useActiveSuppliers();
 
 
-  // Load farms for admin — uses `supabase` (NOT `supabaseAdmin`) so the
-  // request carries the admin's JWT and RLS policies from migration
-  // 012_fix_profiles_recursion.sql can resolve `is_current_user_admin()`.
-  // `supabaseAdmin` is anon-keyed and would return 0 rows.
-  useEffect(() => {
-    if (isAdmin) {
-      supabase
-        .from('farms')
-        .select('id, name, code')
-        .eq('is_active', true)
-        .order('name')
-        .then(({ data }) => {
-          setFarms(data || []);
-          if (data && data.length > 0 && !selectedFarmId) {
-            setSelectedFarmId(data[0].id);
-          }
-        });
+  // Load farms for admin — uses the JWT-bound `supabase` client.
+  const loadFarms = useCallback(async () => {
+    if (!isAdmin) return;
+    setIsLoadingFarms(true);
+    setFarmsError(false);
+    const { data, error } = await supabase
+      .from('farms')
+      .select('id, name, code')
+      .eq('is_active', true)
+      .order('name');
+
+    setIsLoadingFarms(false);
+    if (error) {
+      console.error('Error loading purchase farms:', error);
+      setFarmsError(true);
+      toast.error('خطا در دریافت فهرست فارم‌ها');
+      return;
     }
+
+    setFarms(data || []);
+    setSelectedFarmId((current) => current || data?.[0]?.id || null);
   }, [isAdmin]);
 
-  // Load other farms for transfers — same JWT-bound client.
   useEffect(() => {
-    if (selectedFarmId) {
-      supabase
-        .from('farms')
-        .select('id, name, code')
-        .eq('is_active', true)
-        .neq('id', selectedFarmId)
-        .order('name')
-        .then(({ data }) => {
-          setOtherFarms(data || []);
-        });
+    loadFarms();
+  }, [loadFarms]);
+
+  // Load other farms for transfers — same JWT-bound client.
+  const loadOtherFarms = useCallback(async () => {
+    if (!selectedFarmId) {
+      setOtherFarms([]);
+      return;
     }
+
+    setIsLoadingOtherFarms(true);
+    setOtherFarmsError(false);
+    const { data, error } = await supabase
+      .from('farms')
+      .select('id, name, code')
+      .eq('is_active', true)
+      .neq('id', selectedFarmId)
+      .order('name');
+
+    setIsLoadingOtherFarms(false);
+    if (error) {
+      console.error('Error loading transfer farms:', error);
+      setOtherFarmsError(true);
+      toast.error('خطا در دریافت فهرست فارم‌ها');
+      return;
+    }
+
+    setOtherFarms(data || []);
   }, [selectedFarmId]);
 
-  // Load farm items
   useEffect(() => {
-    if (selectedFarmId) {
-      supabase
-        .from('farm_items')
-        .select('id, name, unit, category')
-        .eq('farm_id', selectedFarmId)
-        .eq('is_active', true)
-        .order('category')
-        .order('name')
-        .then(({ data }) => {
-          setFarmItems(data || []);
-        });
+    loadOtherFarms();
+  }, [loadOtherFarms]);
+
+  // Load farm items.
+  const loadFarmItems = useCallback(async () => {
+    if (!selectedFarmId) {
+      setFarmItems([]);
+      return;
     }
+
+    setIsLoadingFarmItems(true);
+    setFarmItemsError(false);
+    const { data, error } = await supabase
+      .from('farm_items')
+      .select('id, name, unit, category')
+      .eq('farm_id', selectedFarmId)
+      .eq('is_active', true)
+      .order('category')
+      .order('name');
+
+    setIsLoadingFarmItems(false);
+    if (error) {
+      console.error('Error loading purchase farm items:', error);
+      setFarmItemsError(true);
+      toast.error('خطا در دریافت اقلام فارم');
+      return;
+    }
+
+    setFarmItems(data || []);
   }, [selectedFarmId]);
+
+  useEffect(() => {
+    loadFarmItems();
+  }, [loadFarmItems]);
 
 
   // Navigate to specific form
@@ -361,18 +406,27 @@ export default function PurchasesPage() {
 
         {/* Farm selector for admin */}
         {isAdmin && (
-          <select
-            value={selectedFarmId || ''}
-            onChange={(e) => setSelectedFarmId(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-[var(--c-border)] bg-[var(--c-bg)] text-[var(--c-fg)] min-w-[200px]"
-          >
-            <option value="">انتخاب فارم</option>
-            {farms.map((farm) => (
-              <option key={farm.id} value={farm.id}>
-                {farm.name}
-              </option>
-            ))}
-          </select>
+          <div>
+            <select
+              value={selectedFarmId || ''}
+              onChange={(e) => setSelectedFarmId(e.target.value)}
+              disabled={isLoadingFarms}
+              className="px-4 py-2 rounded-lg border border-[var(--c-border)] bg-[var(--c-bg)] text-[var(--c-fg)] min-w-[200px] disabled:opacity-50"
+            >
+              <option value="">انتخاب فارم</option>
+              {farms.map((farm) => (
+                <option key={farm.id} value={farm.id}>
+                  {farm.name}
+                </option>
+              ))}
+            </select>
+            {isLoadingFarms && <span className="block mt-1 text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
+            {farmsError && (
+              <button type="button" onClick={loadFarms} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                تلاش مجدد
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -548,7 +602,14 @@ export default function PurchasesPage() {
                           options={itemOptions}
                           placeholder="جستجو و انتخاب کالا..."
                           label="کالا *"
+                          disabled={isLoadingFarmItems}
                         />
+                        {isLoadingFarmItems && <span className="mt-1 block text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
+                        {farmItemsError && (
+                          <button type="button" onClick={loadFarmItems} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                            تلاش مجدد
+                          </button>
+                        )}
                       </div>
 
                       {/* Quantity and Deficit */}
@@ -727,7 +788,14 @@ export default function PurchasesPage() {
                           options={fromFarmOptions}
                           placeholder="جستجو و انتخاب فارم..."
                           label="فارم مبدأ *"
+                          disabled={isLoadingOtherFarms}
                         />
+                        {isLoadingOtherFarms && <span className="mt-1 block text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
+                        {otherFarmsError && (
+                          <button type="button" onClick={loadOtherFarms} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                            تلاش مجدد
+                          </button>
+                        )}
                       </div>
 
                       {/* Item Selection */}
@@ -738,7 +806,14 @@ export default function PurchasesPage() {
                           options={itemOptions}
                           placeholder="جستجو و انتخاب کالا..."
                           label="کالا *"
+                          disabled={isLoadingFarmItems}
                         />
+                        {isLoadingFarmItems && <span className="mt-1 block text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
+                        {farmItemsError && (
+                          <button type="button" onClick={loadFarmItems} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                            تلاش مجدد
+                          </button>
+                        )}
                       </div>
 
                       {/* Quantity, Driver, and Shipping Cost */}
@@ -859,7 +934,14 @@ export default function PurchasesPage() {
                           options={toFarmOptions}
                           placeholder="جستجو و انتخاب فارم..."
                           label="فارم مقصد *"
+                          disabled={isLoadingOtherFarms}
                         />
+                        {isLoadingOtherFarms && <span className="mt-1 block text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
+                        {otherFarmsError && (
+                          <button type="button" onClick={loadOtherFarms} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                            تلاش مجدد
+                          </button>
+                        )}
                       </div>
 
                       {/* Item Selection */}
@@ -870,7 +952,14 @@ export default function PurchasesPage() {
                           options={itemOptions}
                           placeholder="جستجو و انتخاب کالا..."
                           label="کالا *"
+                          disabled={isLoadingFarmItems}
                         />
+                        {isLoadingFarmItems && <span className="mt-1 block text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
+                        {farmItemsError && (
+                          <button type="button" onClick={loadFarmItems} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                            تلاش مجدد
+                          </button>
+                        )}
                       </div>
 
                       {/* Quantity and Driver */}

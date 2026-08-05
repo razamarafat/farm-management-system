@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import {
   ArrowRight, Save, CheckCircle, AlertTriangle, Loader2,
-  Beaker, Building2, Calculator, RotateCcw, FileSpreadsheet,
+  Beaker, Building2, Calculator, RotateCcw,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMemo, useState } from 'react';
@@ -441,11 +441,6 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
                 برگشت به پیش‌نویس
               </Button>
             )}
-
-            <Button variant="outline" disabled className="flex items-center gap-2">
-              <FileSpreadsheet className="w-4 h-4" />
-              خروجی اکسل
-            </Button>
 
             {(!isLocked || isAdmin) && (
               <Button

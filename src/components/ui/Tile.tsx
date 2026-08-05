@@ -45,7 +45,14 @@ const TileInner = ({ icon: Icon, label, color, to, onClick, disabled }: TileProp
   );
 
   if (disabled) {
-    return <div className={containerClasses}>{content}</div>;
+    return (
+      <div className={containerClasses}>
+        <span className="absolute top-2 left-2 text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--c-muted)] text-[var(--c-muted-fg)]">
+          به زودی
+        </span>
+        {content}
+      </div>
+    );
   }
 
   if (to) {
