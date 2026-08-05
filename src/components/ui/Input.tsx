@@ -8,15 +8,20 @@ export interface InputProps
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, error, label, ...props }, ref) => {
+  ({ className, type, error, label, id, ...props }, ref) => {
+    const autoId = React.useId();
+    const inputId = id ?? autoId;
+    const errorId = `${inputId}-error`;
+
     return (
       <div className="w-full">
         {label && (
-          <label className="block text-sm font-medium text-[var(--c-fg)] mb-1.5">
+          <label htmlFor={inputId} className="block text-sm font-medium text-[var(--c-fg)] mb-1.5">
             {label}
           </label>
         )}
         <input
+          id={inputId}
           type={type}
           className={cn(
             /* Base — rounded-lg (10px), clean border, subtle focus ring */
@@ -34,11 +39,13 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             error && "border-[var(--c-destructive)] focus-visible:ring-[var(--c-destructive)] focus-visible:border-[var(--c-destructive)]",
             className
           )}
-          ref={ref}
           {...props}
+          ref={ref}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
         />
         {error && (
-          <p className="mt-1.5 text-xs text-[var(--c-destructive)] font-medium">{error}</p>
+          <p id={errorId} className="mt-1.5 text-xs text-[var(--c-destructive)] font-medium">{error}</p>
         )}
       </div>
     );

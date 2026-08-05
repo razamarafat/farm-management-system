@@ -764,6 +764,7 @@ export default function InventoryPage() {
                                             size="sm"
                                             onClick={() => setDeleteTxnId(txn.id)}
                                             className="text-red-600 hover:bg-red-50"
+                                            aria-label="حذف تراکنش"
                                           >
                                             <Trash2 className="w-4 h-4" />
                                           </Button>

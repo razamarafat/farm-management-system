@@ -1,8 +1,9 @@
-import { memo } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle, AlertTriangle } from 'lucide-react';
 import { type DailySheetRow, type VoucherCategory, type HallConfig, CATEGORY_LABELS, toNumber } from '@/types/consumption.types';
 import { toPersianDigits } from '@/utils/persianNumbers';
 import { Input } from '@/components/ui/Input';
+import { NumericInput } from '@/components/ui/NumericInput';
 
 interface DailySheetTableProps {
   items: DailySheetRow[];
@@ -28,6 +29,15 @@ const NumericCell = memo(({
   value: number; onChange?: (val: string) => void; disabled: boolean; highlight?: string;
 }) => {
   const displayVal = value || 0;
+  const [localValue, setLocalValue] = useState(displayVal ? String(displayVal) : '');
+  const focusedRef = useRef(false);
+
+  useEffect(() => {
+    if (!focusedRef.current) {
+      setLocalValue(displayVal ? String(displayVal) : '');
+    }
+  }, [displayVal]);
+
   if (disabled || !onChange) {
     return (
       <span className={`text-sm font-medium ${highlight || 'text-[var(--c-fg)]'}`}>
@@ -36,14 +46,20 @@ const NumericCell = memo(({
     );
   }
   return (
-    <Input
-      type="number"
-      value={displayVal || ''}
-      onChange={(e) => onChange(e.target.value)}
+    <NumericInput
+      value={localValue}
+      onValueChange={(nextValue) => {
+        const safeValue = nextValue.startsWith('-') ? '' : nextValue;
+        setLocalValue(safeValue);
+        onChange(safeValue);
+      }}
+      onFocus={() => { focusedRef.current = true; }}
+      onBlur={() => {
+        focusedRef.current = false;
+        setLocalValue(displayVal ? String(displayVal) : '');
+      }}
       className="h-8 text-sm text-left w-24"
       dir="ltr"
-      min={0}
-      step="0.01"
     />
   );
 });

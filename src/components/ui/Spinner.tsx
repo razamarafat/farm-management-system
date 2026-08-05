@@ -3,9 +3,13 @@ import { cn } from '@/utils/cn';
 
 export const Spinner = ({ className, size = 24 }: { className?: string; size?: number }) => {
   return (
-    <Loader2 
-      className={cn("animate-spin text-primary", className)} 
-      size={size} 
-    />
+    <span role="status" aria-label="در حال بارگذاری" className="inline-flex">
+      <Loader2
+        aria-hidden="true"
+        focusable="false"
+        className={cn("animate-spin text-primary", className)}
+        size={size}
+      />
+    </span>
   );
 };

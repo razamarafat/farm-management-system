@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMemo, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -32,6 +33,7 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
   const [missingItems, setMissingItems] = useState<string[]>([]);
   const [showMissingDialog, setShowMissingDialog] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(false);
+  const [mixerCountDrafts, setMixerCountDrafts] = useState<Record<number, string>>({});
 
   const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0];
   const farmParam = searchParams.get('farm');
@@ -139,6 +141,26 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
     updateHallConfigs(updated);
   };
 
+  const handleMixerCountChange = (hallNumber: number, event: ChangeEvent<HTMLInputElement>) => {
+    event.stopPropagation();
+    const ascii = event.target.value
+      .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+      .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+    if (!/^\d*$/.test(ascii)) return;
+    setMixerCountDrafts((prev) => ({ ...prev, [hallNumber]: ascii }));
+    if (ascii) setHallMixerCount(hallNumber, parseInt(ascii, 10));
+  };
+
+  const handleMixerCountBlur = (hallNumber: number) => {
+    const draft = mixerCountDrafts[hallNumber];
+    if (draft === '') setHallMixerCount(hallNumber, 1);
+    setMixerCountDrafts((prev) => {
+      const next = { ...prev };
+      delete next[hallNumber];
+      return next;
+    });
+  };
+
   const selectAllHalls = () => {
     updateHallConfigs(hallConfigs.map(h => ({ ...h, isSelected: true })));
   };
@@ -185,7 +207,7 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={goBack} className="p-2">
+          <Button variant="ghost" size="sm" onClick={goBack} className="p-2" aria-label="بازگشت">
             <ArrowRight className="w-5 h-5" />
           </Button>
           <div>
@@ -323,14 +345,13 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
                         <div className="mr-auto flex items-center gap-1">
                           <span className="text-xs text-[var(--c-muted-fg)]">×</span>
                           <input
-                            type="number"
-                            min={1}
-                            value={hall.mixerCount}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              setHallMixerCount(hall.hallNumber, parseInt(e.target.value) || 1);
-                            }}
+                            type="text"
+                            inputMode="numeric"
+                            value={mixerCountDrafts[hall.hallNumber] ?? hall.mixerCount}
+                            onChange={(e) => handleMixerCountChange(hall.hallNumber, e)}
+                            onBlur={() => handleMixerCountBlur(hall.hallNumber)}
                             onClick={(e) => e.stopPropagation()}
+                            aria-label={`تعداد میکسر ${hall.hallName}`}
                             className="w-12 h-6 px-1 text-center text-xs rounded border border-[var(--c-border)] bg-[var(--c-card)] text-[var(--c-fg)]"
                             disabled={!canEdit}
                           />
