@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { 
   Package, 
   Plus, 
@@ -347,19 +348,21 @@ export default function InventoryPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-                      <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              <Link to={`${profile?.role === 'admin' ? '/admin' : profile?.role === 'supervisor' ? '/supervisor' : '/operator'}/reorder`} className="block">
+                <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:shadow-md transition-shadow cursor-pointer">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-amber-600 dark:text-amber-400">نقطه سفارش</p>
+                        <p className="text-xl font-bold text-amber-700 dark:text-amber-300">{toPersianNumbers(stats.lowStock)}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-amber-600 dark:text-amber-400">نقطه سفارش</p>
-                      <p className="text-xl font-bold text-amber-700 dark:text-amber-300">{toPersianNumbers(stats.lowStock)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </Link>
             </motion.div>
 
           </div>

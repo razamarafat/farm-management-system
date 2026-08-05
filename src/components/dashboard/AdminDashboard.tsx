@@ -1,19 +1,11 @@
-import {
-  Users,
-  Warehouse,
-  ClipboardList,
-  ShoppingCart,
-  FileText,
-  FlaskConical,
-  Package,
-  Settings,
-  Activity,
-  Truck,
-  Wheat
-} from 'lucide-react';
+import { Package, Settings, Activity } from 'lucide-react';
 import { Tile } from '@/components/ui/Tile';
+import { getNavLabel, navItemsForRole, roleBase } from '@/navigation/manifest';
 
 const AdminDashboard = () => {
+  const role = 'admin' as const;
+  const basePath = roleBase(role);
+
   return (
     <div className="space-y-6 w-full">
       <div className="flex flex-col space-y-2 text-center sm:text-right">
@@ -24,67 +16,22 @@ const AdminDashboard = () => {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        <Tile
-          icon={ClipboardList}
-          label="حواله‌های مصرف"
-          color="blue"
-          to="/admin/consumption"
-        />
-        <Tile
-          icon={ShoppingCart}
-          label="خرید و انتقال"
-          color="indigo"
-          to="/admin/purchase"
-        />
-        <Tile
-          icon={FileText}
-          label="گزارشات"
-          color="cyan"
-          to="/admin/reports"
-        />
-        <Tile
-          icon={FlaskConical}
-          label="مدیریت فرمول‌ها"
-          color="purple"
-          to="/admin/formulas"
-        />
-        <Tile
-          icon={Package}
-          label="موجودی انبار"
-          color="teal"
-          to="/admin/inventory"
-        />
+        {navItemsForRole(role).map((item) => (
+          <Tile
+            key={item.path}
+            icon={item.icon}
+            label={getNavLabel(item, role)}
+            color={item.color}
+            to={`${basePath}/${item.path}`}
+          />
+        ))}
 
-        <Tile
-          icon={Users}
-          label="مدیریت کاربران"
-          color="rose"
-          to="/admin/users"
-        />
-        <Tile
-          icon={Warehouse}
-          label="مدیریت فارم‌ها"
-          color="indigo"
-          to="/admin/farms"
-        />
-        <Tile
-          icon={Wheat}
-          label="تعریف نهاده‌ها"
-          color="amber"
-          to="/admin/inputs"
-        />
         <Tile
           icon={Package}
           label="اقلام بسته‌بندی"
           color="slate"
           to="/admin/packaging"
           disabled
-        />
-        <Tile
-          icon={Truck}
-          label="تامین‌کنندگان"
-          color="blue"
-          to="/admin/suppliers"
         />
         <Tile
           icon={Activity}

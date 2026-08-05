@@ -1,7 +1,10 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { LogOut, User, Warehouse, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { getNavLabel, navItemsForRole, roleBase, DASHBOARD_NAV_ITEM } from '@/navigation/manifest';
+import type { Role } from '@/navigation/manifest';
+import { cn } from '@/utils/cn';
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/Button';
@@ -25,7 +28,10 @@ export const Sidebar = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [farmName, setFarmName] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const role = profile?.role as Role | undefined;
+  const items = navItemsForRole(role);
 
   const closeSidebar = useCallback(() => {
     if (sidebarOpen) {
@@ -177,11 +183,52 @@ export const Sidebar = () => {
 
         {/* Nav area */}
         <div className="flex-1 p-4 overflow-y-auto">
-          <nav className="space-y-1">
-            <div className="text-center text-sm mt-4 text-[var(--c-muted-fg)]">
-              فهرست دسترسی‌ها
-            </div>
-          </nav>
+          {role && (
+            <nav className="space-y-1" aria-label="منوی اصلی">
+              <button
+                type="button"
+                onClick={() => {
+                  navigate(roleBase(role));
+                  closeSidebar();
+                }}
+                className={cn(
+                  'w-full flex items-center gap-3 rounded-[10px] px-3 h-11 text-sm text-right transition-colors',
+                  location.pathname === roleBase(role)
+                    ? 'bg-[var(--c-primary-light)] text-[var(--c-primary)] font-semibold'
+                    : 'text-[var(--c-fg)] hover:bg-[var(--c-muted)]'
+                )}
+              >
+                <DASHBOARD_NAV_ITEM.icon size={18} />
+                <span>{DASHBOARD_NAV_ITEM.label}</span>
+              </button>
+
+              {items.map((item) => {
+                const itemPath = `${roleBase(role)}/${item.path}`;
+                const isActive = location.pathname.startsWith(itemPath);
+                const Icon = item.icon;
+
+                return (
+                  <button
+                    key={item.path}
+                    type="button"
+                    onClick={() => {
+                      navigate(itemPath);
+                      closeSidebar();
+                    }}
+                    className={cn(
+                      'w-full flex items-center gap-3 rounded-[10px] px-3 h-11 text-sm text-right transition-colors',
+                      isActive
+                        ? 'bg-[var(--c-primary-light)] text-[var(--c-primary)] font-semibold'
+                        : 'text-[var(--c-fg)] hover:bg-[var(--c-muted)]'
+                    )}
+                  >
+                    <Icon size={18} />
+                    <span>{getNavLabel(item, role)}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          )}
         </div>
 
         {/* Logout */}
