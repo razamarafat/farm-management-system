@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
 import { useFormulas, useFormulaActions, useFarmFeedItems, Formula, FormulaInput } from '@/hooks/useFormulas';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 interface FarmOption {
   id: string;
@@ -369,39 +370,17 @@ const FormulaManagementPage = () => {
         )}
       </AnimatePresence>
 
-      {/* Delete Dialog */}
-      <AnimatePresence>
-        {deleteConfirm && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            onClick={() => setDeleteConfirm(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
-              className="bg-[var(--c-card)] rounded-xl p-6 max-w-sm w-full shadow-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-bold text-[var(--c-fg)] mb-3">حذف فرمول</h3>
-              <p className="text-sm text-[var(--c-muted-fg)] mb-6">
-                آیا از حذف این فرمول اطمینان دارید؟ این عمل غیرقابل بازگشت است.
-              </p>
-              <div className="flex gap-2 justify-end">
-                <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-sm rounded-lg border border-[var(--c-border)] text-[var(--c-fg)]">
-                  انصراف
-                </button>
-                <button
-                  onClick={() => handleDelete(deleteConfirm)}
-                  disabled={isSaving}
-                  className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
-                >
-                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حذف'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ConfirmDialog
+        isOpen={deleteConfirm !== null}
+        onClose={() => setDeleteConfirm(null)}
+        title="حذف فرمول"
+        message="آیا از حذف این فرمول اطمینان دارید؟ این عمل غیرقابل بازگشت است."
+        confirmLabel="حذف"
+        cancelLabel="انصراف"
+        onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}
+        isLoading={isSaving}
+        variant="destructive"
+      />
 
       {/* Duplicate Dialog */}
       <AnimatePresence>

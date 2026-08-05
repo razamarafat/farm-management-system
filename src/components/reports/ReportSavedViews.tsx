@@ -11,6 +11,7 @@ import { memo, useState, useMemo } from 'react';
 import { Bookmark, Trash2, Edit2, Check, X as XIcon, Play } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/utils/cn';
 import { toPersianDigits } from '@/utils/persianNumbers';
@@ -50,6 +51,7 @@ function ReportSavedViewsInner({
 }: ReportSavedViewsProps) {
   const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
   const [newName, setNewName] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<SavedReportView | null>(null);
 
   const sortedViews = useMemo(
     () => [...views].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -170,11 +172,7 @@ function ReportSavedViewsInner({
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => {
-                          if (window.confirm(`آیا از حذف «${view.name}» مطمئن هستید؟`)) {
-                            onDelete(view.id);
-                          }
-                        }}
+                        onClick={() => setPendingDelete(view)}
                         aria-label="حذف نما"
                       >
                         <Trash2 className="w-4 h-4 text-[var(--c-destructive)]" />
@@ -187,6 +185,19 @@ function ReportSavedViewsInner({
           </ul>
         )}
       </div>
+      <ConfirmDialog
+        isOpen={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        title="حذف نما"
+        message={`آیا از حذف «${pendingDelete?.name}» مطمئن هستید؟`}
+        confirmLabel="حذف"
+        cancelLabel="انصراف"
+        onConfirm={() => {
+          if (pendingDelete) onDelete(pendingDelete.id);
+          setPendingDelete(null);
+        }}
+        variant="destructive"
+      />
     </Modal>
   );
 }

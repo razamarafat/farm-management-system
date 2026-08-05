@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import { toPersianNumbers } from '@/utils/persianNumbers';
 import { getJalaliToday, jalaliToGregorian, formatJalaliDate } from '@/utils/jalaliDate';
 import { JalaliDatePicker } from '@/components/ui/JalaliDatePicker';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { InventoryFilters, TransactionType, StockBalance } from '@/types/inventory.types';
 import { TXN_TYPE_LABELS, TXN_TYPE_COLORS } from '@/types/inventory.types';
 
@@ -76,6 +77,7 @@ export default function InventoryPage() {
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
+  const [deleteTxnId, setDeleteTxnId] = useState<string | null>(null);
   const [modalType, setModalType] = useState<'initial' | 'purchase' | 'transfer_in' | 'transfer_out' | 'adjustment'>('initial');
   // Edit transaction functionality reserved for future
 
@@ -233,10 +235,11 @@ export default function InventoryPage() {
     setShowAddModal(true);
   };
 
-  const handleDeleteTransaction = async (id: string) => {
-    if (!confirm('آیا از حذف این تراکنش اطمینان دارید؟')) return;
+  const confirmDeleteTransaction = async () => {
+    if (!deleteTxnId) return;
 
-    const success = await deleteTransaction(id);
+    const success = await deleteTransaction(deleteTxnId);
+    setDeleteTxnId(null);
     if (success) {
       refetchBalances();
       refetchTransactions();
@@ -759,7 +762,7 @@ export default function InventoryPage() {
                                           <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => handleDeleteTransaction(txn.id)}
+                                            onClick={() => setDeleteTxnId(txn.id)}
                                             className="text-red-600 hover:bg-red-50"
                                           >
                                             <Trash2 className="w-4 h-4" />
@@ -868,7 +871,6 @@ export default function InventoryPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-            onClick={() => setShowAddModal(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -989,6 +991,18 @@ export default function InventoryPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ConfirmDialog
+        isOpen={deleteTxnId !== null}
+        onClose={() => setDeleteTxnId(null)}
+        title="حذف تراکنش"
+        message="آیا از حذف این تراکنش اطمینان دارید؟ این عمل قابل بازگشت نیست."
+        confirmLabel="حذف"
+        cancelLabel="انصراف"
+        onConfirm={confirmDeleteTransaction}
+        isLoading={isSubmitting}
+        variant="destructive"
+      />
     </div>
   );
 }
