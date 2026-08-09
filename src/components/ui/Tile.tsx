@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/utils/cn';
+import { toPersianDigits } from '@/utils/persianNumbers';
 
 interface TileProps {
   icon: LucideIcon;
@@ -11,6 +12,7 @@ interface TileProps {
   to?: string;
   onClick?: () => void;
   disabled?: boolean;
+  badgeCount?: number | null;
 }
 
 // Hoisted to module scope so identity is stable across renders.
@@ -19,9 +21,14 @@ interface TileProps {
 const TILE_HOVER = { scale: 1.02, y: -2 } as const;
 const TILE_TAP = { scale: 0.98 } as const;
 
-const TileInner = ({ icon: Icon, label, color, to, onClick, disabled }: TileProps) => {
+const TileInner = ({ icon: Icon, label, color, to, onClick, disabled, badgeCount }: TileProps) => {
   const content = (
     <div className="relative flex flex-col justify-between h-full">
+      {typeof badgeCount === 'number' && badgeCount > 0 && (
+        <span className="absolute top-2 left-2 min-w-[22px] h-[22px] px-1.5 rounded-full bg-[var(--c-destructive)] text-white text-xs font-bold flex items-center justify-center">
+          {toPersianDigits(String(badgeCount))}
+        </span>
+      )}
       <div className={cn(
         "absolute top-0 right-0 p-2 rounded-full",
         // Using CSS variables from theme.css for dynamic colors

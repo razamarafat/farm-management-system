@@ -2,11 +2,13 @@ import { Tile } from '@/components/ui/Tile';
 import { useAuthStore } from '@/store/authStore';
 import { getJalaliDate } from '@/utils/jalaliDate';
 import { getNavLabel, navItemsForRole, roleBase } from '@/navigation/manifest';
+import { useReorderAlertCount } from '@/hooks/useReorderAlertCount';
 
 const OperatorDashboard = () => {
   const { profile } = useAuthStore();
   const role = 'operator' as const;
   const basePath = roleBase(role);
+  const reorderCount = useReorderAlertCount();
 
   return (
     <div className="space-y-6 w-full">
@@ -27,6 +29,7 @@ const OperatorDashboard = () => {
             label={getNavLabel(item, role)}
             color={item.color}
             to={`${basePath}/${item.path}`}
+            badgeCount={item.path === 'reorder' ? reorderCount : undefined}
           />
         ))}
       </div>

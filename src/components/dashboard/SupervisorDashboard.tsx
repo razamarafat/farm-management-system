@@ -1,9 +1,11 @@
 import { Tile } from '@/components/ui/Tile';
 import { getNavLabel, navItemsForRole, roleBase } from '@/navigation/manifest';
+import { useReorderAlertCount } from '@/hooks/useReorderAlertCount';
 
 const SupervisorDashboard = () => {
   const role = 'supervisor' as const;
   const basePath = roleBase(role);
+  const reorderCount = useReorderAlertCount();
 
   return (
     <div className="space-y-6 w-full">
@@ -22,6 +24,7 @@ const SupervisorDashboard = () => {
             label={getNavLabel(item, role)}
             color={item.color}
             to={`${basePath}/${item.path}`}
+            badgeCount={item.path === 'reorder' ? reorderCount : undefined}
           />
         ))}
       </div>
