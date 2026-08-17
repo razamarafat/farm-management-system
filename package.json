@@ -4,9 +4,10 @@
   "version": "0.0.5",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"vite\" \"npm run start --prefix bff\" \"npm run start --prefix services/export-api\"",
     "build": "vite build",
     "preview": "vite preview --host",
+    "notify:deploy": "node scripts/notify-deploy.mjs",
     "lint": "eslint src/",
     "lint:focus-hooks": "eslint src/ --quiet",
     "test": "node scripts/test-spa-reports.mjs",
@@ -26,6 +27,7 @@
     "node": ">=22.12.0 <23"
   },
   "dependencies": {
+    "@heyputer/puter.js": "^2.6.1",
     "@hookform/resolvers": "^5.2.2",
     "@supabase/supabase-js": "^2.95.3",
     "class-variance-authority": "^0.7.1",
@@ -37,9 +39,9 @@
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.1",
     "react-router-dom": "^7.13.0",
+    "rxdb": "^17.4.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
-    "vite-plugin-pwa": "^1.2.0",
     "zod": "^4.3.6",
     "zustand": "^5.0.11"
   },
@@ -49,6 +51,8 @@
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.1.1",
+    "concurrently": "^10.0.3",
+    "embedded-postgres": "^18.4.0-beta.17",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^15.15.0",
