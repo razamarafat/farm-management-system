@@ -55,3 +55,7 @@ coverage
 # BFF scratch / audit baselines — local-only, may contain policy text
 # or runtime catalog dumps. Never commit.
 services/export-api/_*
+
+# QA verification data dumps — copies of production data. Never commit.
+scripts/qa/_qa-prod-data.sql
+scripts/qa/.qa-pgdata/
