@@ -62,3 +62,99 @@ scripts/qa/.qa-pgdata/
 
 # Local Supabase QA stack (scratch copy of config + migrations).
 .qa-supabase/
+
+# AI-tool config directories (auto-generated, never commit)
+.adal/
+.agents/
+.aider-desk/
+.augment/
+.autohand/
+.bob/
+.claude/
+.codeartsdoer/
+.codebuddy/
+.codemaker/
+.codestudio/
+.commandcode/
+.continue/
+.cortex/
+.crush/
+.devin/
+.factory/
+.forge/
+.freebuff/
+.goose/
+.grok/
+.hermes/
+.iflow/
+.inferencesh/
+.jazz/
+.junie/
+.kilocode/
+.kimchi/
+.kiro/
+.kode/
+.lingma/
+.mcpjam/
+.moxby/
+.mux/
+.neovate/
+.ona/
+.openhands/
+.pi/
+.pochi/
+.qoder/
+.qwen/
+.reasonix/
+.roo/
+.rovodev/
+.tabnine/
+.terramind/
+.tinycloud/
+.trae/
+.vibe/
+.windsurf/
+.zcode/
+.zencoder/
+
+# Graphify knowledge graph (regenerated locally)
+graphify-out/
+
+# BFF node_modules (already in /node_modules but being explicit)
+/bff/node_modules/
+
+# Build artifacts from singlefile / distribution
+dist/
+
+# Scratch / local-only files
+task.txt
+package_new.json
+rtk-x86_64-pc-windows-msvc.zip
+fn-defs.json
+fn-defs.txt
+
+# Audit scripts (temporary, not for distribution)
+scripts/audit/_gen-008.mjs
+scripts/audit/exec-report-rpcs.mjs
+scripts/audit/incident-sweep.mjs
+scripts/audit/live-export-v3-e2e.mjs
+scripts/audit/live-report-functional-audit.mjs
+scripts/audit/param-crosscheck.mjs
+scripts/audit/probe-report-rpcs.mjs
+scripts/audit/rls-check.mjs
+scripts/backups/
+scripts/notify-deploy.mjs
+scripts/sync-existing-farm-items-to-inputs.mjs
+
+# Misc untracked configs
+skills-lock.json
+skills/
+AGENTS.md
+design-system/
+docs/audit-handoff.md
+docs/audit/
+docs/reports/GUIDELINES.md
+docs/reports/fabricated-data-incident-2026-07.md
+docs/session-handoff.md
+docs/wwd20irrl.output
+\n# Local Supabase QA stack (ignored)\n.qa-supabase/
