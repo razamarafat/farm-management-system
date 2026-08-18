@@ -59,3 +59,6 @@ services/export-api/_*
 # QA verification data dumps — copies of production data. Never commit.
 scripts/qa/_qa-prod-data.sql
 scripts/qa/.qa-pgdata/
+
+# Local Supabase QA stack (scratch copy of config + migrations).
+.qa-supabase/
