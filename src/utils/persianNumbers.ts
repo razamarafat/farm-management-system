@@ -29,7 +29,7 @@ export function formatNumberWithSeparator(raw: string): string {
 export function formatRial(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === '') return '—';
 
-  const numeric = typeof value === 'number' ? value : Number(toEnglishDigits(String(value).replace(/[\/\s,]/g, '')));
+  const numeric = typeof value === 'number' ? value : Number(toEnglishDigits(String(value).replace(/[/,\s]/g, '')));
   if (!Number.isFinite(numeric)) return '—';
 
   const rounded = Math.round(numeric);

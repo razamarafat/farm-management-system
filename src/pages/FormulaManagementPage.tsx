@@ -85,11 +85,13 @@ const FormulaManagementPage = () => {
   });
 
   const handleCreate = () => {
+    if (!isAdmin) return;
     setEditingFormula(null);
     setShowForm(true);
   };
 
   const handleEdit = (f: Formula) => {
+    if (!isAdmin) return;
     setEditingFormula(f);
     setShowForm(true);
   };
@@ -153,7 +155,7 @@ const FormulaManagementPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-[var(--c-fg)] flex items-center gap-2">
-            <FlaskConical className="w-7 h-7 text-purple-500" />
+            <FlaskConical className="w-7 h-7 text-[var(--c-accent)]" />
             مدیریت فرمول‌ها
           </h2>
           <p className="text-sm text-[var(--c-muted-fg)] mt-1">
@@ -172,7 +174,7 @@ const FormulaManagementPage = () => {
               {compareIds.length === 2 && (
                 <button
                   onClick={() => setExpandedId('compare')}
-                  className="px-4 py-2 text-sm rounded-lg bg-purple-600 text-white hover:bg-purple-700 flex items-center gap-1"
+                  className="px-4 py-2 text-sm rounded-lg bg-[var(--c-accent)] text-[var(--c-accent-fg)] hover:brightness-110 flex items-center gap-1"
                 >
                   <ArrowRightLeft className="w-4 h-4" />
                   مقایسه
@@ -191,13 +193,15 @@ const FormulaManagementPage = () => {
                 <ArrowRightLeft className="w-4 h-4" />
                 مقایسه
               </button>
-              <button
-                onClick={handleCreate}
-                className="px-4 py-2 text-sm rounded-lg bg-green-600 text-white hover:bg-green-700 flex items-center gap-1"
-              >
-                <Plus className="w-4 h-4" />
-                فرمول جدید
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={handleCreate}
+                  className="px-4 py-2 text-sm rounded-lg bg-[var(--c-success)] text-[var(--c-primary-fg)] hover:brightness-110 flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  فرمول جدید
+                </button>
+              )}
             </>
           )}
         </div>
@@ -225,17 +229,17 @@ const FormulaManagementPage = () => {
       {!isLoading && selectedFarmId && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard
-            icon={<ListChecks className="w-5 h-5 text-blue-500" />}
+            icon={<ListChecks className="w-5 h-5 text-[var(--c-info)]" />}
             label="کل فرمول‌ها"
             value={toPersianNum(formulas.length)}
           />
           <StatCard
-            icon={<CheckCircle2 className="w-5 h-5 text-green-500" />}
+            icon={<CheckCircle2 className="w-5 h-5 text-[var(--c-success)]" />}
             label="فعال"
             value={toPersianNum(formulas.filter((f) => f.is_active).length)}
           />
           <StatCard
-            icon={<Scale className="w-5 h-5 text-orange-500" />}
+            icon={<Scale className="w-5 h-5 text-[var(--c-warning)]" />}
             label="میانگین وزن میکسر"
             value={
               formulas.length > 0
@@ -244,7 +248,7 @@ const FormulaManagementPage = () => {
             }
           />
           <StatCard
-            icon={<Beaker className="w-5 h-5 text-purple-500" />}
+            icon={<Beaker className="w-5 h-5 text-[var(--c-accent)]" />}
             label="میانگین نهاده‌ها"
             value={
               formulas.length > 0
@@ -265,7 +269,7 @@ const FormulaManagementPage = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="جستجوی نام یا شماره فرمول..."
-              className="w-full pr-10 pl-4 py-2 rounded-lg border border-[var(--c-border)] bg-[var(--c-card)] text-sm text-[var(--c-fg)] focus:outline-none focus:ring-2 focus:ring-purple-500/30"
+              className="w-full pr-10 pl-4 py-2 rounded-lg border border-[var(--c-border)] bg-[var(--c-card)] text-sm text-[var(--c-fg)] focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/30"
             />
           </div>
           <div className="flex gap-1 rounded-lg border border-[var(--c-border)] overflow-hidden">
@@ -275,7 +279,7 @@ const FormulaManagementPage = () => {
                 onClick={() => setFilterActive(f)}
                 className={`px-3 py-2 text-xs font-medium transition-colors ${
                   filterActive === f
-                    ? 'bg-purple-600 text-white'
+                    ? 'bg-[var(--c-accent)] text-[var(--c-accent-fg)]'
                     : 'text-[var(--c-fg)] hover:bg-[var(--c-muted)]'
                 }`}
               >
@@ -289,13 +293,13 @@ const FormulaManagementPage = () => {
       {/* Content */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-[var(--c-accent)]" />
         </div>
       ) : error ? (
         <div className="text-center py-16">
-          <AlertCircle className="w-12 h-12 mx-auto text-red-400 mb-3" />
+          <AlertCircle className="w-12 h-12 mx-auto text-[var(--c-error)] mb-3" />
           <p className="text-[var(--c-fg)]">{error}</p>
-          <button onClick={refetch} className="mt-3 px-4 py-2 text-sm rounded-lg bg-purple-600 text-white">
+          <button onClick={refetch} className="mt-3 px-4 py-2 text-sm rounded-lg bg-[var(--c-accent)] text-[var(--c-accent-fg)]">
             تلاش مجدد
           </button>
         </div>
@@ -309,10 +313,10 @@ const FormulaManagementPage = () => {
           <FlaskConical className="w-12 h-12 mx-auto text-[var(--c-muted-fg)] mb-3" />
           <p className="text-[var(--c-fg)] font-medium">فرمولی یافت نشد</p>
           <p className="text-sm text-[var(--c-muted-fg)] mt-1">
-            {searchTerm ? 'فیلترها را تغییر دهید' : 'اولین فرمول خوراک را ایجاد کنید'}
+            {searchTerm ? 'فیلترها را تغییر دهید' : (isAdmin ? 'اولین فرمول خوراک را ایجاد کنید' : 'هنوز فرمولی تعریف نشده است')}
           </p>
-          {!searchTerm && (
-            <button onClick={handleCreate} className="mt-4 px-4 py-2 text-sm rounded-lg bg-green-600 text-white">
+          {!searchTerm && isAdmin && (
+            <button onClick={handleCreate} className="mt-4 px-4 py-2 text-sm rounded-lg bg-[var(--c-success)] text-[var(--c-primary-fg)]">
               <Plus className="w-4 h-4 inline-block ml-1" />
               ایجاد فرمول
             </button>
@@ -340,6 +344,7 @@ const FormulaManagementPage = () => {
               <FormulaCard
                 key={formula.id}
                 formula={formula}
+                canEdit={isAdmin}
                 isExpanded={expandedId === formula.id}
                 onToggleExpand={() => setExpandedId(expandedId === formula.id ? null : formula.id)}
                 onEdit={() => handleEdit(formula)}
@@ -414,7 +419,7 @@ const FormulaManagementPage = () => {
                 <button
                   onClick={handleDuplicate}
                   disabled={isSaving || !dupNo}
-                  className="px-4 py-2 text-sm rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
+                  className="px-4 py-2 text-sm rounded-lg bg-[var(--c-accent)] text-[var(--c-accent-fg)] hover:brightness-110 disabled:opacity-50"
                 >
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'کپی'}
                 </button>
@@ -441,6 +446,7 @@ const StatCard = ({ icon, label, value }: { icon: React.ReactNode; label: string
 /* ============= FormulaCard ============= */
 interface FormulaCardProps {
   formula: Formula;
+  canEdit: boolean;
   isExpanded: boolean;
   onToggleExpand: () => void;
   onEdit: () => void;
@@ -453,13 +459,13 @@ interface FormulaCardProps {
 }
 
 const FormulaCard = ({
-  formula, isExpanded, onToggleExpand, onEdit, onDelete,
+  formula, canEdit, isExpanded, onToggleExpand, onEdit, onDelete,
   onToggleStatus, onDuplicate, compareMode, isCompareSelected, onToggleCompare
 }: FormulaCardProps) => (
   <motion.div
     layout
     className={`rounded-xl border bg-[var(--c-card)] overflow-hidden transition-shadow ${
-      isCompareSelected ? 'border-purple-500 shadow-lg' : 'border-[var(--c-border)]'
+      isCompareSelected ? 'border-[var(--c-accent)] shadow-lg' : 'border-[var(--c-border)]'
     }`}
   >
     {/* Header */}
@@ -471,14 +477,14 @@ const FormulaCard = ({
         {compareMode && (
           <div
             className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-              isCompareSelected ? 'bg-purple-600 border-purple-600' : 'border-[var(--c-border)]'
+              isCompareSelected ? 'bg-[var(--c-accent)] border-[var(--c-accent)]' : 'border-[var(--c-border)]'
             }`}
           >
-            {isCompareSelected && <CheckCircle2 className="w-3 h-3 text-white" />}
+            {isCompareSelected && <CheckCircle2 className="w-3 h-3 text-[var(--c-accent-fg)]" />}
           </div>
         )}
-        <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-          <FlaskConical className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+        <div className="w-10 h-10 rounded-lg bg-[color-mix(in_srgb,var(--c-accent)_16%,transparent)] flex items-center justify-center">
+          <FlaskConical className="w-5 h-5 text-[var(--c-accent)]" />
         </div>
         <div>
           <div className="flex items-center gap-2">
@@ -490,8 +496,8 @@ const FormulaCard = ({
             )}
             <span className={`text-xs px-2 py-0.5 rounded-full ${
               formula.is_active
-                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+                ? 'bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)] text-[var(--c-success)]'
+                : 'bg-[var(--c-muted)] text-[var(--c-muted-fg)]'
             }`}>
               {formula.is_active ? 'فعال' : 'غیرفعال'}
             </span>
@@ -505,18 +511,18 @@ const FormulaCard = ({
       </div>
 
       <div className="flex items-center gap-1">
-        {!compareMode && (
+        {!compareMode && canEdit && (
           <>
-            <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)] text-blue-500" title="ویرایش">
+            <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)] text-[var(--c-info)]" title="ویرایش">
               <Edit3 className="w-4 h-4" />
             </button>
-            <button onClick={(e) => { e.stopPropagation(); onDuplicate(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)] text-purple-500" title="کپی">
+            <button onClick={(e) => { e.stopPropagation(); onDuplicate(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)] text-[var(--c-accent)]" title="کپی">
               <Copy className="w-4 h-4" />
             </button>
             <button onClick={(e) => { e.stopPropagation(); onToggleStatus(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)]" title={formula.is_active ? 'غیرفعال‌سازی' : 'فعال‌سازی'}>
-              {formula.is_active ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5 text-gray-400" />}
+              {formula.is_active ? <ToggleRight className="w-5 h-5 text-[var(--c-success)]" /> : <ToggleLeft className="w-5 h-5 text-[var(--c-muted-fg)]" />}
             </button>
-            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)] text-red-500" title="حذف">
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)] text-[var(--c-error)]" title="حذف">
               <Trash2 className="w-4 h-4" />
             </button>
           </>
@@ -571,7 +577,7 @@ const FormulaCard = ({
                         </tr>
                       ))}
                     {/* Total Row */}
-                    <tr className="bg-purple-50 dark:bg-purple-900/20 font-bold">
+                    <tr className="bg-[color-mix(in_srgb,var(--c-accent)_12%,transparent)] font-bold">
                       <td className="p-3 text-center" colSpan={3}>جمع کل</td>
                       <td className="p-3 text-center" dir="ltr">{toPersianNum(Math.round(formula.total_weight).toLocaleString())}</td>
                       <td className="p-3 text-center">۱۰۰٪</td>
@@ -592,8 +598,8 @@ const FormulaCard = ({
                     .map((item, idx) => {
                       const pct = (item.qty_per_mixer / formula.total_weight) * 100;
                       const colors = [
-                        'bg-blue-500', 'bg-green-500', 'bg-orange-500', 'bg-purple-500',
-                        'bg-teal-500', 'bg-red-500', 'bg-indigo-500', 'bg-amber-500',
+                        'bg-[#2D6A4F]', 'bg-[#5A9E6F]', 'bg-[#B8860B]', 'bg-[#C5653A]',
+                        'bg-[#3A7D5C]', 'bg-[#DC2626]', 'bg-[#4A7C8E]', 'bg-[#8B6F47]',
                       ];
                       return (
                         <div
@@ -624,11 +630,11 @@ const ComparePanel = ({ formulas, onClose }: { formulas: Formula[]; onClose: () 
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-      className="rounded-xl border border-purple-300 dark:border-purple-700 bg-[var(--c-card)] p-4 shadow-lg"
+      className="rounded-xl border border-[color-mix(in_srgb,var(--c-accent)_30%,transparent)] bg-[var(--c-card)] p-4 shadow-lg"
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold text-[var(--c-fg)] flex items-center gap-2">
-          <ArrowRightLeft className="w-5 h-5 text-purple-500" />
+          <ArrowRightLeft className="w-5 h-5 text-[var(--c-accent)]" />
           مقایسه فرمول {toPersianNum(a.formula_no)} با {toPersianNum(b.formula_no)}
         </h3>
         <button onClick={onClose} className="p-1 rounded-lg hover:bg-[var(--c-muted)]">
@@ -641,8 +647,8 @@ const ComparePanel = ({ formulas, onClose }: { formulas: Formula[]; onClose: () 
           <thead>
             <tr className="bg-[var(--c-muted)]">
               <th className="text-right p-3">نهاده</th>
-              <th className="text-center p-3 text-purple-600">فرمول {toPersianNum(a.formula_no)}</th>
-              <th className="text-center p-3 text-blue-600">فرمول {toPersianNum(b.formula_no)}</th>
+              <th className="text-center p-3 text-[var(--c-accent)]">فرمول {toPersianNum(a.formula_no)}</th>
+              <th className="text-center p-3 text-[var(--c-info)]">فرمول {toPersianNum(b.formula_no)}</th>
               <th className="text-center p-3">تفاوت</th>
             </tr>
           </thead>
@@ -656,13 +662,13 @@ const ComparePanel = ({ formulas, onClose }: { formulas: Formula[]; onClose: () 
                   <td className="p-3 font-medium">{ai?.item_name || bi?.item_name}</td>
                   <td className="p-3 text-center">{ai ? toPersianNum(ai.qty_per_mixer) : '—'}</td>
                   <td className="p-3 text-center">{bi ? toPersianNum(bi.qty_per_mixer) : '—'}</td>
-                  <td className={`p-3 text-center font-bold ${diff > 0 ? 'text-green-600' : diff < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                  <td className={`p-3 text-center font-bold ${diff > 0 ? 'text-[var(--c-success)]' : diff < 0 ? 'text-[var(--c-error)]' : 'text-[var(--c-muted-fg)]'}`}>
                     {diff !== 0 ? (diff > 0 ? '+' : '') + toPersianNum(diff) : '—'}
                   </td>
                 </tr>
               );
             })}
-            <tr className="bg-purple-50 dark:bg-purple-900/20 font-bold">
+            <tr className="bg-[color-mix(in_srgb,var(--c-accent)_12%,transparent)] font-bold">
               <td className="p-3">جمع کل</td>
               <td className="p-3 text-center">{toPersianNum(Math.round(a.total_weight))}</td>
               <td className="p-3 text-center">{toPersianNum(Math.round(b.total_weight))}</td>
@@ -789,14 +795,14 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
             </div>
             <div className="flex items-end">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="w-4 h-4 accent-green-600" />
+                <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="w-4 h-4 accent-[var(--c-primary)]" />
                 <span className="text-sm text-[var(--c-fg)]">فعال</span>
               </label>
             </div>
           </div>
 
           {/* Summary */}
-          <div className="flex items-center gap-4 p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+          <div className="flex items-center gap-4 p-3 rounded-lg bg-[color-mix(in_srgb,var(--c-accent)_12%,transparent)] border border-[color-mix(in_srgb,var(--c-accent)_25%,transparent)]">
             <div className="text-sm">
               <span className="text-[var(--c-muted-fg)]">تعداد نهاده‌ها: </span>
               <span className="font-bold text-[var(--c-fg)]">{toPersianNum(itemCount)}</span>
@@ -808,7 +814,7 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
             {mixerWeight > 0 && totalWeight > 0 && (
               <div className="text-sm">
                 <span className="text-[var(--c-muted-fg)]">تفاوت با میکسر: </span>
-                <span className={`font-bold ${Math.abs(totalWeight - mixerWeight) < 10 ? 'text-green-600' : 'text-orange-600'}`}>
+                <span className={`font-bold ${Math.abs(totalWeight - mixerWeight) < 10 ? 'text-[var(--c-success)]' : 'text-[var(--c-warning)]'}`}>
                   {totalWeight > mixerWeight ? '+' : ''}{toPersianNum(Math.round(totalWeight - mixerWeight))} kg
                 </span>
               </div>
@@ -818,16 +824,16 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
           {/* Ingredients Table */}
           <div>
             <p className="text-sm font-medium text-[var(--c-fg)] mb-3 flex items-center gap-1">
-              <Beaker className="w-4 h-4 text-purple-500" />
+              <Beaker className="w-4 h-4 text-[var(--c-accent)]" />
               نهاده‌ها و مقادیر (کیلوگرم در هر میکسر)
             </p>
             {loadingItems ? (
               <div className="flex justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+                <Loader2 className="w-6 h-6 animate-spin text-[var(--c-accent)]" />
               </div>
             ) : feedItems.length === 0 ? (
               <div className="text-center py-8 text-sm text-[var(--c-muted-fg)]">
-                <AlertCircle className="w-8 h-8 mx-auto mb-2 text-orange-400" />
+                <AlertCircle className="w-8 h-8 mx-auto mb-2 text-[var(--c-warning)]" />
                 ابتدا نهاده‌ها را در بخش مدیریت فارم تعریف کنید
               </div>
             ) : (
@@ -847,7 +853,7 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
                       const val = quantities[item.id] || 0;
                       const pct = totalWeight > 0 ? ((val / totalWeight) * 100).toFixed(1) : '0';
                       return (
-                        <tr key={item.id} className={`border-b border-[var(--c-border)] ${val > 0 ? 'bg-green-50/50 dark:bg-green-900/10' : ''}`}>
+                        <tr key={item.id} className={`border-b border-[var(--c-border)] ${val > 0 ? 'bg-[color-mix(in_srgb,var(--c-success)_8%,transparent)]' : ''}`}>
                           <td className="p-3 text-[var(--c-muted-fg)]">{toPersianNum(idx + 1)}</td>
                           <td className="p-3 font-medium text-[var(--c-fg)]">{item.name}</td>
                           <td className="p-3 text-[var(--c-muted-fg)]">{item.unit}</td>
@@ -886,7 +892,7 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
           <button
             onClick={handleSubmit}
             disabled={isSaving || itemCount === 0}
-            className="px-6 py-2 text-sm rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-2 text-sm rounded-lg bg-[var(--c-success)] text-[var(--c-primary-fg)] hover:brightness-110 disabled:opacity-50 flex items-center gap-2"
           >
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {isEdit ? 'بروزرسانی' : 'ایجاد فرمول'}

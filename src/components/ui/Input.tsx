@@ -45,7 +45,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           aria-describedby={error ? errorId : undefined}
         />
         {error && (
-          <p id={errorId} className="mt-1.5 text-xs text-[var(--c-destructive)] font-medium">{error}</p>
+          <p id={errorId} className="mt-1.5 text-xs text-[var(--c-error)] font-medium">{error}</p>
         )}
       </div>
     );

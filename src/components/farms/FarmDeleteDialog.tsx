@@ -41,7 +41,7 @@ export const FarmDeleteDialog = ({ farm, isOpen, onClose, onSuccess }: FarmDelet
     >
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center dark:bg-amber-900/30 dark:text-amber-400">
+          <div className="h-10 w-10 rounded-full bg-[color-mix(in_srgb,var(--c-warning)_16%,transparent)] text-[var(--c-warning)] flex items-center justify-center">
             <AlertTriangle size={20} />
           </div>
           <div className="text-sm">آیا از حذف فارم {farm.name} اطمینان دارید؟</div>
@@ -66,7 +66,7 @@ export const FarmDeleteDialog = ({ farm, isOpen, onClose, onSuccess }: FarmDelet
             <span>
               <div className="font-medium">حذف کامل</div>
               <div className="text-xs text-muted-foreground">حذف دائمی فارم و تمام ارتباطات</div>
-              <div className="text-xs text-destructive mt-1">این عمل غیرقابل بازگشت است</div>
+              <div className="text-xs text-[var(--c-error)] mt-1">این عمل غیرقابل بازگشت است</div>
             </span>
           </label>
         </div>

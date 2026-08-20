@@ -491,13 +491,23 @@ export interface Database {
         };
         Returns: Json;
       };
+      submit_daily_voucher: {
+        Args: {
+          p_voucher_id: string;
+          p_farm_id: string;
+          p_voucher_date: string;
+          p_items: Json;
+          p_ignore_window?: boolean;
+        };
+        Returns: Json;
+      };
       submit_daily_sheet: {
         Args: {
           p_voucher_id: string;
         };
         Returns: Json;
       };
-      revert_daily_sheet: {
+      revert_daily_voucher: {
         Args: {
           p_voucher_id: string;
         };
@@ -642,7 +652,7 @@ export interface Database {
         }>;
       };
       // ----------------------------------------------------------------
-      // RPT_INVENTORY_AGING (scripts/migrations/009_inventory_aging.sql)
+      // inventory aging report (scripts/migrations/009_inventory_aging.sql)
       // Bucket boundaries (90/60/30) mirror AGE_BUCKETS in
       // utils/constants.ts so the SQL bucket assignment and the SPA
       // chips stay in sync.
@@ -673,7 +683,7 @@ export interface Database {
         }>;
       };
       // ----------------------------------------------------------------
-      // RPT_PARETO_CLASSIFICATION (scripts/migrations/010_pareto_classification.sql)
+      // pareto classification report (scripts/migrations/010_pareto_classification.sql)
       // A/B/C assignment via cumulative-share window functions, with a
       // configurable threshold (p_a_threshold / p_b_threshold) and an
       // optional basis (p_basis = 'value' | 'quantity'). reorder_recommended
@@ -881,6 +891,16 @@ export interface Database {
           period_from: string | null;
           period_to: string | null;
         }>;
+      };
+      rpc_admin_create_input: {
+        Args: {
+          p_name: string;
+          p_category: string;
+          p_default_unit: string;
+          p_description?: string;
+          p_is_active?: boolean;
+        };
+        Returns: Json;
       };
     };
     Enums: {

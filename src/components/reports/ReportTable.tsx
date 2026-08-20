@@ -21,6 +21,8 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { ReportColumnChooser } from './ReportColumnChooser';
 import { cn } from '@/utils/cn';
 import { toPersianDigits } from '@/utils/persianNumbers';
+import { gregorianToJalali } from '@/utils/jalaliDate';
+import { translateByColumnKey } from '@/utils/localization';
 import { REPORT_EMPTY_MESSAGE } from '@/types/report.types';
 import type { ColumnDef, SortState } from '@/types/report.types';
 
@@ -90,7 +92,16 @@ function defaultRender<R>(col: ColumnDef<R>, raw: unknown): React.ReactNode {
       </span>
     );
   }
-  return String(raw);
+  if (typeof raw === 'string' && (col.key.endsWith('_date') || col.key === 'priced_on' || col.key.endsWith('_on'))) {
+    const jalali = gregorianToJalali(raw);
+    return (
+      <span className="tabular-nums">
+        {toPersianDigits(jalali)}
+      </span>
+    );
+  }
+  const translated = translateByColumnKey(col.key, raw);
+  return String(translated);
 }
 
 // Memoized row component. Re-renders only when its own row or visibleCols change.
@@ -228,7 +239,7 @@ function ReportTableInner<T extends Record<string, unknown>>({
           <thead>
             <tr className="bg-[var(--c-muted)] border-b-2 border-[var(--c-border)]">
               <th className="px-3 py-3 text-center font-semibold text-[var(--c-fg)] w-12 sticky right-0 bg-[var(--c-muted)] z-10">
-                #
+                ردیف
               </th>
               {activeColumns.map((col) => {
                 const isSorted = sort?.columnKey === col.key;
@@ -293,7 +304,7 @@ function ReportTableInner<T extends Record<string, unknown>>({
                 const key = id !== undefined && id !== null ? String(id) : `r-${idx}`;
                 return (
                   <MemoizedRow
-                    key={key}
+                    key={`${key}-${idx}`}
                     row={row}
                     columns={activeColumns}
                     index={(page - 1) * pageSize + idx}
@@ -380,7 +391,7 @@ function PagBtn({ children, onClick, disabled, active, ariaLabel }: PagBtnProps)
         'min-w-[32px] h-8 px-2 rounded-md text-sm font-medium border transition-colors',
         'flex items-center justify-center',
         active
-          ? 'bg-[var(--c-primary)] text-white border-[var(--c-primary)] shadow-[0_2px_6px_color-mix(in_srgb,var(--c-primary)_25%,transparent)]'
+          ? 'bg-[var(--c-primary)] text-[var(--c-primary-fg)] border-[var(--c-primary)] shadow-[0_2px_6px_color-mix(in_srgb,var(--c-primary)_25%,transparent)]'
           : 'bg-[var(--c-bg)] border-[var(--c-border)] text-[var(--c-fg)] hover:bg-[var(--c-muted)]',
         disabled && 'opacity-40 cursor-not-allowed hover:bg-transparent',
       )}

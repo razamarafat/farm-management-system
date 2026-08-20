@@ -9,7 +9,7 @@
     "node": ">=22.12.0 <23"
   },
   "scripts": {
-    "start": "node server.mjs",
+    "start": "node --env-file=.env server.mjs",
     "dev": "node --watch server.mjs",
     "test:smoke": "node smoke-test.mjs",
     "test:template": "node template-test.mjs",

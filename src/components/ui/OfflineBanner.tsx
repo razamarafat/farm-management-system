@@ -19,7 +19,7 @@ export function OfflineBanner({ isOnline, pendingCount, isSyncing, onSync }: Off
   if (!isOnline) {
     return (
       <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-auto z-50">
-        <div className="bg-yellow-500 text-white rounded-lg shadow-lg px-4 py-3 flex items-center gap-3">
+        <div className="bg-[var(--c-warning)] text-[var(--c-primary-fg)] rounded-lg shadow-lg px-4 py-3 flex items-center gap-3">
           <WifiOff className="w-5 h-5 flex-shrink-0" />
           <div className="flex-1">
             <p className="font-medium text-sm">حالت آفلاین</p>
@@ -38,7 +38,7 @@ export function OfflineBanner({ isOnline, pendingCount, isSyncing, onSync }: Off
   if (pendingCount > 0) {
     return (
       <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-auto z-50">
-        <div className="bg-blue-500 text-white rounded-lg shadow-lg px-4 py-3 flex items-center gap-3">
+        <div className="bg-[var(--c-success)] text-[var(--c-primary-fg)] rounded-lg shadow-lg px-4 py-3 flex items-center gap-3">
           <CloudOff className="w-5 h-5 flex-shrink-0" />
           <div className="flex-1">
             <p className="font-medium text-sm">
@@ -50,7 +50,7 @@ export function OfflineBanner({ isOnline, pendingCount, isSyncing, onSync }: Off
             size="sm"
             onClick={onSync}
             disabled={isSyncing}
-            className="text-white hover:bg-blue-600 p-2"
+            className="text-[var(--c-primary-fg)] hover:brightness-110 p-2"
           >
             <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
           </Button>

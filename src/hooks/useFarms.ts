@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { rpc } from '@/utils/rpc';
+import { rpcError } from '@/utils/rpcError';
 import { Farm, FarmInsert } from '@/types/farm.types';
 
 export interface FarmFilters {
@@ -82,7 +83,7 @@ export const useCreateFarm = () => {
       toast.success('فارم جدید ایجاد شد');
       return true;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'خطا در ایجاد فارم');
+      toast.error(rpcError(e) ?? 'خطا در ایجاد فارم');
       return false;
     } finally {
       setIsCreating(false);
@@ -111,7 +112,7 @@ export const useUpdateFarm = () => {
       return true;
     } catch (e) {
       console.error(e);
-      toast.error(e instanceof Error ? e.message : 'خطا در بروزرسانی فارم');
+      toast.error(rpcError(e) ?? 'خطا در بروزرسانی فارم');
       return false;
     } finally {
       setIsUpdating(false);
@@ -135,7 +136,7 @@ export const useDeleteFarm = () => {
       return true;
     } catch (e) {
       console.error(e);
-      toast.error(e instanceof Error ? e.message : 'خطا در حذف فارم');
+      toast.error(rpcError(e) ?? 'خطا در حذف فارم');
       return false;
     } finally {
       setIsDeleting(false);
@@ -160,7 +161,7 @@ export const useToggleFarmStatus = () => {
       return true;
     } catch (e) {
       console.error(e);
-      toast.error(e instanceof Error ? e.message : 'خطا در بروزرسانی وضعیت فارم');
+      toast.error(rpcError(e) ?? 'خطا در بروزرسانی وضعیت فارم');
       return false;
     }
   };

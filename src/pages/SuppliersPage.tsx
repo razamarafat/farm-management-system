@@ -19,6 +19,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
+import { rpcError } from '@/utils/rpcError';
 import { toPersianNumbers } from '@/utils/persianNumbers';
 import { triggerServerExport } from '@/lib/excelServer';
 import type { Supplier, SupplierFilters, SupplierInsert } from '@/types/supplier.types';
@@ -79,8 +80,7 @@ export default function SuppliersPage() {
         { id: toastId },
       );
     } catch (e) {
-      const msg =
-        e instanceof Error ? e.message : 'خطای ناشناخته در ساخت فایل اکسل';
+      const msg = rpcError(e) ?? 'خطای ناشناخته در ساخت فایل اکسل';
       toast.error(msg, { id: toastId });
     } finally {
       setIsExporting(false);
@@ -206,8 +206,8 @@ export default function SuppliersPage() {
               <button
                 onClick={() => setFilters({ ...filters, status: 'active' })}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${filters.status === 'active'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50'
+                  ? 'bg-[var(--c-success)] text-[var(--c-primary-fg)]'
+                  : 'bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)] text-[var(--c-success)] hover:bg-[color-mix(in_srgb,var(--c-success)_30%,transparent)]'
                   }`}
               >
                 فعال
@@ -215,8 +215,8 @@ export default function SuppliersPage() {
               <button
                 onClick={() => setFilters({ ...filters, status: 'inactive' })}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${filters.status === 'inactive'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
+                  ? 'bg-[var(--c-destructive)] text-[var(--c-destructive-fg)]'
+                  : 'bg-[color-mix(in_srgb,var(--c-destructive)_16%,transparent)] text-[var(--c-error)] hover:bg-[color-mix(in_srgb,var(--c-destructive)_30%,transparent)]'
                   }`}
               >
                 غیرفعال
@@ -260,7 +260,7 @@ export default function SuppliersPage() {
                         <span className="font-medium text-[var(--c-fg)]">{supplier.name}</span>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <Badge className={supplier.is_active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}>
+                        <Badge className={supplier.is_active ? 'bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)] text-[var(--c-success)]' : 'bg-[color-mix(in_srgb,var(--c-destructive)_16%,transparent)] text-[var(--c-error)]'}>
                           {supplier.is_active ? 'فعال' : 'غیرفعال'}
                         </Badge>
                       </td>
@@ -273,9 +273,9 @@ export default function SuppliersPage() {
                             title={supplier.is_active ? 'غیرفعال کردن' : 'فعال کردن'}
                           >
                             {supplier.is_active ? (
-                              <ToggleRight className="w-5 h-5 text-green-600" />
+                              <ToggleRight className="w-5 h-5 text-[var(--c-success)]" />
                             ) : (
-                              <ToggleLeft className="w-5 h-5 text-gray-400" />
+                              <ToggleLeft className="w-5 h-5 text-[var(--c-muted-fg)]" />
                             )}
                           </Button>
                           <Button
@@ -284,7 +284,7 @@ export default function SuppliersPage() {
                             onClick={() => openEditModal(supplier)}
                             title="ویرایش"
                           >
-                            <Edit className="w-4 h-4 text-blue-600" />
+                            <Edit className="w-4 h-4 text-[var(--c-info)]" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -293,7 +293,7 @@ export default function SuppliersPage() {
                             title="حذف (غیرفعال)"
                             disabled={!supplier.is_active}
                           >
-                            <Trash2 className="w-4 h-4 text-red-600" />
+                            <Trash2 className="w-4 h-4 text-[var(--c-error)]" />
                           </Button>
                         </div>
                       </td>
@@ -310,12 +310,12 @@ export default function SuppliersPage() {
         <div className="flex justify-end">
           <Button
             onClick={onExportClick}
-            className="bg-green-600 hover:bg-green-700 text-white border-none"
+            className="bg-[var(--c-success)] hover:brightness-110 text-[var(--c-primary-fg)] border-none"
             size="sm"
             disabled={isExporting}
           >
             {isExporting ? (
-              <span className="inline-block w-4 h-4 ml-1 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span className="inline-block w-4 h-4 ml-1 border-2 border-[var(--c-primary-fg)] border-t-transparent rounded-full animate-spin" />
             ) : (
               <Download className="w-4 h-4 ml-1" />
             )}

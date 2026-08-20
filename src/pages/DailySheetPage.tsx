@@ -182,7 +182,7 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
+        <AlertTriangle className="w-12 h-12 text-[var(--c-error)] mb-4" />
         <p className="text-lg font-medium text-[var(--c-fg)] mb-2">خطا در دریافت اطلاعات</p>
         <p className="text-sm text-[var(--c-muted-fg)] mb-4">{error}</p>
         <Button onClick={() => refetch()}>تلاش مجدد</Button>
@@ -233,9 +233,9 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
           </span>
           {saveStatus && saveStatus !== 'idle' && (
             <span className="flex items-center gap-1 text-sm">
-              {saveStatus === 'saving' && (<><Loader2 className="w-4 h-4 animate-spin text-blue-500" /><span className="text-blue-600">در حال ذخیره...</span></>)}
-              {saveStatus === 'saved' && (<><CheckCircle className="w-4 h-4 text-green-500" /><span className="text-green-600">ذخیره شد</span></>)}
-              {saveStatus === 'error' && (<><AlertTriangle className="w-4 h-4 text-red-500" /><span className="text-red-600">خطا در ذخیره</span></>)}
+              {saveStatus === 'saving' && (<><Loader2 className="w-4 h-4 animate-spin text-[var(--c-info)]" /><span className="text-[var(--c-info)]">در حال ذخیره...</span></>)}
+              {saveStatus === 'saved' && (<><CheckCircle className="w-4 h-4 text-[var(--c-success)]" /><span className="text-[var(--c-success)]">ذخیره شد</span></>)}
+              {saveStatus === 'error' && (<><AlertTriangle className="w-4 h-4 text-[var(--c-error)]" /><span className="text-[var(--c-error)]">خطا در ذخیره</span></>)}
             </span>
           )}
         </div>
@@ -243,26 +243,26 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
 
       {/* Banners */}
       {isLocked && !isAdmin && (
-        <Card className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
+        <Card className="p-4 bg-[color-mix(in_srgb,var(--c-warning)_16%,transparent)] border-[color-mix(in_srgb,var(--c-warning)_30%,transparent)]">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">این حواله قفل شده است و امکان ویرایش وجود ندارد.</p>
+            <AlertTriangle className="w-5 h-5 text-[var(--c-warning)]" />
+            <p className="text-sm text-[var(--c-warning)]">این حواله قفل شده است و امکان ویرایش وجود ندارد.</p>
           </div>
         </Card>
       )}
       {isReadOnly && !isLocked && (
-        <Card className="p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+        <Card className="p-4 bg-[color-mix(in_srgb,var(--c-info)_16%,transparent)] border-[color-mix(in_srgb,var(--c-info)_30%,transparent)]">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <p className="text-sm text-blue-800 dark:text-blue-200">شما فقط امکان مشاهده این حواله را دارید.</p>
+            <AlertTriangle className="w-5 h-5 text-[var(--c-info)]" />
+            <p className="text-sm text-[var(--c-info)]">شما فقط امکان مشاهده این حواله را دارید.</p>
           </div>
         </Card>
       )}
       {isAdmin && isLocked && (
-        <Card className="p-4 bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
+        <Card className="p-4 bg-[color-mix(in_srgb,var(--c-accent)_12%,transparent)] border-[color-mix(in_srgb,var(--c-accent)_25%,transparent)]">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            <p className="text-sm text-purple-800 dark:text-purple-200">
+            <AlertTriangle className="w-5 h-5 text-[var(--c-accent)]" />
+            <p className="text-sm text-[var(--c-accent)]">
               شما به عنوان مدیر می‌توانید بدون محدودیت این حواله را ویرایش کنید.
             </p>
           </div>
@@ -275,7 +275,7 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
           {/* Formula Selector */}
           <Card className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <Beaker className="w-5 h-5 text-purple-500" />
+              <Beaker className="w-5 h-5 text-[var(--c-accent)]" />
               <h3 className="font-semibold text-[var(--c-fg)]">انتخاب فرمول</h3>
             </div>
             {formulas.length > 0 ? (
@@ -309,13 +309,13 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
           <Card className="p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-teal-500" />
+                <Building2 className="w-5 h-5 text-[var(--c-info)]" />
                 <h3 className="font-semibold text-[var(--c-fg)]">انتخاب سالن‌ها</h3>
               </div>
               {hallConfigs.length > 0 && (
                 <div className="flex gap-2">
-                  <button onClick={selectAllHalls} className="text-xs text-blue-600 hover:underline">انتخاب همه</button>
-                  <button onClick={deselectAllHalls} className="text-xs text-red-600 hover:underline">حذف همه</button>
+                  <button onClick={selectAllHalls} className="text-xs text-[var(--c-info)] hover:underline">انتخاب همه</button>
+                  <button onClick={deselectAllHalls} className="text-xs text-[var(--c-error)] hover:underline">حذف همه</button>
                 </div>
               )}
             </div>
@@ -327,8 +327,8 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
                       key={hall.hallNumber}
                       className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-all ${
                         hall.isSelected
-                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                          : 'border-[var(--c-border)] bg-[var(--c-card)] hover:border-gray-400'
+                          ? 'border-[var(--c-success)] bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)]'
+                          : 'border-[var(--c-border)] bg-[var(--c-card)] hover:border-[var(--c-muted-fg)]'
                       }`}
                       onClick={() => canEdit && toggleHall(hall.hallNumber)}
                     >
@@ -336,7 +336,7 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
                         type="checkbox"
                         checked={hall.isSelected}
                         readOnly
-                        className="w-4 h-4 accent-green-600"
+                        className="w-4 h-4 accent-[var(--c-primary)]"
                       />
                       <span className="text-sm font-medium text-[var(--c-fg)]">
                         {hall.hallName}
@@ -412,15 +412,15 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
             </div>
             <div className="text-center">
               <p className="text-xs text-[var(--c-muted-fg)] mb-1">مجموع مصرف</p>
-              <p className="text-lg font-bold text-green-600">{toPersianDigits(items.reduce((s, i) => s + i.consumed_qty, 0).toFixed(2))}</p>
+              <p className="text-lg font-bold text-[var(--c-success)]">{toPersianDigits(items.reduce((s, i) => s + i.consumed_qty, 0).toFixed(2))}</p>
             </div>
             <div className="text-center">
               <p className="text-xs text-[var(--c-muted-fg)] mb-1">مجموع ضایعات</p>
-              <p className="text-lg font-bold text-orange-600">{toPersianDigits(items.reduce((s, i) => s + i.waste_qty, 0).toFixed(2))}</p>
+              <p className="text-lg font-bold text-[var(--c-accent)]">{toPersianDigits(items.reduce((s, i) => s + i.waste_qty, 0).toFixed(2))}</p>
             </div>
             <div className="text-center">
               <p className="text-xs text-[var(--c-muted-fg)] mb-1">اقلام با کمبود</p>
-              <p className="text-lg font-bold text-red-600">{toPersianDigits(items.filter(i => i.status === 'danger').length)}</p>
+              <p className="text-lg font-bold text-[var(--c-error)]">{toPersianDigits(items.filter(i => i.status === 'danger').length)}</p>
             </div>
           </div>
         </Card>

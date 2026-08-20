@@ -34,7 +34,6 @@ import {
   Hourglass,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { Badge } from '@/components/ui/Badge';
 import type { ReportCatalogEntry } from '@/types/report.types';
 
 // Map: lucide icon name → component (so catalog.ts stays dep-free).
@@ -110,30 +109,15 @@ function ReportSelectorInner({ reports, onSelect, className }: ReportSelectorPro
                       className={cn(
                         'w-10 h-10 rounded-[10px] flex items-center justify-center',
                         'bg-[var(--c-primary)]/10 text-[var(--c-primary)]',
-                        'group-hover:bg-[var(--c-primary)] group-hover:text-white transition-colors',
+                        'group-hover:bg-[var(--c-primary)] group-hover:text-[var(--c-primary-fg)] transition-colors',
                       )}
                     >
                       <Icon className="w-5 h-5" />
                     </div>
-                    <Badge variant={r.status === 'ready' ? 'success' : 'secondary'}>
-                      {r.status === 'ready' ? 'آماده' : 'در حال توسعه'}
-                    </Badge>
                   </div>
                   <div className="min-w-0 w-full">
                     <p className="font-bold text-[var(--c-fg)] text-sm mt-1">{r.title}</p>
-                    <p className="text-xs text-[var(--c-muted-fg)] mt-0.5 truncate" dir="ltr">
-                      {r.subtitle}
-                    </p>
-                    <p className="text-xs text-[var(--c-muted-fg)] mt-2 leading-relaxed">
-                      {r.description}
-                    </p>
                   </div>
-                  <span
-                    className="text-[10px] font-mono text-[var(--c-muted-fg)] mt-auto"
-                    dir="ltr"
-                  >
-                    {r.id}
-                  </span>
                 </button>
               );
             })}

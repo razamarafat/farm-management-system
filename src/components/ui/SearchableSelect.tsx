@@ -132,7 +132,7 @@ export function SearchableSelect({
                   disabled={option.disabled}
                   className={cn(
                     'w-full px-3 py-2 text-right text-sm hover:bg-[var(--c-muted)] transition-colors',
-                    option.value === value && 'bg-[var(--c-primary)] text-white hover:bg-[var(--c-primary)]',
+                    option.value === value && 'bg-[var(--c-primary)] text-[var(--c-primary-fg)] hover:bg-[var(--c-primary)]',
                     option.disabled && 'opacity-50 cursor-not-allowed'
                   )}
                 >

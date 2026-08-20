@@ -13,10 +13,10 @@
 import { supabase } from '@/lib/supabase';
 
 // Cast away the literal-type union; we do not need its narrowing.
-const rpcUntyped = supabase.rpc as unknown as (
+const rpcUntyped = (supabase.rpc as unknown as (
   name: string,
   args?: Record<string, unknown>,
-) => Promise<{ data: unknown; error: { message: string } | null }>;
+) => Promise<{ data: unknown; error: { message: string } | null }>).bind(supabase);
 
 export async function rpc<T = unknown>(
   name: string,

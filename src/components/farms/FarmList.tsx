@@ -97,8 +97,8 @@ export const FarmList = () => {
         <Card className="px-4 py-3 text-sm flex items-center gap-2">
           <Warehouse size={16} /> کل فارم‌ها: {toPersianDigits(stats.total)}
         </Card>
-        <Card className="px-4 py-3 text-sm text-green-600">فعال: {toPersianDigits(stats.active)}</Card>
-        <Card className="px-4 py-3 text-sm text-red-500">غیرفعال: {toPersianDigits(stats.inactive)}</Card>
+        <Card className="px-4 py-3 text-sm text-[var(--c-success)]">فعال: {toPersianDigits(stats.active)}</Card>
+        <Card className="px-4 py-3 text-sm text-[var(--c-error)]">غیرفعال: {toPersianDigits(stats.inactive)}</Card>
       </div>
 
       {/* Filters */}
@@ -142,7 +142,7 @@ export const FarmList = () => {
       {/* Error */}
       {!isLoading && error && (
         <Card className="p-6 text-center space-y-3">
-          <AlertTriangle className="mx-auto text-destructive" />
+          <AlertTriangle className="mx-auto text-[var(--c-error)]" />
           <div className="text-sm">خطا در دریافت اطلاعات فارم‌ها</div>
           <Button onClick={refetch}>تلاش مجدد</Button>
         </Card>
@@ -192,7 +192,7 @@ export const FarmList = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-destructive hover:text-destructive"
+                    className="text-[var(--c-error)] hover:text-[var(--c-error)]"
                     onClick={() => setDeleteFarm(farm)}
                     title="حذف"
                   >
@@ -248,7 +248,7 @@ export const FarmList = () => {
                   <span>تخصیص اقلام از منوی نهاده‌ها</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className={`inline-block w-2 h-2 rounded-full ${farm.is_active ? 'bg-green-500' : 'bg-red-400'}`} />
+                  <span className={`inline-block w-2 h-2 rounded-full ${farm.is_active ? 'bg-[var(--c-success)]' : 'bg-[var(--c-destructive)]'}`} />
                   <span>{farm.is_active ? 'فعال' : 'غیرفعال'}</span>
                 </div>
               </div>

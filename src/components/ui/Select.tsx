@@ -31,7 +31,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           {children}
         </select>
         {error && (
-          <p className="mt-1.5 text-xs text-[var(--c-destructive)] font-medium">{error}</p>
+          <p className="mt-1.5 text-xs text-[var(--c-error)] font-medium">{error}</p>
         )}
       </div>
     );

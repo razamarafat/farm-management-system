@@ -27,6 +27,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+// Aliased because the PostgREST error is destructured as `rpcError` below.
+import { rpcError as toPersianError } from '@/utils/rpcError';
 
 export interface ItemLedgerRow {
   id: string;
@@ -135,7 +137,7 @@ export function useItemLedger({
       if (cancelled) return;
       if (rpcError) {
         console.error('Item ledger RPC error:', rpcError);
-        setError(rpcError.message || 'خطا در دریافت گردش کالا');
+        setError(toPersianError(rpcError) ?? 'خطا در دریافت گردش کالا');
         setIsLoading(false);
         fetchingRef.current = false;
         return;
@@ -198,7 +200,7 @@ export function useItemLedger({
       );
 
       if (rpcError) {
-        setError(rpcError.message || 'خطا در دریافت صفحهٔ بعد');
+        setError(toPersianError(rpcError) ?? 'خطا در دریافت صفحهٔ بعد');
         return;
       }
 

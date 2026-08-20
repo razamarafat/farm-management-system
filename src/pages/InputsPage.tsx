@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Wheat,
+  Package,
   Plus,
   Search,
   Edit2,
@@ -9,7 +10,6 @@ import {
   ToggleLeft,
   ToggleRight,
   Save,
-  Package,
 } from 'lucide-react';
 import { useInputs, useCreateInput, useUpdateInput, useDeleteInput, useToggleInputStatus } from '@/hooks/useInputs';
 import { Button } from '@/components/ui/Button';
@@ -22,12 +22,34 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
 import { toPersianNumbers } from '@/utils/persianNumbers';
 import type { Input as InputType, InputInsert, InputFilters } from '@/types/input.types';
-import { INPUT_CATEGORY_LABELS, INPUT_CATEGORY_COLORS, DEFAULT_UNITS } from '@/types/input.types';
+import { INPUT_CATEGORY_LABELS, INPUT_CATEGORY_COLORS, DEFAULT_UNITS, PACKAGING_UNITS } from '@/types/input.types';
+
+type TabId = 'feed' | 'packaging';
+
+const TAB_CONFIG: { id: TabId; label: string; icon: typeof Wheat; colorClass: string }[] = [
+  { id: 'feed', label: 'نهاده‌ها', icon: Wheat, colorClass: 'sage' },
+  { id: 'packaging', label: 'اقلام بسته‌بندی', icon: Package, colorClass: 'sky' },
+];
+
+function getUnitsForTab(tab: TabId): readonly string[] {
+  return tab === 'packaging' ? PACKAGING_UNITS : DEFAULT_UNITS;
+}
+
+function getDefaultUnitForTab(tab: TabId): string {
+  return tab === 'packaging' ? 'عدد' : 'کیلوگرم';
+}
+
+const ENTITY_LABEL: Record<TabId, string> = {
+  feed: 'نهاده',
+  packaging: 'قلم بسته‌بندی',
+};
 
 export default function InputsPage() {
+  const [activeTab, setActiveTab] = useState<TabId>('feed');
+
   const [filters, setFilters] = useState<InputFilters>({
     search: '',
-    category: 'all',
+    category: 'feed',
     status: 'all',
   });
 
@@ -50,13 +72,20 @@ export default function InputsPage() {
   const { toggleStatus } = useToggleInputStatus();
 
   const isSubmitting = isCreating || isUpdating;
+  const entityLabel = ENTITY_LABEL[activeTab];
+  const availableUnits = getUnitsForTab(activeTab);
+
+  const switchTab = (tab: TabId) => {
+    setActiveTab(tab);
+    setFilters((prev) => ({ ...prev, category: tab }));
+  };
 
   const openCreateModal = () => {
     setEditingInput(null);
     setFormData({
       name: '',
-      category: 'feed',
-      default_unit: 'کیلوگرم',
+      category: activeTab,
+      default_unit: getDefaultUnitForTab(activeTab),
       description: '',
       is_active: true,
     });
@@ -82,7 +111,7 @@ export default function InputsPage() {
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) {
-      toast.error('لطفاً نام نهاده را وارد کنید');
+      toast.error(`لطفاً نام ${entityLabel} را وارد کنید`);
       return;
     }
 
@@ -91,7 +120,7 @@ export default function InputsPage() {
     if (editingInput) {
       success = await updateInput(editingInput.id, formData);
     } else {
-      success = await createInput(formData);
+      success = await createInput({ ...formData, category: activeTab });
     }
 
     if (success) {
@@ -111,8 +140,6 @@ export default function InputsPage() {
   };
 
   const handleToggleStatus = async (input: InputType) => {
-    // useToggleInputStatus returns the new is_active flag from the RPC
-    // so the page no longer needs to pass the prior value.
     await toggleStatus(input.id);
     refetch();
   };
@@ -127,16 +154,52 @@ export default function InputsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--c-fg)]">تعریف نهاده‌ها</h1>
+          <h1 className="text-2xl font-bold text-[var(--c-fg)]">تعریف نهاده‌ها و اقلام بسته‌بندی</h1>
           <p className="text-sm text-[var(--c-muted-fg)] mt-1">
-            مدیریت نهاده‌های خوراک دام و اقلام مصرفی — تعریف و ویرایش نهاده‌های پایه سیستم
+            مدیریت نهاده‌های خوراک دام و اقلام بسته‌بندی — تعریف و ویرایش آیتم‌های پایه سیستم
           </p>
         </div>
         <Button onClick={openCreateModal}>
           <Plus className="w-4 h-4 ml-2" />
-          نهاده جدید
+          {`${entityLabel} جدید`}
         </Button>
       </div>
+
+      {/* Tab Bar */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="flex" role="tablist">
+            {TAB_CONFIG.map((tab) => {
+              const isActive = activeTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => switchTab(tab.id)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-sm font-semibold transition-all duration-200 relative
+                    ${isActive
+                      ? 'text-[var(--c-fg)]'
+                      : 'text-[var(--c-muted-fg)] hover:text-[var(--c-fg)] hover:bg-[var(--c-muted)]'
+                    }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {tab.label}
+                  {isActive && (
+                    <motion.div
+                      layoutId="tab-indicator"
+                      className={`absolute bottom-0 left-4 right-4 h-0.5 rounded-full
+                        ${tab.id === 'feed' ? 'bg-[var(--c-success)]' : 'bg-[var(--c-info)]'}`}
+                      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <Card>
@@ -148,13 +211,12 @@ export default function InputsPage() {
                 <Input
                   value={filters.search}
                   onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                  placeholder="جستجو در نام نهاده..."
+                  placeholder={`جستجو در نام ${entityLabel}...`}
                   className="pr-10"
                 />
               </div>
             </div>
             <div className="flex gap-2">
-              {/* Status filter */}
               <button
                 onClick={() => setFilters({ ...filters, status: 'all' })}
                 className={`px-3 py-2 rounded-[10px] text-sm font-medium transition-colors ${filters.status === 'all'
@@ -167,8 +229,8 @@ export default function InputsPage() {
               <button
                 onClick={() => setFilters({ ...filters, status: 'active' })}
                 className={`px-3 py-2 rounded-[10px] text-sm font-medium transition-colors ${filters.status === 'active'
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50'
+                  ? 'bg-[var(--c-success)] text-[var(--c-primary-fg)]'
+                  : 'bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)] text-[var(--c-success)] hover:bg-[color-mix(in_srgb,var(--c-success)_30%,transparent)]'
                   }`}
               >
                 فعال
@@ -176,48 +238,18 @@ export default function InputsPage() {
               <button
                 onClick={() => setFilters({ ...filters, status: 'inactive' })}
                 className={`px-3 py-2 rounded-[10px] text-sm font-medium transition-colors ${filters.status === 'inactive'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
+                  ? 'bg-[var(--c-destructive)] text-[var(--c-destructive-fg)]'
+                  : 'bg-[color-mix(in_srgb,var(--c-destructive)_16%,transparent)] text-[var(--c-error)] hover:bg-[color-mix(in_srgb,var(--c-destructive)_30%,transparent)]'
                   }`}
               >
                 غیرفعال
-              </button>
-            </div>
-            {/* Category filter */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setFilters({ ...filters, category: 'all' })}
-                className={`px-3 py-2 rounded-[10px] text-sm font-medium transition-colors ${filters.category === 'all'
-                  ? 'bg-[var(--c-primary)] text-white'
-                  : 'bg-[var(--c-muted)] text-[var(--c-muted-fg)] hover:bg-[var(--c-border)]'
-                  }`}
-              >
-                همه دسته‌ها
-              </button>
-              <button
-                onClick={() => setFilters({ ...filters, category: 'feed' })}
-                className={`px-3 py-2 rounded-[10px] text-sm font-medium transition-colors ${filters.category === 'feed'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50'
-                  }`}
-              >
-                نهاده
-              </button>
-              <button
-                onClick={() => setFilters({ ...filters, category: 'packaging' })}
-                className={`px-3 py-2 rounded-[10px] text-sm font-medium transition-colors ${filters.category === 'packaging'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50'
-                  }`}
-              >
-                بسته‌بندی
               </button>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Inputs List */}
+      {/* Items List */}
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
@@ -226,24 +258,32 @@ export default function InputsPage() {
             </div>
           ) : error ? (
             <div className="text-center py-16">
-              <p className="text-[var(--c-destructive)] mb-3">{error}</p>
+              <p className="text-[var(--c-error)] mb-3">{error}</p>
               <Button variant="outline" size="sm" onClick={refetch}>
                 تلاش مجدد
               </Button>
             </div>
           ) : inputs.length === 0 ? (
             <div className="text-center py-16">
-              <Wheat className="w-16 h-16 mx-auto text-[var(--c-muted-fg)] mb-4" />
-              <p className="text-[var(--c-muted-fg)] text-lg mb-2">هیچ نهاده‌ای یافت نشد</p>
-              <p className="text-sm text-[var(--c-muted-fg)] mb-6">
-                {filters.search || filters.category !== 'all' || filters.status !== 'all'
-                  ? 'با فیلترهای انتخاب شده نتیجه‌ای یافت نشد'
-                  : 'هنوز هیچ نهاده‌ای تعریف نشده است. اولین نهاده را اضافه کنید.'}
+              <div className="w-16 h-16 mx-auto mb-4 text-[var(--c-muted-fg)]">
+                {activeTab === 'feed' ? (
+                  <Wheat className="w-16 h-16" />
+                ) : (
+                  <Package className="w-16 h-16" />
+                )}
+              </div>
+              <p className="text-[var(--c-muted-fg)] text-lg mb-2">
+                {`هیچ ${entityLabel}ای یافت نشد`}
               </p>
-              {!filters.search && filters.category === 'all' && filters.status === 'all' && (
+              <p className="text-sm text-[var(--c-muted-fg)] mb-6">
+                {filters.search || filters.status !== 'all'
+                  ? 'با فیلترهای انتخاب شده نتیجه‌ای یافت نشد'
+                  : `هنوز هیچ ${entityLabel}ای تعریف نشده است. اولین ${entityLabel} را اضافه کنید.`}
+              </p>
+              {!filters.search && filters.status === 'all' && (
                 <Button onClick={openCreateModal} variant="outline">
                   <Plus className="w-4 h-4 ml-2" />
-                  افزودن اولین نهاده
+                  {`افزودن اولین ${entityLabel}`}
                 </Button>
               )}
             </div>
@@ -253,7 +293,9 @@ export default function InputsPage() {
                 <thead className="bg-[var(--c-muted)] border-b border-[var(--c-border)]">
                   <tr>
                     <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">ردیف</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">نام نهاده</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">
+                      {activeTab === 'feed' ? 'نام نهاده' : 'نام قلم بسته‌بندی'}
+                    </th>
                     <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">دسته‌بندی</th>
                     <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">واحد پیش‌فرض</th>
                     <th className="text-center py-3 px-4 text-xs font-semibold text-[var(--c-muted-fg)]">توضیحات</th>
@@ -286,8 +328,8 @@ export default function InputsPage() {
                       </td>
                       <td className="py-3 px-4 text-center">
                         <Badge className={input.is_active
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                          : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          ? 'bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)] text-[var(--c-success)]'
+                          : 'bg-[color-mix(in_srgb,var(--c-destructive)_16%,transparent)] text-[var(--c-error)]'
                         }>
                           {input.is_active ? 'فعال' : 'غیرفعال'}
                         </Badge>
@@ -301,7 +343,7 @@ export default function InputsPage() {
                             title={input.is_active ? 'غیرفعال کردن' : 'فعال کردن'}
                           >
                             {input.is_active ? (
-                              <ToggleRight className="w-5 h-5 text-emerald-600" />
+                              <ToggleRight className="w-5 h-5 text-[var(--c-success)]" />
                             ) : (
                               <ToggleLeft className="w-5 h-5 text-[var(--c-muted-fg)]" />
                             )}
@@ -312,7 +354,7 @@ export default function InputsPage() {
                             onClick={() => openEditModal(input)}
                             title="ویرایش"
                           >
-                            <Edit2 className="w-4 h-4 text-blue-600" />
+                            <Edit2 className="w-4 h-4 text-[var(--c-info)]" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -320,7 +362,7 @@ export default function InputsPage() {
                             onClick={() => openDeleteDialog(input)}
                             title="حذف"
                           >
-                            <Trash2 className="w-4 h-4 text-red-600" />
+                            <Trash2 className="w-4 h-4 text-[var(--c-error)]" />
                           </Button>
                         </div>
                       </td>
@@ -336,7 +378,7 @@ export default function InputsPage() {
       {/* Results count */}
       {!isLoading && inputs.length > 0 && (
         <div className="text-center text-sm text-[var(--c-muted-fg)]">
-          {toPersianNumbers(inputs.length)} نهاده یافت شد
+          {toPersianNumbers(inputs.length)} {entityLabel} یافت شد
         </div>
       )}
 
@@ -344,7 +386,7 @@ export default function InputsPage() {
       <Modal
         isOpen={showFormModal}
         onClose={() => setShowFormModal(false)}
-        title={editingInput ? 'ویرایش نهاده' : 'نهاده جدید'}
+        title={editingInput ? `ویرایش ${entityLabel}` : `${entityLabel} جدید`}
         footer={
           <div className="flex items-center justify-end gap-3">
             <Button variant="ghost" onClick={() => setShowFormModal(false)} disabled={isSubmitting}>
@@ -361,59 +403,39 @@ export default function InputsPage() {
           {/* Name */}
           <div>
             <label className="block text-sm font-medium text-[var(--c-fg)] mb-1.5">
-              نام نهاده <span className="text-[var(--c-destructive)]">*</span>
+              {`نام ${entityLabel}`} <span className="text-[var(--c-error)]">*</span>
             </label>
             <Input
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="مثال: ذرت، سویا، گندم..."
+              placeholder={
+                activeTab === 'feed' ? 'مثال: ذرت، سویا، گندم...' : 'مثال: کارتن، کیسه، شانه...'
+              }
               autoFocus
             />
           </div>
 
-          {/* Category */}
-          <div>
-            <label className="block text-sm font-medium text-[var(--c-fg)] mb-1.5">دسته‌بندی</label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, category: 'feed' })}
-                className={`flex-1 py-2.5 rounded-[10px] text-sm font-medium transition-all duration-200 border-2 ${
-                  formData.category === 'feed'
-                    ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 dark:border-green-600'
-                    : 'border-[var(--c-border)] text-[var(--c-muted-fg)] hover:border-green-300'
-                }`}
-              >
-                <Wheat className="w-4 h-4 inline-block ml-1" />
-                نهاده
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({ ...formData, category: 'packaging' })}
-                className={`flex-1 py-2.5 rounded-[10px] text-sm font-medium transition-all duration-200 border-2 ${
-                  formData.category === 'packaging'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-600'
-                    : 'border-[var(--c-border)] text-[var(--c-muted-fg)] hover:border-blue-300'
-                }`}
-              >
-                <Package className="w-4 h-4 inline-block ml-1" />
-                بسته‌بندی
-              </button>
-            </div>
-          </div>
-
-          {/* Default Unit */}
+          {/* Unit */}
           <div>
             <label className="block text-sm font-medium text-[var(--c-fg)] mb-1.5">واحد پیش‌فرض</label>
             <select
-              value={formData.default_unit}
+              value={
+                availableUnits.includes(formData.default_unit ?? '')
+                  ? formData.default_unit
+                  : availableUnits[0]
+              }
               onChange={(e) => setFormData({ ...formData, default_unit: e.target.value })}
               className="w-full h-11 rounded-[10px] border-2 border-[var(--c-input)] bg-[var(--c-card)] px-3.5 text-sm text-[var(--c-fg)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--c-ring)] focus-visible:ring-offset-2 focus-visible:border-[var(--c-primary)] appearance-none cursor-pointer"
             >
-              {DEFAULT_UNITS.map((unit) => (
+              {availableUnits.map((unit) => (
                 <option key={unit} value={unit}>{unit}</option>
               ))}
             </select>
+            {activeTab === 'packaging' && (
+              <p className="text-xs text-[var(--c-muted-fg)] mt-1.5">
+                اقلام بسته‌بندی فقط از واحدهای شمارشی (عددی) استفاده می‌کنند
+              </p>
+            )}
           </div>
 
           {/* Description */}
@@ -422,7 +444,7 @@ export default function InputsPage() {
             <textarea
               value={formData.description || ''}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="توضیحات اختیاری درباره این نهاده..."
+              placeholder={`توضیحات اختیاری درباره این ${entityLabel}...`}
               rows={3}
               className="w-full rounded-[10px] border-2 border-[var(--c-input)] bg-[var(--c-card)] px-3.5 py-2.5 text-sm text-[var(--c-fg)] placeholder:text-[var(--c-muted-fg)] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--c-ring)] focus-visible:ring-offset-2 focus-visible:border-[var(--c-primary)] resize-none"
             />
@@ -436,7 +458,7 @@ export default function InputsPage() {
                 type="button"
                 onClick={() => setFormData({ ...formData, is_active: !formData.is_active })}
                 className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 ${
-                  formData.is_active ? 'bg-emerald-500' : 'bg-[var(--c-muted)]'
+                  formData.is_active ? 'bg-[var(--c-success)]' : 'bg-[var(--c-muted)]'
                 }`}
               >
                 <span
@@ -457,11 +479,11 @@ export default function InputsPage() {
       <ConfirmDialog
         isOpen={showDeleteDialog}
         onClose={() => setShowDeleteDialog(false)}
-        title="حذف نهاده"
+        title={`حذف ${entityLabel}`}
         message={
           deletingInput
             ? `آیا از حذف "${deletingInput.name}" اطمینان دارید؟ این عمل قابل بازگشت نیست.`
-            : 'آیا از حذف این نهاده اطمینان دارید؟'
+            : `آیا از حذف این ${entityLabel} اطمینان دارید؟`
         }
         confirmLabel="حذف"
         cancelLabel="انصراف"

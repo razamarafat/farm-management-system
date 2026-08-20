@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Input } from '@/components/ui/Input';
 import { cn } from '@/utils/cn';
-import { toPersianDigits } from '@/utils/persianNumbers';
+import { getJalaliDateTime } from '@/utils/jalaliDate';
 import type { SavedReportView } from '@/types/report.types';
 
 interface ReportSavedViewsProps {
@@ -31,9 +31,7 @@ interface ReportSavedViewsProps {
 function formatJalaliLike(iso: string): string {
   try {
     const d = new Date(iso);
-    const datePart = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-    const timePart = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    return `${toPersianDigits(datePart)} ${toPersianDigits(timePart)}`;
+    return getJalaliDateTime(d);
   } catch {
     return iso;
   }
@@ -175,7 +173,7 @@ function ReportSavedViewsInner({
                         onClick={() => setPendingDelete(view)}
                         aria-label="حذف نما"
                       >
-                        <Trash2 className="w-4 h-4 text-[var(--c-destructive)]" />
+                        <Trash2 className="w-4 h-4 text-[var(--c-error)]" />
                       </Button>
                     </>
                   )}

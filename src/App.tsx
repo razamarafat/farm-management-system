@@ -4,7 +4,9 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from '@/router';
 import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/hooks/useTheme';
+import { useOfflineBootstrap } from '@/hooks/useOfflineBootstrap';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { AppUpdater } from '@/components/shared/AppUpdater';
 
 export function App() {
   const { initialize, checkSessionExpiry } = useAuthStore(
@@ -16,6 +18,10 @@ export function App() {
 
   // Initialize theme
   useTheme();
+
+  // Warm the offline RxDB cache as soon as a session is authenticated
+  // (fresh login or restored session). Background, non-blocking, idempotent.
+  useOfflineBootstrap();
 
   useEffect(() => {
     initialize();
@@ -32,6 +38,7 @@ export function App() {
   return (
     <ErrorBoundary>
       <RouterProvider router={router} />
+      <AppUpdater />
     </ErrorBoundary>
   );
 }

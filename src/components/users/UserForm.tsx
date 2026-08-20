@@ -54,6 +54,7 @@ export const UserForm = ({ mode, user, isOpen, onClose, onSuccess }: UserFormPro
     setError,
     formState: { errors, isDirty },
   } = useForm({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(schema as any),
     defaultValues: {
       username: user?.username || '',
@@ -126,12 +127,12 @@ export const UserForm = ({ mode, user, isOpen, onClose, onSuccess }: UserFormPro
 
   const passwordStrength = useMemo(() => {
     if (!passwordValue || passwordValue.length < 6) {
-      return { label: 'ضعیف', color: 'bg-red-500', width: 'w-1/3' };
+      return { label: 'ضعیف', color: 'bg-[var(--c-destructive)]', width: 'w-1/3' };
     }
     if (passwordValue.length < 9) {
-      return { label: 'متوسط', color: 'bg-yellow-500', width: 'w-2/3' };
+      return { label: 'متوسط', color: 'bg-[var(--c-warning)]', width: 'w-2/3' };
     }
-    return { label: 'قوی', color: 'bg-green-500', width: 'w-full' };
+    return { label: 'قوی', color: 'bg-[var(--c-success)]', width: 'w-full' };
   }, [passwordValue]);
 
   const handleGeneratePassword = () => {
@@ -225,7 +226,7 @@ export const UserForm = ({ mode, user, isOpen, onClose, onSuccess }: UserFormPro
               onBlur={handleUsernameBlur}
             />
             {!isEdit && usernameAvailable !== null && (
-              <div className={`text-xs flex items-center gap-1 ${usernameAvailable ? 'text-green-600' : 'text-destructive'}`}>
+              <div className={`text-xs flex items-center gap-1 ${usernameAvailable ? 'text-[var(--c-success)]' : 'text-[var(--c-error)]'}`}>
                 {usernameAvailable ? <Check size={14} /> : <X size={14} />}
                 {usernameAvailable ? 'نام کاربری آزاد است' : 'این نام کاربری قبلا استفاده شده'}
               </div>
@@ -293,7 +294,7 @@ export const UserForm = ({ mode, user, isOpen, onClose, onSuccess }: UserFormPro
                 className={`border rounded-lg p-3 text-sm text-right space-y-1 transition-colors ${roleValue === 'operator' ? 'border-primary bg-primary/5' : 'border-border'}`}
                 onClick={() => setValue('role', 'operator')}
               >
-                <ClipboardEdit size={18} className="text-green-600" />
+                <ClipboardEdit size={18} className="text-[var(--c-success)]" />
                 <div className="font-semibold">کاربر ثبت</div>
                 <div className="text-xs text-muted-foreground">ثبت اطلاعات روزانه فارم</div>
               </button>
@@ -302,7 +303,7 @@ export const UserForm = ({ mode, user, isOpen, onClose, onSuccess }: UserFormPro
                 className={`border rounded-lg p-3 text-sm text-right space-y-1 transition-colors ${roleValue === 'supervisor' ? 'border-primary bg-primary/5' : 'border-border'}`}
                 onClick={() => setValue('role', 'supervisor')}
               >
-                <Eye size={18} className="text-blue-600" />
+                <Eye size={18} className="text-[var(--c-info)]" />
                 <div className="font-semibold">سرپرست</div>
                 <div className="text-xs text-muted-foreground">مشاهده اطلاعات و گزارشات</div>
               </button>
@@ -311,7 +312,7 @@ export const UserForm = ({ mode, user, isOpen, onClose, onSuccess }: UserFormPro
                 className={`border rounded-lg p-3 text-sm text-right space-y-1 transition-colors ${roleValue === 'admin' ? 'border-primary bg-primary/5' : 'border-border'}`}
                 onClick={() => setValue('role', 'admin')}
               >
-                <Shield size={18} className="text-red-600" />
+                <Shield size={18} className="text-[var(--c-error)]" />
                 <div className="font-semibold">مدیر</div>
                 <div className="text-xs text-muted-foreground">دسترسی کامل به تمام بخش‌ها</div>
               </button>

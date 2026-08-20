@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { Leaf } from 'lucide-react';
 import { LoginForm } from '@/components/auth/LoginForm';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/Card';
 import { APP_VERSION } from '@/utils/constants';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 
@@ -31,9 +31,6 @@ const LoginPage = () => {
         <Card className="border-t-4 border-t-primary shadow-lg">
           <CardHeader className="text-center pb-2">
             <CardTitle className="text-xl">ورود به سیستم</CardTitle>
-            <CardDescription>
-              لطفا نام کاربری و رمز عبور خود را وارد کنید
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <LoginForm />

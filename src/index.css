@@ -1,9 +1,16 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+
+/* Restrict Tailwind's source scan to the app code. Automatic detection
+   scans the whole project tree, and untracked local files (docs, tools,
+   exported bundles) can contain backslash+hex sequences that the scanner
+   misreads as CSS escapes and throws on ("Invalid code point"). */
+@source "../src";
+@source "../index.html";
 
 /* Class-based dark mode for Tailwind v4 */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* ─── BluBank-Inspired Design Tokens (Tailwind v4 @theme) ─── */
+/* ─── Harvest & Earth Design Tokens (Tailwind v4 @theme) ─── */
 @theme {
   --font-sans: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
 
@@ -39,82 +46,85 @@
   --radius-lg: 16px;
   --radius-xl: 20px;
   --radius-2xl: 24px;
+
+  /* Animations */
+  --animate-spin: spin 1s linear infinite;
+  --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   LIGHT THEME — BluBank-inspired blue-centric palette
+   LIGHT THEME — Harvest & Earth palette
    ═══════════════════════════════════════════════════════════════ */
 :root {
   /* Background & Surface */
-  --c-bg: #F4F7FC;
-  --c-fg: #0F172A;
+  --c-bg: #FAF9F5;
+  --c-fg: #1C2815;
   --c-card: #FFFFFF;
-  --c-card-fg: #0F172A;
+  --c-card-fg: #1C2815;
   --c-popover: #FFFFFF;
-  --c-popover-fg: #0F172A;
+  --c-popover-fg: #1C2815;
 
-  /* Brand — BluBank blue */
-  --c-primary: #2563EB;
+  /* Brand — Sage Forest green */
+  --c-primary: #2D6A4F;
   --c-primary-fg: #FFFFFF;
-  --c-primary-hover: #1D4ED8;
-  --c-primary-light: #EFF6FF;
+  --c-primary-hover: #22573F;
+  --c-primary-light: #EDF5F0;
 
-  /* Secondary */
-  --c-secondary: #1E3A8A;
+  /* Secondary — Harvest Gold grain (darkened for 4.5:1 on white) */
+  --c-secondary: #8E6709;
   --c-secondary-fg: #FFFFFF;
 
-  /* Muted / subtle */
-  --c-muted: #F1F5F9;
-  --c-muted-fg: #64748B;
+  /* Muted / subtle — warm sand */
+  --c-muted: #F3F0E9;
+  --c-muted-fg: #5A6B4F;
 
-  /* Accent — warm rose (BluBank card color) */
-  --c-accent: #E11D48;
+  /* Accent — Terracotta clay (darkened for 4.5:1 on white) */
+  --c-accent: #B3542E;
   --c-accent-fg: #FFFFFF;
 
   /* Destructive */
   --c-destructive: #DC2626;
   --c-destructive-fg: #FFFFFF;
 
-  /* Borders & Inputs */
-  --c-border: #E2E8F0;
-  --c-input: #E2E8F0;
-  --c-ring: #2563EB;
+  /* Borders & Inputs — grain beige */
+  --c-border: #E3DED3;
+  --c-input: #E3DED3;
+  --c-ring: #2D6A4F;
 
   /* Semantic */
-  --c-success: #059669;
-  --c-warning: #D97706;
-  --c-error: #DC2626;
-  --c-info: #2563EB;
+  --c-success: #2D6A4F;
+  --c-warning: #7E5C08;
+  --c-error: #B91C1C;
+  --c-info: #3D6B7D;
 
   /* Header & Layout */
   --header-bg: rgba(255, 255, 255, 0.85);
-  --header-border: rgba(226, 232, 240, 0.8);
-  --hover-bg: #F1F5F9;
-  --active-bg: #EFF6FF;
+  --header-border: rgba(227, 222, 211, 0.8);
+  --hover-bg: #F3F0E9;
+  --active-bg: #EDF5F0;
 
   /* Text hierarchy */
-  --text-primary: #0F172A;
-  --text-secondary: #475569;
-  --text-muted: #94A3B8;
+  --text-primary: #1C2815;
+  --text-secondary: #5A6B4F;
+  --text-muted: #8B9A80;
 
-  /* Shadows — BluBank-style soft layered */
-  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.10), 0 4px 8px rgba(15, 23, 42, 0.05);
-  --shadow-xl: 0 20px 48px rgba(15, 23, 42, 0.12), 0 8px 16px rgba(15, 23, 42, 0.06);
+  /* Shadows — earth-tone soft layered */
+  --shadow-xs: 0 1px 2px rgba(28, 40, 21, 0.04);
+  --shadow-sm: 0 1px 3px rgba(28, 40, 21, 0.06), 0 1px 2px rgba(28, 40, 21, 0.04);
+  --shadow-md: 0 4px 12px rgba(28, 40, 21, 0.08), 0 2px 4px rgba(28, 40, 21, 0.04);
+  --shadow-lg: 0 12px 32px rgba(28, 40, 21, 0.10), 0 4px 8px rgba(28, 40, 21, 0.05);
+  --shadow-xl: 0 20px 48px rgba(28, 40, 21, 0.12), 0 8px 16px rgba(28, 40, 21, 0.06);
 
   /* Elevation-specific */
-  --card-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --card-shadow-hover: 0 8px 24px rgba(15, 23, 42, 0.10), 0 4px 8px rgba(15, 23, 42, 0.06);
-  --modal-shadow: 0 20px 60px rgba(15, 23, 42, 0.18), 0 8px 20px rgba(15, 23, 42, 0.10);
-  --dropdown-shadow: 0 8px 24px rgba(15, 23, 42, 0.12), 0 4px 8px rgba(15, 23, 42, 0.06);
+  --card-shadow: 0 1px 3px rgba(28, 40, 21, 0.06), 0 1px 2px rgba(28, 40, 21, 0.04);
+  --card-shadow-hover: 0 8px 24px rgba(28, 40, 21, 0.10), 0 4px 8px rgba(28, 40, 21, 0.06);
+  --modal-shadow: 0 20px 60px rgba(28, 40, 21, 0.18), 0 8px 20px rgba(28, 40, 21, 0.10);
+  --dropdown-shadow: 0 8px 24px rgba(28, 40, 21, 0.12), 0 4px 8px rgba(28, 40, 21, 0.06);
 
   /* Transitions */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-spring: 350ms cubic-bezier(0.32, 0.72, 0, 1);
 
   /* Z-index scale */
   --z-dropdown: 50;
@@ -124,72 +134,72 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   DARK THEME
+   DARK THEME — Deep earth
    ═══════════════════════════════════════════════════════════════ */
 .dark {
   /* Background & Surface */
-  --c-bg: #0B1121;
-  --c-fg: #E2E8F0;
-  --c-card: #111827;
-  --c-card-fg: #E2E8F0;
-  --c-popover: #111827;
-  --c-popover-fg: #E2E8F0;
+  --c-bg: #121A10;
+  --c-fg: #E8E4DA;
+  --c-card: #1A2216;
+  --c-card-fg: #E8E4DA;
+  --c-popover: #1A2216;
+  --c-popover-fg: #E8E4DA;
 
-  /* Brand */
-  --c-primary: #3B82F6;
-  --c-primary-fg: #FFFFFF;
-  --c-primary-hover: #2563EB;
-  --c-primary-light: #1E293B;
+  /* Brand — lighter sage for dark */
+  --c-primary: #4DAF78;
+  --c-primary-fg: #0F1A12;
+  --c-primary-hover: #3D9E64;
+  --c-primary-light: #1A2E22;
 
-  /* Secondary */
-  --c-secondary: #1E3A8A;
-  --c-secondary-fg: #E2E8F0;
+  /* Secondary — lighter harvest gold for dark */
+  --c-secondary: #C49830;
+  --c-secondary-fg: #1A1A0A;
 
   /* Muted */
-  --c-muted: #1E293B;
-  --c-muted-fg: #64748B;
+  --c-muted: #1F261B;
+  --c-muted-fg: #84927A;
 
-  /* Accent */
-  --c-accent: #FB7185;
-  --c-accent-fg: #0F172A;
+  /* Accent — lighter terracotta for dark */
+  --c-accent: #E08A65;
+  --c-accent-fg: #1A120E;
 
   /* Destructive */
   --c-destructive: #991B1B;
-  --c-destructive-fg: #FCA5A5;
+  --c-destructive-fg: #FECACA;
 
   /* Borders */
-  --c-border: #1E293B;
-  --c-input: #1E293B;
-  --c-ring: #3B82F6;
+  --c-border: #252E1F;
+  --c-input: #252E1F;
+  --c-ring: #4DAF78;
 
   /* Semantic */
-  --c-success: #10B981;
-  --c-warning: #F59E0B;
+  --c-success: #4DAF78;
+  --c-warning: #C49830;
   --c-error: #F87171;
-  --c-info: #3B82F6;
+  --c-info: #6AA8BE;
 
   /* Header */
-  --header-bg: rgba(17, 24, 39, 0.9);
-  --header-border: rgba(30, 41, 59, 0.8);
-  --hover-bg: #1E293B;
-  --active-bg: #1E3A5F;
+  --header-bg: rgba(26, 34, 22, 0.9);
+  --header-border: rgba(37, 46, 31, 0.8);
+  --hover-bg: #1F261B;
+  --active-bg: #1A2E22;
 
   /* Text */
-  --text-primary: #E2E8F0;
-  --text-secondary: #94A3B8;
-  --text-muted: #475569;
+  --text-primary: #E8E4DA;
+  --text-secondary: #A0AA95;
+  --text-muted: #6A7560;
 
-  /* Shadows (darker backdrop) */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.6);
+  /* Shadows (deep dark earth) */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 20px 48px rgba(0, 0, 0, 0.7);
 
-  --card-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  --card-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --modal-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-  --dropdown-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --card-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  --card-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --modal-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  --dropdown-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -214,7 +224,7 @@
     line-height: 1.7;
   }
 
-  /* Scrollbar — subtle BluBank-style */
+  /* Scrollbar — subtle earth-tone */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -268,33 +278,41 @@
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .5; }
+}
 
 /* ═══════════════════════════════════════════════════════════════
-   TILE COLOR SYSTEM (dashboard stat cards)
+   TILE COLOR SYSTEM — Harvest & Earth (11 earth-tone variants)
    ═══════════════════════════════════════════════════════════════ */
-.tile-blue   { --tile-bg: #EFF6FF; --tile-border: #BFDBFE; --tile-color: #2563EB; }
-.tile-green  { --tile-bg: #ECFDF5; --tile-border: #A7F3D0; --tile-color: #059669; }
-.tile-orange { --tile-bg: #FFF7ED; --tile-border: #FED7AA; --tile-color: #D97706; }
-.tile-purple { --tile-bg: #F5F3FF; --tile-border: #DDD6FE; --tile-color: #7C3AED; }
-.tile-teal   { --tile-bg: #F0FDFA; --tile-border: #99F6E4; --tile-color: #0D9488; }
-.tile-red    { --tile-bg: #FEF2F2; --tile-border: #FECACA; --tile-color: #DC2626; }
-.tile-indigo { --tile-bg: #EEF2FF; --tile-border: #C7D2FE; --tile-color: #4F46E5; }
-.tile-amber  { --tile-bg: #FFFBEB; --tile-border: #FDE68A; --tile-color: #D97706; }
-.tile-cyan   { --tile-bg: #ECFEFF; --tile-border: #A5F3FC; --tile-color: #0891B2; }
-.tile-slate  { --tile-bg: #F8FAFC; --tile-border: #CBD5E1; --tile-color: #475569; }
-.tile-rose   { --tile-bg: #FFF1F2; --tile-border: #FECDD3; --tile-color: #E11D48; }
+.tile-sage       { --tile-bg: #EDF5F0; --tile-border: #B7D5C4; --tile-color: #2D6A4F; }
+.tile-forest     { --tile-bg: #E6F0EA; --tile-border: #A8C9B5; --tile-color: #22573F; }
+.tile-olive      { --tile-bg: #EEF3ED; --tile-border: #BCCFC2; --tile-color: #3A7D5C; }
+.tile-mint       { --tile-bg: #F1F7F3; --tile-border: #C8DFD0; --tile-color: #5A9E6F; }
+.tile-grain      { --tile-bg: #FBF5E8; --tile-border: #E8D5A8; --tile-color: #B8860B; }
+.tile-terracotta { --tile-bg: #FBF0EB; --tile-border: #E8C8B8; --tile-color: #C5653A; }
+.tile-clay       { --tile-bg: #FCF3EF; --tile-border: #EBD4C8; --tile-color: #D4845E; }
+.tile-earth      { --tile-bg: #F6F2EC; --tile-border: #D9CBB8; --tile-color: #8B6F47; }
+.tile-sky        { --tile-bg: #F0F4F6; --tile-border: #C8D8E0; --tile-color: #4A7C8E; }
+.tile-sand       { --tile-bg: #F5F4F0; --tile-border: #D8D5CC; --tile-color: #6B7A63; }
+.tile-red        { --tile-bg: #FEF2F2; --tile-border: #FECACA; --tile-color: #DC2626; }
 
-.dark .tile-blue   { --tile-bg: #1E293B; --tile-border: #1E3A5F; --tile-color: #60A5FA; }
-.dark .tile-green  { --tile-bg: #0F1F17; --tile-border: #064E3B; --tile-color: #34D399; }
-.dark .tile-orange { --tile-bg: #271A0C; --tile-border: #3D2A12; --tile-color: #FBBF24; }
-.dark .tile-purple { --tile-bg: #1E1A2E; --tile-border: #2E2650; --tile-color: #A78BFA; }
-.dark .tile-teal   { --tile-bg: #0C2622; --tile-border: #143D36; --tile-color: #2DD4BF; }
-.dark .tile-red    { --tile-bg: #2A1215; --tile-border: #3D1A1E; --tile-color: #F87171; }
-.dark .tile-indigo { --tile-bg: #1A1E35; --tile-border: #252D50; --tile-color: #818CF8; }
-.dark .tile-amber  { --tile-bg: #271F0C; --tile-border: #3D3012; --tile-color: #FCD34D; }
-.dark .tile-cyan   { --tile-bg: #0C2426; --tile-border: #143D40; --tile-color: #22D3EE; }
-.dark .tile-slate  { --tile-bg: #1A1E27; --tile-border: #2A303D; --tile-color: #94A3B8; }
-.dark .tile-rose   { --tile-bg: #2A1218; --tile-border: #3D1A22; --tile-color: #FDA4AF; }
+.dark .tile-sage       { --tile-bg: #1A2A1F; --tile-border: #1D3D2B; --tile-color: #5DAF7C; }
+.dark .tile-forest     { --tile-bg: #15261B; --tile-border: #173426; --tile-color: #4A9E6C; }
+.dark .tile-olive      { --tile-bg: #1A2E22; --tile-border: #1E4030; --tile-color: #5EB880; }
+.dark .tile-mint       { --tile-bg: #1A2D22; --tile-border: #1F4232; --tile-color: #6DC18A; }
+.dark .tile-grain      { --tile-bg: #2A2210; --tile-border: #3D3018; --tile-color: #E0B84C; }
+.dark .tile-terracotta { --tile-bg: #2A1E18; --tile-border: #3D2A20; --tile-color: #E08A65; }
+.dark .tile-clay       { --tile-bg: #2A201B; --tile-border: #3D2C24; --tile-color: #E8A080; }
+.dark .tile-earth      { --tile-bg: #242018; --tile-border: #342A1E; --tile-color: #B8986A; }
+.dark .tile-sky        { --tile-bg: #182024; --tile-border: #1E303A; --tile-color: #6AA8BE; }
+.dark .tile-sand       { --tile-bg: #1E201C; --tile-border: #2A2E26; --tile-color: #96A38C; }
+.dark .tile-red        { --tile-bg: #2A1215; --tile-border: #3D1A1E; --tile-color: #F87171; }
 
 /* ═══════════════════════════════════════════════════════════════
    MOTION PREFERENCES

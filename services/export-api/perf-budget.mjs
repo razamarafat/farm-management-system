@@ -42,12 +42,12 @@ if (!SUPABASE_URL || !SUPABASE_JWT || !SUPABASE_KEY) {
 // perfBudget.p95Ms in registry.mjs; when missing, this fallback
 // runs the benchmark but does not assert.
 const FALLBACK_BUDGETS = {
-  RPT_INVENTORY_VALUATION_SUMMARY: { p95Ms: 2000 },
-  RPT_INVENTORY_LEDGER:            { p95Ms: 8000 },
-  RPT_CONSUMPTION_ANALYTICS:       { p95Ms: 3000 },
-  RPT_INVENTORY_AGING:             { p95Ms: 2000 },
-  RPT_PARETO_CLASSIFICATION:       { p95Ms: 2000 },
-  RPT_SUPPLIERS:                   { p95Ms: 1500 },
+  RPT_INVENTORY_STOCK:    { p95Ms: 2000 },
+  RPT_CONSUMPTION_REPORT: { p95Ms: 3000 },
+  RPT_SALES_TRANSFERS:    { p95Ms: 2500 },
+  RPT_PURCHASES:          { p95Ms: 3000 },
+  RPT_PACKAGING:          { p95Ms: 2500 },
+  RPT_REORDER_POINT:      { p95Ms: 2500 },
 };
 
 // Read the budget for a given reportId from the registry when present;
@@ -64,15 +64,19 @@ function budgetFor(reportId) {
 // Per-report minimal filter payloads. Small enough to return under
 // 200 rows = the "representative dataset" referenced in the spec.
 const FILTER_ARGS = {
-  RPT_INVENTORY_VALUATION_SUMMARY: { p_as_of: new Date().toISOString().slice(0, 10) },
-  RPT_INVENTORY_LEDGER:            { p_date_from: daysAgo(60), p_date_to: daysAgo(0),
-                                     p_limit: 500 },
-  RPT_CONSUMPTION_ANALYTICS:       { p_date_from: daysAgo(28), p_date_to: daysAgo(0),
-                                     p_group_by: 'item' },
-  RPT_INVENTORY_AGING:             { p_as_of: new Date().toISOString().slice(0, 10) },
-  RPT_PARETO_CLASSIFICATION:       { p_date_from: daysAgo(28), p_date_to: daysAgo(0),
-                                     p_basis: 'value' },
-  RPT_SUPPLIERS:                   {},
+  RPT_INVENTORY_STOCK:    { p_as_of: new Date().toISOString().slice(0, 10),
+                            p_farm_id: null, p_category: null, p_dead_stock_only: false },
+  RPT_CONSUMPTION_REPORT: { p_date_from: daysAgo(28), p_date_to: daysAgo(0),
+                            p_farm_id: null, p_category: null, p_group_by: 'item',
+                            p_hall_ids: [], p_formula_ids: [] },
+  RPT_SALES_TRANSFERS:    { p_date_from: daysAgo(60), p_date_to: daysAgo(0),
+                            p_farm_id: null, p_item_id: null, p_txn_type: null },
+  RPT_PURCHASES:          { p_date_from: daysAgo(60), p_date_to: daysAgo(0),
+                            p_farm_id: null, p_supplier_id: null, p_item_id: null },
+  RPT_PACKAGING:          { p_date_from: daysAgo(28), p_date_to: daysAgo(0),
+                            p_farm_id: null },
+  RPT_REORDER_POINT:      { p_farm_id: null, p_basis: 'value',
+                            p_abc_class: null, p_reorder_needed_only: null },
 };
 
 function daysAgo(d) {
@@ -84,12 +88,12 @@ function daysAgo(d) {
 // Per-report RPC name. Kept here (not registry.mjs) so this script
 // remains runnable even if registry is empty.
 const RPC = {
-  RPT_INVENTORY_VALUATION_SUMMARY: 'reporting_inventory_balance_as_of',
-  RPT_INVENTORY_LEDGER:            'reporting_inventory_ledger',
-  RPT_CONSUMPTION_ANALYTICS:       'reporting_consumption_summary',
-  RPT_INVENTORY_AGING:             'reporting_inventory_aging',
-  RPT_PARETO_CLASSIFICATION:       'reporting_pareto_classification',
-  RPT_SUPPLIERS:                   'reporting_suppliers_list',
+  RPT_INVENTORY_STOCK:    'reporting_inventory_stock',
+  RPT_CONSUMPTION_REPORT: 'reporting_consumption_report_v3',
+  RPT_SALES_TRANSFERS:    'reporting_sales_transfers_v3',
+  RPT_PURCHASES:          'reporting_purchases_v3',
+  RPT_PACKAGING:          'reporting_packaging_v3',
+  RPT_REORDER_POINT:      'reporting_reorder_point_v3',
 };
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {

@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState, useCallback } from 'react';
 import { Box, Plus, Trash2, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import { Farm } from '@/types/farm.types';
@@ -9,7 +9,10 @@ import { Input } from '@/components/ui/Input';
 import { Toggle } from '@/components/ui/Toggle';
 import { Modal } from '@/components/ui/Modal';
 import { DEFAULT_FARM_INGREDIENTS } from '@/utils/constants';
+import { normalizeName } from '@/utils/helpers';
+import { PACKAGING_UNITS } from '@/types/input.types';
 import { supabase } from '@/lib/supabase';
+import { rpcError } from '@/utils/rpcError';
 
 interface FarmItemsPanelProps {
   farm: Farm;
@@ -25,7 +28,7 @@ interface FarmItemRow {
   is_active: boolean;
 }
 
-const unitOptions = ['کیلوگرم', 'لیتر', 'گرم', 'تن', 'عدد', 'بسته', 'متر'];
+const FEED_UNIT_OPTIONS = ['کیلوگرم', 'لیتر', 'گرم', 'تن', 'عدد', 'بسته', 'متر'];
 
 const labels = {
   feed: {
@@ -44,7 +47,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
   const [defaultOpen, setDefaultOpen] = useState(false);
   const [selectedDefaults, setSelectedDefaults] = useState<Record<string, boolean>>({});
   const [manualName, setManualName] = useState('');
-  const [manualUnit, setManualUnit] = useState('کیلوگرم');
+  const [manualUnit, setManualUnit] = useState(type === 'packaging' ? 'عدد' : 'کیلوگرم');
   const [manualPriority, setManualPriority] = useState('');
   const [manualReorder, setManualReorder] = useState('');
 
@@ -79,11 +82,41 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
     loadItems();
   }, [farm.id, type]);
 
+  // Reset manual unit when type changes (packaging → count-based only)
+  useEffect(() => {
+    setManualUnit(type === 'packaging' ? 'عدد' : 'کیلوگرم');
+  }, [type]);
+
   const existingNames = useMemo(() => new Set(items.map((i) => i.name)), [items]);
 
   const availableDefaults = useMemo(() => {
     return DEFAULT_FARM_INGREDIENTS.filter((item) => !existingNames.has(item.name));
   }, [existingNames]);
+
+  // Sync an item name+unit into the global inputs catalogue so it appears
+  // in the Inputs management page. Uses rpc_admin_create_input which is
+  // SECURITY DEFINER and handles unique-violation via server-side check.
+  const ensureInputCatalogueEntry = useCallback(async (name: string, unit: string) => {
+    const normalized = normalizeName(name);
+    if (!normalized) return;
+    // Check if already exists in catalogue (avoid unnecessary RPC calls)
+    const { data: existing } = await supabase
+      .from('inputs').select('id').eq('name', normalized).maybeSingle();
+    if (existing) return;
+
+    // Insert into global catalogue via admin RPC
+    const { error } = await supabase.rpc('rpc_admin_create_input', {
+      p_name: normalized,
+      p_category: type,
+      p_default_unit: unit,
+      p_description: '',
+      p_is_active: true,
+    });
+    if (error) {
+      // Log but don't block — farm_items insert already succeeded
+      console.warn(`Sync to inputs catalogue failed for "${normalized}":`, rpcError(error));
+    }
+  }, [type]);
 
   const handleAddDefaults = async () => {
     const selected = Object.entries(selectedDefaults)
@@ -106,11 +139,17 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
       is_active: true,
     }));
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await supabase.from('farm_items').insert(payload as any);
     if (error) {
       toast.error('خطا در افزودن نهاده‌های پیش‌فرض');
       return;
     }
+
+    // Sync each item into the global inputs catalogue
+    await Promise.allSettled(selected.map((item) =>
+      ensureInputCatalogueEntry(item!.name, item!.unit)
+    ));
 
     toast.success('نهاده‌های انتخاب شده اضافه شدند');
     setSelectedDefaults({});
@@ -124,20 +163,25 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
       return;
     }
 
+    const name = normalizeName(manualName);
     const { error } = await supabase.from('farm_items').insert({
       farm_id: farm.id,
       category: type,
-      name: manualName.trim(),
+      name,
       unit: manualUnit,
       priority: manualPriority ? Number(manualPriority) : 100,
       reorder_point: manualReorder ? Number(manualReorder) : 0,
       is_active: true,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     if (error) {
       toast.error('خطا در افزودن آیتم جدید');
       return;
     }
+
+    // Sync to global inputs catalogue
+    await ensureInputCatalogueEntry(name, manualUnit);
 
     toast.success('آیتم جدید اضافه شد');
     setManualName('');
@@ -191,7 +235,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
           placeholder="نام نهاده یا قلم"
         />
         <Select label="واحد" value={manualUnit} onChange={(e) => setManualUnit(e.target.value)}>
-          {unitOptions.map((unit) => (
+          {(type === 'packaging' ? PACKAGING_UNITS : FEED_UNIT_OPTIONS).map((unit) => (
             <option key={unit} value={unit}>{unit}</option>
           ))}
         </Select>
@@ -232,7 +276,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
               </div>
               <div className="flex items-center gap-2">
                 <Toggle checked={item.is_active} onChange={() => handleToggle(item)} />
-                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(item.id)}>
+                <Button variant="ghost" size="icon" className="text-[var(--c-error)]" onClick={() => handleDelete(item.id)}>
                   <Trash2 size={16} />
                 </Button>
               </div>

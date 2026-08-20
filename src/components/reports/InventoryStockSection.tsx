@@ -14,10 +14,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Download, Loader2, History, AlertTriangle } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { ReportTable } from './ReportTable';
 import { getReportColumnsFromBff } from './reportColumns';
 import { useReportSection } from '@/hooks/useReportSection';
@@ -25,14 +24,17 @@ import { useAuthStore } from '@/store/authStore';
 import { triggerServerExport } from '@/lib/excelServer';
 import { cn } from '@/utils/cn';
 import { toPersianDigits } from '@/utils/persianNumbers';
+import { rpcError } from '@/utils/rpcError';
 import { REPORT_EMPTY_MESSAGE } from '@/types/report.types';
 import type { ColumnDef, SortState } from '@/types/report.types';
+import { supabase } from '@/lib/supabase';
 
 interface InventoryStockSectionProps {
   asOf: string;
   farm_id: string | null;
   category: string | null;
   deadStockOnly: boolean;
+  item_ids?: string[];
 }
 
 type StockRow = {
@@ -50,6 +52,7 @@ type StockRow = {
   age_bucket: string | null;
   is_dead_stock: boolean;
   as_of_date: string;
+  reorder_point?: number;
 };
 
 const PAGE_SIZE = 15;
@@ -68,18 +71,39 @@ function sortRows<T extends Record<string, unknown>>(rows: T[], sort: SortState 
   });
 }
 
+function getStockColor(onHand: number, reorderPoint: number): string {
+  if (reorderPoint <= 0) {
+    return 'text-[var(--c-fg)]';
+  }
+  if (onHand >= reorderPoint) {
+    return 'text-[var(--c-success)] font-semibold';
+  }
+  if (onHand <= 0) {
+    return 'text-[var(--c-error)] font-bold';
+  }
+  const ratio = onHand / reorderPoint;
+  if (ratio <= 0.1) {
+    return 'text-[var(--c-error)] font-bold animate-pulse';
+  }
+  if (ratio <= 0.5) {
+    return 'text-[var(--c-error)] font-semibold';
+  }
+  return 'text-[var(--c-warning)] font-medium';
+}
+
 export function InventoryStockSection({
   asOf,
   farm_id,
   category,
   deadStockOnly,
+  item_ids,
 }: InventoryStockSectionProps) {
   const navigate = useNavigate();
   const profile = useAuthStore((s) => s.profile);
   const role = profile?.role ?? 'operator';
   const basePath = role === 'admin' ? '/admin' : role === 'supervisor' ? '/supervisor' : '/operator';
 
-  const { rows, totalCount, isLoading, error, refetch } = useReportSection<StockRow>(
+  const { rows, isLoading, error, refetch } = useReportSection<StockRow>(
     'reporting_inventory_stock',
     {
       p_as_of: asOf,
@@ -87,39 +111,25 @@ export function InventoryStockSection({
       p_category: category,
       p_dead_stock_only: deadStockOnly,
     },
+    !!farm_id,
   );
 
   const baseColumns = useMemo<ColumnDef[]>(() => getReportColumnsFromBff('RPT_INVENTORY_STOCK'), []);
 
-  // Custom render() on days_since_last_movement + is_dead_stock so the
-  // operator can scan dead stock at a glance.
   const columns = useMemo<ColumnDef[]>(() => {
     return baseColumns.map((c): ColumnDef => {
-      if (c.key === 'is_dead_stock') {
+      if (c.key === 'on_hand_qty') {
         return {
           ...c,
-          render: (_row, raw) => {
-            const isDead = raw === true;
-            return isDead ? (
-              <Badge className="bg-red-100 text-red-700">راکد</Badge>
-            ) : (
-              <span className="text-[var(--c-muted-fg)]">عادی</span>
-            );
-          },
-        };
-      }
-      if (c.key === 'days_since_last_movement') {
-        return {
-          ...c,
-          render: (_row, raw) => {
-            const days = typeof raw === 'number' ? raw : Number(raw);
-            if (!Number.isFinite(days)) return <span className="text-[var(--c-muted-fg)]">—</span>;
-            const isOld = days >= 60;
-            const display = toPersianDigits(String(days));
-            return isOld ? (
-              <span className="font-semibold text-red-600 tabular-nums">{display}</span>
-            ) : (
-              <span className="tabular-nums">{display}</span>
+          render: (row, raw) => {
+            const qty = typeof raw === 'number' ? raw : Number(raw);
+            const rPoint = Number((row as unknown as StockRow).reorder_point ?? 0);
+            const colorClass = getStockColor(qty, rPoint);
+            const display = Number.isFinite(qty) ? qty.toLocaleString('en-US') : String(raw ?? '');
+            return (
+              <span dir="ltr" className={cn("tabular-nums font-medium", colorClass)}>
+                {toPersianDigits(display)}
+              </span>
             );
           },
         };
@@ -134,35 +144,66 @@ export function InventoryStockSection({
     columns.map((c) => c.key),
   );
   const [isExporting, setIsExporting] = useState(false);
+  const [reorderPoints, setReorderPoints] = useState<Record<string, number>>({});
 
   useEffect(() => {
     setPage(1);
-  }, [asOf, farm_id, category, deadStockOnly]);
+  }, [asOf, farm_id, category, deadStockOnly, item_ids]);
 
-  const sortedRows = useMemo(() => sortRows(rows, sort), [rows, sort]);
+  useEffect(() => {
+    if (!farm_id) {
+      setReorderPoints({});
+      return;
+    }
+    let cancelled = false;
+    async function loadReorderPoints() {
+      try {
+        const { data, error: rpErr } = await supabase
+          .from('farm_items')
+          .select('id, reorder_point')
+          .eq('farm_id', farm_id as string)
+          .eq('is_active', true);
+        if (rpErr) throw rpErr;
+        if (!cancelled && data) {
+          const map: Record<string, number> = {};
+          data.forEach((item) => {
+            map[item.id] = Number(item.reorder_point ?? 0);
+          });
+          setReorderPoints(map);
+        }
+      } catch (err) {
+        console.error('Error fetching reorder points:', err);
+      }
+    }
+    loadReorderPoints();
+    return () => {
+      cancelled = true;
+    };
+  }, [farm_id]);
+
+  const mergedRows = useMemo(() => {
+    let list = rows.map((row) => ({
+      ...row,
+      reorder_point: reorderPoints[row.item_id] ?? 0,
+    }));
+
+    if (item_ids && item_ids.length > 0) {
+      const selectedSet = new Set(item_ids);
+      list = list.filter((row) => selectedSet.has(row.item_id));
+    }
+
+    return list;
+  }, [rows, reorderPoints, item_ids]);
+
+  const sortedRows = useMemo(() => sortRows(mergedRows, sort), [mergedRows, sort]);
   const pageRows = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
     return sortedRows.slice(start, start + PAGE_SIZE);
   }, [sortedRows, page]);
 
-  const totals = useMemo(
-    () => ({
-      on_hand_qty: rows.reduce((acc, r) => acc + (r.on_hand_qty ?? 0), 0),
-      value_rial: rows.reduce((acc, r) => acc + (r.value_rial ?? 0), 0),
-      dead_stock_count: rows.filter((r) => r.is_dead_stock).length,
-    }),
-    [rows],
-  );
-
   const onRowClick = (row: Record<string, unknown>) => {
     const itemId = String(row.item_id ?? '');
     if (!itemId) return;
-    // Admin/supervisor/operator all land on the per-item movement history.
-    // InventoryItemHistoryPage uses only the URL :itemId param; farm
-    // scoping is implicit via RLS (the user's JWT scopes the query).
-    // Followed code-reviewer-minimax-m3 follow-up: dropped the
-    // `?farm=${farmId}` suffix — InventoryItemHistoryPage doesn't read
-    // it; URL stays clean.
     navigate(`${basePath}/inventory/${itemId}`);
   };
 
@@ -176,36 +217,29 @@ export function InventoryStockSection({
         farm_id,
         category,
         deadStockOnly,
+        item_ids,
       });
       toast.success('فایل اکسل موجودی انبار آماده شد', { id: tid });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'خطای ناشناخته', { id: tid });
+      toast.error(rpcError(e) ?? 'خطای ناشناخته', { id: tid });
     } finally {
       setIsExporting(false);
     }
   };
 
+  if (!farm_id) {
+    return (
+      <div className="rounded-[14px] border border-dashed border-[var(--c-border)] bg-[var(--c-card)]/40 p-12 text-center text-sm text-[var(--c-muted-fg)]">
+        <p className="font-medium text-[var(--c-fg)]">لطفاً ابتدا یک فارم انتخاب کنید</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-3 text-sm text-[var(--c-muted-fg)] flex-wrap">
-          <span>
-            {isLoading
-              ? 'در حال دریافت…'
-              : `${toPersianDigits(String(totalCount))} قلم در تاریخ ${toPersianDigits(asOf)}`}
-          </span>
-          {!isLoading && (
-            <span className="font-mono inline-flex items-center gap-3">
-              <span>· جمع موجودی: {toPersianDigits(String(totals.on_hand_qty))}</span>
-              <span>· جمع ارزش: {toPersianDigits(totals.value_rial.toLocaleString('en-US'))} ریال</span>
-              {totals.dead_stock_count > 0 && (
-                <span className="inline-flex items-center gap-1 text-red-600">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  اقلام راکد: {toPersianDigits(String(totals.dead_stock_count))}
-                </span>
-              )}
-            </span>
-          )}
+          {isLoading && <span>در حال دریافت…</span>}
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="ghost" onClick={refetch} disabled={isLoading}>
@@ -215,7 +249,7 @@ export function InventoryStockSection({
             size="sm"
             variant="primary"
             onClick={onExportClick}
-            disabled={isExporting || rows.length === 0}
+            disabled={isExporting || mergedRows.length === 0}
             aria-busy={isExporting}
           >
             {isExporting ? <Loader2 className="w-4 h-4 ml-1.5 animate-spin" /> : <Download className="w-4 h-4 ml-1.5" />}
@@ -224,13 +258,8 @@ export function InventoryStockSection({
         </div>
       </div>
 
-      <p className="text-xs text-[var(--c-muted-fg)] flex items-center gap-1.5">
-        <History className="w-3.5 h-3.5" />
-        کلیک روی هر ردیف، گردش ۹۰ روز اخیر همان کالا را باز می‌کند.
-      </p>
-
       {error ? (
-        <div className={cn('rounded-[14px] border border-dashed border-red-300 bg-red-50 p-6 text-center text-sm text-red-700')}>
+        <div className={cn('rounded-[14px] border border-dashed border-[color-mix(in_srgb,var(--c-destructive)_30%,transparent)] bg-[color-mix(in_srgb,var(--c-destructive)_10%,transparent)] p-6 text-center text-sm text-[var(--c-error)]')}>
           <p className="font-bold mb-2">خطا در دریافت گزارش موجودی انبار</p>
           <p className="text-xs">{error}</p>
           <Button size="sm" variant="outline" className="mt-3" onClick={refetch}>تلاش مجدد</Button>
@@ -245,7 +274,7 @@ export function InventoryStockSection({
           isLoading={isLoading}
           page={page}
           pageSize={PAGE_SIZE}
-          totalCount={totalCount}
+          totalCount={mergedRows.length}
           onPageChange={setPage}
           sort={sort}
           onSortChange={setSort}

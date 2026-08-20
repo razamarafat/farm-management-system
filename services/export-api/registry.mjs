@@ -214,10 +214,8 @@ export const reportRegistry = {
       p_date_from: body.date_from,
       p_date_to:   body.date_to,
       p_farm_id:   body.farm_id || null,
-      // category is forced to 'packaging' regardless of caller body —
-      // packaging items only exist in the packaging category. Future
-      // pass may let the operator pick a sub-category subtype.
-      p_category:  'packaging',
+      // p_category intentionally omitted — reporting_packaging_v3 hard-codes
+      // category='packaging' in SQL; passing it causes PGRST202 (unknown param).
     }),
     columns: [
       { key: 'item_name',     header: 'کالای بسته‌بندی',  width: 28 },

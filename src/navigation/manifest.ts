@@ -21,8 +21,8 @@ export interface NavItem {
   label: string;
   labelByRole?: Partial<Record<Role, string>>;
   icon: LucideIcon;
-  /** Tile color token (matches existing Tile usage). */
-  color: 'blue' | 'green' | 'orange' | 'purple' | 'teal' | 'red' | 'indigo' | 'amber' | 'cyan' | 'slate' | 'rose';
+  /** Tile color token — Harvest & Earth palette. */
+  color: 'sage' | 'forest' | 'olive' | 'mint' | 'grain' | 'terracotta' | 'clay' | 'earth' | 'sky' | 'sand' | 'red';
   /** Roles that see this item. */
   roles: Role[];
 }
@@ -33,7 +33,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'حواله‌های مصرف',
     labelByRole: { supervisor: 'مشاهده حواله‌ها', operator: 'ثبت مصرف روزانه' },
     icon: ClipboardList,
-    color: 'blue',
+    color: 'sage',
     roles: ['admin', 'supervisor', 'operator'],
   },
   {
@@ -41,14 +41,14 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'خرید و انتقال',
     labelByRole: { supervisor: 'مشاهده خریدها', operator: 'ثبت خرید/انتقال' },
     icon: ShoppingCart,
-    color: 'indigo',
+    color: 'forest',
     roles: ['admin', 'supervisor', 'operator'],
   },
   {
     path: 'reports',
     label: 'گزارشات',
     icon: FileText,
-    color: 'cyan',
+    color: 'sky',
     roles: ['admin', 'supervisor', 'operator'],
   },
   {
@@ -56,7 +56,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'مدیریت فرمول‌ها',
     labelByRole: { supervisor: 'فرمول‌ها و آنالیز', operator: 'فرمول‌ها' },
     icon: FlaskConical,
-    color: 'purple',
+    color: 'olive',
     roles: ['admin', 'supervisor', 'operator'],
   },
   {
@@ -64,20 +64,20 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'موجودی انبار',
     labelByRole: { operator: 'انبارداری' },
     icon: Package,
-    color: 'teal',
+    color: 'mint',
     roles: ['admin', 'supervisor', 'operator'],
   },
   {
     path: 'reorder',
     label: 'نقطه سفارش',
     icon: AlertTriangle,
-    color: 'amber',
+    color: 'grain',
     roles: ['admin', 'supervisor', 'operator'],
   },
-  { path: 'users', label: 'مدیریت کاربران', icon: Users, color: 'rose', roles: ['admin'] },
-  { path: 'farms', label: 'مدیریت فارم‌ها', icon: Warehouse, color: 'indigo', roles: ['admin'] },
-  { path: 'inputs', label: 'تعریف نهاده‌ها', icon: Wheat, color: 'amber', roles: ['admin'] },
-  { path: 'suppliers', label: 'تامین‌کنندگان', icon: Truck, color: 'blue', roles: ['admin'] },
+  { path: 'users', label: 'مدیریت کاربران', icon: Users,    color: 'terracotta', roles: ['admin'] },
+  { path: 'farms', label: 'مدیریت فارم‌ها', icon: Warehouse, color: 'earth', roles: ['admin'] },
+  { path: 'inputs', label: 'تعریف نهاده‌ها', icon: Wheat, color: 'clay', roles: ['admin'] },
+  { path: 'suppliers', label: 'تامین‌کنندگان', icon: Truck, color: 'sand', roles: ['admin'] },
 ];
 
 export const DASHBOARD_NAV_ITEM = {

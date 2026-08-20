@@ -284,9 +284,9 @@ export default function InventoryPage() {
       return <Badge variant="secondary">تمام شده</Badge>;
     }
     if (balance.balance <= balance.reorder_point) {
-      return <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">نقطه سفارش</Badge>;
+      return <Badge className="bg-[color-mix(in_srgb,var(--c-warning)_16%,transparent)] text-[var(--c-warning)]">نقطه سفارش</Badge>;
     }
-    return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">موجود</Badge>;
+    return <Badge className="bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)] text-[var(--c-success)]">موجود</Badge>;
   };
 
   const filteredItems = farmItems.filter((item) => {
@@ -338,7 +338,7 @@ export default function InventoryPage() {
             </select>
             {isLoadingFarms && <span className="block mt-1 text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
             {farmsError && (
-              <button type="button" onClick={loadFarms} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+              <button type="button" onClick={loadFarms} className="mt-1 text-xs text-[var(--c-error)] underline">
                 تلاش مجدد
               </button>
             )}
@@ -362,15 +362,15 @@ export default function InventoryPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 }}
             >
-              <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+              <Card className="bg-[color-mix(in_srgb,var(--c-info)_16%,transparent)] border-[color-mix(in_srgb,var(--c-info)_30%,transparent)]">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
-                      <Package className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <div className="w-10 h-10 rounded-full bg-[color-mix(in_srgb,var(--c-info)_30%,transparent)] flex items-center justify-center">
+                      <Package className="w-5 h-5 text-[var(--c-info)]" />
                     </div>
                     <div>
-                      <p className="text-xs text-blue-600 dark:text-blue-400">کل اقلام</p>
-                      <p className="text-xl font-bold text-blue-700 dark:text-blue-300">{toPersianNumbers(stats.totalItems)}</p>
+                      <p className="text-xs text-[var(--c-info)]">کل اقلام</p>
+                      <p className="text-xl font-bold text-[var(--c-info)]">{toPersianNumbers(stats.totalItems)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -383,15 +383,15 @@ export default function InventoryPage() {
               transition={{ delay: 0.1 }}
             >
               <Link to={`${profile?.role === 'admin' ? '/admin' : profile?.role === 'supervisor' ? '/supervisor' : '/operator'}/reorder`} className="block">
-                <Card className="bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:shadow-md transition-shadow cursor-pointer">
+                <Card className="bg-[color-mix(in_srgb,var(--c-warning)_16%,transparent)] border-[color-mix(in_srgb,var(--c-warning)_30%,transparent)] hover:shadow-md transition-shadow cursor-pointer">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-                        <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                      <div className="w-10 h-10 rounded-full bg-[color-mix(in_srgb,var(--c-warning)_30%,transparent)] flex items-center justify-center">
+                        <AlertTriangle className="w-5 h-5 text-[var(--c-warning)]" />
                       </div>
                       <div>
-                        <p className="text-xs text-amber-600 dark:text-amber-400">نقطه سفارش</p>
-                        <p className="text-xl font-bold text-amber-700 dark:text-amber-300">{toPersianNumbers(stats.lowStock)}</p>
+                        <p className="text-xs text-[var(--c-warning)]">نقطه سفارش</p>
+                        <p className="text-xl font-bold text-[var(--c-warning)]">{toPersianNumbers(stats.lowStock)}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -407,7 +407,7 @@ export default function InventoryPage() {
               onClick={() => setActiveTab('balance')}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
                 activeTab === 'balance'
-                  ? 'bg-[var(--c-primary)] text-white'
+                  ? 'bg-[var(--c-primary)] text-[var(--c-primary-fg)]'
                   : 'text-[var(--c-muted-fg)] hover:bg-[var(--c-muted)]'
               }`}
             >
@@ -418,7 +418,7 @@ export default function InventoryPage() {
               onClick={() => setActiveTab('transactions')}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
                 activeTab === 'transactions'
-                  ? 'bg-[var(--c-primary)] text-white'
+                  ? 'bg-[var(--c-primary)] text-[var(--c-primary-fg)]'
                   : 'text-[var(--c-muted-fg)] hover:bg-[var(--c-muted)]'
               }`}
             >
@@ -429,7 +429,7 @@ export default function InventoryPage() {
               onClick={() => setActiveTab('initial')}
               className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${
                 activeTab === 'initial'
-                  ? 'bg-[var(--c-primary)] text-white'
+                  ? 'bg-[var(--c-primary)] text-[var(--c-primary-fg)]'
                   : 'text-[var(--c-muted-fg)] hover:bg-[var(--c-muted)]'
               }`}
             >
@@ -455,8 +455,8 @@ export default function InventoryPage() {
                 onClick={() => setCategoryFilter('feed')}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   categoryFilter === 'feed'
-                    ? 'bg-green-600 text-white'
-                    : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50'
+                    ? 'bg-[var(--c-success)] text-[var(--c-primary-fg)]'
+                    : 'bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)] text-[var(--c-success)] hover:bg-[color-mix(in_srgb,var(--c-success)_30%,transparent)]'
                 }`}
               >
                 نهاده‌ها
@@ -465,8 +465,8 @@ export default function InventoryPage() {
                 onClick={() => setCategoryFilter('packaging')}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   categoryFilter === 'packaging'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'
+                    ? 'bg-[var(--c-info)] text-[var(--c-primary-fg)]'
+                    : 'bg-[color-mix(in_srgb,var(--c-info)_16%,transparent)] text-[var(--c-info)] hover:bg-[color-mix(in_srgb,var(--c-info)_30%,transparent)]'
                 }`}
               >
                 بسته‌بندی
@@ -479,7 +479,7 @@ export default function InventoryPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => openAddModal('initial')}
-                  className="text-purple-600 border-purple-300 hover:bg-purple-50"
+                  className="text-[var(--c-accent)] border-[color-mix(in_srgb,var(--c-accent)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--c-accent)_12%,transparent)]"
                 >
                   <Archive className="w-4 h-4 ml-1" />
                   موجودی اولیه
@@ -488,7 +488,7 @@ export default function InventoryPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => openAddModal('purchase')}
-                  className="text-green-600 border-green-300 hover:bg-green-50"
+                  className="text-[var(--c-success)] border-[color-mix(in_srgb,var(--c-success)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--c-success)_12%,transparent)]"
                 >
                   <ShoppingCart className="w-4 h-4 ml-1" />
                   خرید
@@ -497,7 +497,7 @@ export default function InventoryPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => openAddModal('transfer_in')}
-                  className="text-teal-600 border-teal-300 hover:bg-teal-50"
+                  className="text-[#3A7D5C] border-[color-mix(in_srgb,#3A7D5C_30%,transparent)] hover:bg-[color-mix(in_srgb,#3A7D5C_12%,transparent)]"
                 >
                   <ArrowDownLeft className="w-4 h-4 ml-1" />
                   انتقال ورودی
@@ -506,7 +506,7 @@ export default function InventoryPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => openAddModal('transfer_out')}
-                  className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                  className="text-[var(--c-warning)] border-[color-mix(in_srgb,var(--c-warning)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--c-warning)_12%,transparent)]"
                 >
                   <ArrowUpRight className="w-4 h-4 ml-1" />
                   انتقال خروجی
@@ -516,7 +516,7 @@ export default function InventoryPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => openAddModal('adjustment')}
-                    className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                    className="text-[var(--c-secondary)] border-[color-mix(in_srgb,var(--c-secondary)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--c-secondary)_12%,transparent)]"
                   >
                     <RefreshCw className="w-4 h-4 ml-1" />
                     تعدیل
@@ -576,30 +576,30 @@ export default function InventoryPage() {
                                   <span className="font-medium text-[var(--c-fg)]">{balance.item_name}</span>
                                 </td>
                                 <td className="py-3 px-4 text-center">
-                                  <Badge className={balance.item_category === 'feed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}>
+                                  <Badge className={balance.item_category === 'feed' ? 'bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)] text-[var(--c-success)]' : 'bg-[color-mix(in_srgb,var(--c-info)_16%,transparent)] text-[var(--c-info)]'}>
                                     {balance.item_category === 'feed' ? 'نهاده' : 'بسته‌بندی'}
                                   </Badge>
                                 </td>
                                 <td className="py-3 px-4 text-center text-sm text-[var(--c-muted-fg)]">{balance.item_unit}</td>
                                 <td className="py-3 px-4 text-center text-sm">
                                   {balance.has_initial ? (
-                                    <span className="text-purple-600 font-medium">{toPersianNumbers(balance.initial_qty.toLocaleString())}</span>
+                                    <span className="text-[var(--c-accent)] font-medium">{toPersianNumbers(balance.initial_qty.toLocaleString())}</span>
                                   ) : (
                                     <span className="text-[var(--c-muted-fg)]">—</span>
                                   )}
                                 </td>
-                                <td className="py-3 px-4 text-center text-sm text-green-600 font-medium">
+                                <td className="py-3 px-4 text-center text-sm text-[var(--c-success)] font-medium">
                                   {toPersianNumbers(balance.total_in.toLocaleString())}
                                 </td>
-                                <td className="py-3 px-4 text-center text-sm text-red-600 font-medium">
+                                <td className="py-3 px-4 text-center text-sm text-[var(--c-error)] font-medium">
                                   {toPersianNumbers(balance.total_out.toLocaleString())}
                                 </td>
                                 <td className="py-3 px-4 text-center">
                                   <span className={`font-bold text-lg ${
-                                    balance.balance < 0 ? 'text-red-600' :
+                                    balance.balance < 0 ? 'text-[var(--c-error)]' :
                                     balance.balance === 0 ? 'text-[var(--c-muted-fg)]' :
-                                    balance.balance <= balance.reorder_point ? 'text-amber-600' :
-                                    'text-green-600'
+                                    balance.balance <= balance.reorder_point ? 'text-[var(--c-warning)]' :
+                                    'text-[var(--c-success)]'
                                   }`}>
                                     {toPersianNumbers(balance.balance.toLocaleString())}
                                   </span>
@@ -670,7 +670,7 @@ export default function InventoryPage() {
                         </select>
                         {isLoadingFarmItems && <span className="block mt-1 text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
                         {farmItemsError && (
-                          <button type="button" onClick={loadFarmItems} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                          <button type="button" onClick={loadFarmItems} className="mt-1 text-xs text-[var(--c-error)] underline">
                             تلاش مجدد
                           </button>
                         )}
@@ -771,10 +771,10 @@ export default function InventoryPage() {
                                           {TXN_TYPE_LABELS[txn.txn_type as TransactionType] || txn.txn_type}
                                         </Badge>
                                       </td>
-                                      <td className="py-3 px-4 text-center text-sm text-green-600 font-medium">
+                                      <td className="py-3 px-4 text-center text-sm text-[var(--c-success)] font-medium">
                                         {txn.qty_in > 0 ? `+${toPersianNumbers(txn.qty_in.toLocaleString())}` : '—'}
                                       </td>
-                                      <td className="py-3 px-4 text-center text-sm text-red-600 font-medium">
+                                      <td className="py-3 px-4 text-center text-sm text-[var(--c-error)] font-medium">
                                         {txn.qty_out > 0 ? `-${toPersianNumbers(txn.qty_out.toLocaleString())}` : '—'}
                                       </td>
                                       <td className="py-3 px-4 text-center text-sm text-[var(--c-muted-fg)]">
@@ -801,7 +801,7 @@ export default function InventoryPage() {
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => setDeleteTxnId(txn.id)}
-                                            className="text-red-600 hover:bg-red-50"
+                                            className="text-[var(--c-error)] hover:bg-[color-mix(in_srgb,var(--c-destructive)_10%,transparent)]"
                                             aria-label="حذف تراکنش"
                                           >
                                             <Trash2 className="w-4 h-4" />
@@ -848,8 +848,8 @@ export default function InventoryPage() {
                             key={balance.item_id}
                             className={`p-4 rounded-lg border-2 transition-all ${
                               balance.has_initial
-                                ? 'border-green-300 bg-green-50 dark:bg-green-900/10 dark:border-green-800'
-                                : 'border-purple-300 bg-purple-50 dark:bg-purple-900/10 dark:border-purple-800'
+                                ? 'border-[color-mix(in_srgb,var(--c-success)_30%,transparent)] bg-[color-mix(in_srgb,var(--c-success)_10%,transparent)]'
+                                : 'border-[color-mix(in_srgb,var(--c-accent)_30%,transparent)] bg-[color-mix(in_srgb,var(--c-accent)_10%,transparent)]'
                             }`}
                           >
                             <div className="flex items-start justify-between mb-3">
@@ -860,16 +860,16 @@ export default function InventoryPage() {
                                 </p>
                               </div>
                               {balance.has_initial ? (
-                                <CheckCircle className="w-5 h-5 text-green-600" />
+                                <CheckCircle className="w-5 h-5 text-[var(--c-success)]" />
                               ) : (
-                                <AlertTriangle className="w-5 h-5 text-purple-600" />
+                                <AlertTriangle className="w-5 h-5 text-[var(--c-accent)]" />
                               )}
                             </div>
 
                             {balance.has_initial ? (
                               <div className="text-center py-2">
                                 <p className="text-xs text-[var(--c-muted-fg)]">موجودی اولیه</p>
-                                <p className="text-2xl font-bold text-green-600">
+                                <p className="text-2xl font-bold text-[var(--c-success)]">
                                   {toPersianNumbers(balance.initial_qty.toLocaleString())}
                                 </p>
                                 <p className="text-xs text-[var(--c-muted-fg)]">{balance.item_unit}</p>
@@ -879,7 +879,7 @@ export default function InventoryPage() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="w-full text-purple-600 border-purple-300"
+                                  className="w-full text-[var(--c-accent)] border-[color-mix(in_srgb,var(--c-accent)_30%,transparent)]"
                                   onClick={() => {
                                     setFormData({ ...formData, item_id: balance.item_id });
                                     openAddModal('initial');
@@ -944,7 +944,7 @@ export default function InventoryPage() {
                   </select>
                   {isLoadingFarmItems && <span className="mt-1 block text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
                   {farmItemsError && (
-                    <button type="button" onClick={loadFarmItems} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                    <button type="button" onClick={loadFarmItems} className="mt-1 text-xs text-[var(--c-error)] underline">
                       تلاش مجدد
                     </button>
                   )}

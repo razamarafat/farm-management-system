@@ -245,7 +245,7 @@ const FarmHallsPanelInner = ({ farm }: FarmHallsPanelProps) => {
       )}
 
       {!isLoading && error && (
-        <div className="flex items-center gap-2 text-sm text-destructive">
+        <div className="flex items-center gap-2 text-sm text-[var(--c-error)]">
           <AlertTriangle size={14} />
           {error}
           <button onClick={fetchHalls} className="underline">تلاش مجدد</button>
@@ -292,14 +292,14 @@ const FarmHallsPanelInner = ({ farm }: FarmHallsPanelProps) => {
                 <button
                   onClick={() => handleToggleHall(hall)}
                   title={hall.is_active ? 'غیرفعال' : 'فعال'}
-                  className={`text-xs px-1 py-0.5 rounded ${hall.is_active ? 'bg-yellow-500 text-white' : 'bg-green-500 text-white'}`}
+                  className={`text-xs px-1 py-0.5 rounded ${hall.is_active ? 'bg-[var(--c-warning)] text-[var(--c-primary-fg)]' : 'bg-[var(--c-success)] text-[var(--c-primary-fg)]'}`}
                 >
                   {hall.is_active ? 'غیرفعال' : 'فعال'}
                 </button>
                 <button
                   onClick={() => handleDeleteHall(hall)}
                   title="حذف"
-                  className="text-white bg-red-500 rounded p-0.5"
+                  className="text-[var(--c-destructive-fg)] bg-[var(--c-destructive)] rounded p-0.5"
                 >
                   <Trash2 size={12} />
                 </button>

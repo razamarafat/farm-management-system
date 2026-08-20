@@ -140,7 +140,7 @@ export const UserList = () => {
                   variant="ghost"
                   size="icon"
                   onClick={() => setDeleteUser(user)}
-                  className="text-destructive"
+                  className="text-[var(--c-error)]"
                 >
                   <Trash2 size={16} />
                 </Button>
@@ -233,7 +233,7 @@ export const UserList = () => {
 
       {!isLoading && error && (
         <Card className="p-6 text-center space-y-3">
-          <AlertTriangle className="mx-auto text-destructive" />
+          <AlertTriangle className="mx-auto text-[var(--c-error)]" />
           <div className="text-sm">خطا در دریافت اطلاعات کاربران</div>
           <Button onClick={refetch}>تلاش مجدد</Button>
         </Card>

@@ -106,11 +106,11 @@ export const TXN_TYPE_LABELS: Record<TransactionType, string> = {
 };
 
 export const TXN_TYPE_COLORS: Record<TransactionType, { bg: string; text: string; icon: string }> = {
-  initial: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-400', icon: 'Archive' },
-  purchase: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400', icon: 'Plus' },
-  consumption: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-400', icon: 'Minus' },
-  waste: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', icon: 'Trash2' },
-  transfer_in: { bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-700 dark:text-teal-400', icon: 'ArrowDownLeft' },
-  transfer_out: { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-400', icon: 'ArrowUpRight' },
-  adjustment: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400', icon: 'RefreshCw' },
+  initial: { bg: 'bg-[color-mix(in_srgb,var(--c-accent)_16%,transparent)]', text: 'text-[var(--c-accent)]', icon: 'Archive' },
+  purchase: { bg: 'bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)]', text: 'text-[var(--c-success)]', icon: 'Plus' },
+  consumption: { bg: 'bg-[color-mix(in_srgb,var(--c-info)_16%,transparent)]', text: 'text-[var(--c-info)]', icon: 'Minus' },
+  waste: { bg: 'bg-[color-mix(in_srgb,var(--c-destructive)_16%,transparent)]', text: 'text-[var(--c-error)]', icon: 'Trash2' },
+  transfer_in: { bg: 'bg-[#EEF3ED] dark:bg-[#1A2E22]', text: 'text-[#3A7D5C] dark:text-[#5EB880]', icon: 'ArrowDownLeft' },
+  transfer_out: { bg: 'bg-[color-mix(in_srgb,var(--c-warning)_16%,transparent)]', text: 'text-[var(--c-warning)]', icon: 'ArrowUpRight' },
+  adjustment: { bg: 'bg-[color-mix(in_srgb,var(--c-secondary)_16%,transparent)]', text: 'text-[var(--c-secondary)]', icon: 'RefreshCw' },
 };

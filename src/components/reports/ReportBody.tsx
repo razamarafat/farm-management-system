@@ -31,6 +31,7 @@
 // =====================================================================
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuthStore } from '@/store/authStore';
 // `useState` is used below for `filters` and `savedViewsOpen`.
 // (Pass 2 will also need it for `page`, `visibleColumns`, `sort` selectors.)
 import { FileText } from 'lucide-react';
@@ -285,10 +286,9 @@ function filterChromeForReport(id: string) {
   return {
     showDateFilter: id !== REPORT_IDS.REORDER_POINT,
     showHalls: id === REPORT_IDS.CONSUMPTION_REPORT,
-    showItems: id === REPORT_IDS.SALES_TRANSFERS || id === REPORT_IDS.PURCHASES,
+    showItems: id === REPORT_IDS.SALES_TRANSFERS || id === REPORT_IDS.PURCHASES || id === REPORT_IDS.INVENTORY_STOCK,
     showSuppliers: id === REPORT_IDS.PURCHASES,
     showCategories:
-      id === REPORT_IDS.INVENTORY_STOCK ||
       id === REPORT_IDS.CONSUMPTION_REPORT,
     showFormulas: id === REPORT_IDS.CONSUMPTION_REPORT,
     groupByOptions:
@@ -300,11 +300,9 @@ function filterChromeForReport(id: string) {
     basisOptions:
       id === REPORT_IDS.REORDER_POINT ? ABC_BASIS_OPTIONS : [],
     booleanFilterLabel:
-      id === REPORT_IDS.INVENTORY_STOCK
-        ? 'فقط اقلام راکد'
-        : id === REPORT_IDS.REORDER_POINT
-          ? 'فقط نیازمند سفارش'
-          : undefined,
+      id === REPORT_IDS.REORDER_POINT
+        ? 'فقط نیازمند سفارش'
+        : undefined,
   };
 }
 
@@ -327,6 +325,7 @@ function renderReportSection(
           farm_id={debouncedFilters.farmIds[0] ?? null}
           category={debouncedFilters.categories[0] ?? null}
           deadStockOnly={debouncedFilters.reorderNeededOnly === true}
+          item_ids={debouncedFilters.itemIds}
         />
       );
     case REPORT_IDS.CONSUMPTION_REPORT:
@@ -347,7 +346,7 @@ function renderReportSection(
           date_from={range.from}
           date_to={range.to}
           farm_id={debouncedFilters.farmIds[0] ?? null}
-          item_id={debouncedFilters.itemIds[0] ?? null}
+          item_ids={debouncedFilters.itemIds}
           txn_type={debouncedFilters.txnTypes[0] ?? null}
         />
       );
@@ -358,7 +357,7 @@ function renderReportSection(
           date_to={range.to}
           farm_id={debouncedFilters.farmIds[0] ?? null}
           supplier_id={debouncedFilters.supplierIds[0] ?? null}
-          item_id={debouncedFilters.itemIds[0] ?? null}
+          item_ids={debouncedFilters.itemIds}
         />
       );
     case REPORT_IDS.PACKAGING:
@@ -396,14 +395,15 @@ function ReportFilterBarForReport({
   onChange,
   onReset,
   id,
+  liveOptions,
 }: {
   filters: ReportFiltersState;
   onChange: (next: ReportFiltersState) => void;
   onReset: () => void;
   id: string;
+  liveOptions: ReportFilterOptions;
 }) {
   const chrome = useMemo(() => filterChromeForReport(id), [id]);
-  const liveOptions = useReportFilterOptions(filters.farmIds);
   return (
     <ReportFilterBar
       filters={filters}
@@ -421,6 +421,8 @@ function ReportFilterBarForReport({
       basisOptions={chrome.basisOptions}
       booleanFilterLabel={chrome.booleanFilterLabel}
       showDateFilter={chrome.showDateFilter}
+      itemFilterLabel={id === 'RPT_INVENTORY_STOCK' ? 'کالا' : 'اقلام'}
+      itemFilterPlaceholder={id === 'RPT_INVENTORY_STOCK' ? 'همه کالاها' : 'همه اقلام'}
     />
   );
 }
@@ -434,6 +436,9 @@ interface ReportBodyProps {
 }
 
 function ReportBodyInner({ report, userId }: ReportBodyProps) {
+  const profile = useAuthStore((s) => s.profile);
+  const isMultiFarm = !profile?.farm_id || profile?.role === 'admin' || profile?.role === 'supervisor';
+
   // ---------------------------------------------------------------------------
   // Filter state — kept here at the body level so the chrome can debounce
   // and pass shared params to whichever section is mounted. We initialise
@@ -445,6 +450,49 @@ function ReportBodyInner({ report, userId }: ReportBodyProps) {
     ...defaultReportFilters,
   }));
   const debouncedFilters = useDebouncedValue(filters, 200);
+
+  // Load options once at the body level and pass down to optimize queries
+  const liveOptions = useReportFilterOptions(filters.farmIds);
+
+  // Enforce single-select farm filter and handle saved view migration/degradation
+  useEffect(() => {
+    if (liveOptions.farmOptions.length > 0) {
+      if (!isMultiFarm || liveOptions.farmOptions.length === 1) {
+        if (filters.farmIds.length !== 1 || filters.farmIds[0] !== liveOptions.farmOptions[0].value) {
+          setFilters((prev) => ({
+            ...prev,
+            farmIds: [liveOptions.farmOptions[0].value],
+          }));
+        }
+      } else {
+        if (filters.farmIds.length > 1) {
+          setFilters((prev) => ({
+            ...prev,
+            farmIds: [prev.farmIds[0]],
+          }));
+        }
+      }
+    }
+  }, [liveOptions.farmOptions, filters.farmIds, isMultiFarm]);
+
+  // Sync/clean itemIds when liveOptions.itemOptions changes (e.g. selected farm changes)
+  useEffect(() => {
+    if (filters.itemIds.length > 0 && liveOptions.itemOptions.length > 0) {
+      const validIds = new Set(liveOptions.itemOptions.map((o) => o.value));
+      const filteredItemIds = filters.itemIds.filter((id) => validIds.has(id));
+      if (filteredItemIds.length !== filters.itemIds.length) {
+        setFilters((prev) => ({
+          ...prev,
+          itemIds: filteredItemIds,
+        }));
+      }
+    } else if (filters.itemIds.length > 0 && liveOptions.itemOptions.length === 0) {
+      setFilters((prev) => ({
+        ...prev,
+        itemIds: [],
+      }));
+    }
+  }, [liveOptions.itemOptions, filters.itemIds]);
 
   // ---------------------------------------------------------------------------
   // Saved views are persisted to the user-scope store keyed by
@@ -470,13 +518,16 @@ function ReportBodyInner({ report, userId }: ReportBodyProps) {
   }, [scope, report.id]);
 
   // ---------------------------------------------------------------------------
-  // Reset filters — always returns to canonical defaults, intentionally
-  // ignoring the per-report datePreset variations from the legacy
-  // ReportBody (the new design pivots on `asOf` automatically).
+  // Reset filters — always returns to canonical defaults, defaulting to the
+  // first available farm option for single-farm users, or empty for multi-farm.
   // ---------------------------------------------------------------------------
   const resetFilters = useCallback(() => {
-    setFilters({ ...defaultReportFilters });
-  }, []);
+    const firstFarmId = (!isMultiFarm || liveOptions.farmOptions.length === 1) ? liveOptions.farmOptions[0]?.value : null;
+    setFilters({
+      ...defaultReportFilters,
+      farmIds: firstFarmId ? [firstFarmId] : [],
+    });
+  }, [liveOptions.farmOptions, isMultiFarm]);
 
   // ---------------------------------------------------------------------------
   // Save current view as a named saved-view.
@@ -535,13 +586,6 @@ function ReportBodyInner({ report, userId }: ReportBodyProps) {
               <FileText className="w-5 h-5 text-[var(--c-primary)]" />
               <h2 className="text-xl font-bold text-[var(--c-fg)]">{report.title}</h2>
             </div>
-            <p className="text-sm text-[var(--c-muted-fg)] flex items-center gap-1.5" dir="ltr">
-              <span>{report.subtitle}</span>
-              <span aria-hidden="true">·</span>
-              <span className="font-mono truncate inline-block max-w-[180px]" title={report.id}>
-                {report.id}
-              </span>
-            </p>
           </div>
         </div>
 
@@ -550,6 +594,7 @@ function ReportBodyInner({ report, userId }: ReportBodyProps) {
           onChange={setFilters}
           onReset={resetFilters}
           id={report.id}
+          liveOptions={liveOptions}
         />
 
         {renderReportSection(

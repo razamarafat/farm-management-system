@@ -1,6 +1,6 @@
 // =====================================================================
 // reportColumns — per-report ColumnDef declarations for the 6 NEW
-// v3 reporting_* reports + the legacy RPT-001 + RPT_INVENTORY_VALUATION_SUMMARY.
+// v3 reporting_* reports + the legacy RPT-001.
 //
 // ColumnDef shape mirrors services/export-api/registry.mjs's `columns[]`
 // spec field-for-field on Persian header + key. We auto-derive
@@ -49,30 +49,15 @@ const rpt001: ColumnDef[] = build([
   { key: 'value_rial',   header: 'ارزش (ریال)', numeric: true },
 ]);
 
-// ----- RPT_INVENTORY_VALUATION_SUMMARY (legacy) ---------------------
-const rptInventoryValuationSummary: ColumnDef[] = build([
-  { key: 'item_name',    header: 'نام کالا' },
-  { key: 'item_unit',    header: 'واحد', align: 'center' },
-  { key: 'item_category',header: 'دسته', align: 'center' },
-  { key: 'farm_name',    header: 'فارم' },
-  { key: 'on_hand_qty',  header: 'موجودی', numeric: true },
-  { key: 'unit_cost',    header: 'قیمت واحد (آخرین خرید)', numeric: true },
-  { key: 'value_rial',   header: 'ارزش (ریال)', numeric: true },
-  { key: 'priced_on',    header: 'تاریخ آخرین قیمت', align: 'center' },
-]);
-
 // ----- RPT_INVENTORY_STOCK ------------------------------------------
 const rptInventoryStock: ColumnDef[] = build([
-  { key: 'farm_name',               header: 'فارم' },
   { key: 'item_name',               header: 'کالا' },
-  { key: 'item_category',           header: 'دسته', align: 'center' },
+  { key: 'item_category',           header: 'نوع', align: 'center' },
   { key: 'item_unit',               header: 'واحد', align: 'center' },
   { key: 'on_hand_qty',             header: 'موجودی', numeric: true },
-  { key: 'unit_cost',               header: 'قیمت واحد (ریال)', numeric: true },
-  { key: 'value_rial',              header: 'ارزش (ریال)', numeric: true },
-  { key: 'last_movement_date',      header: 'آخرین حرکت', align: 'center' },
-  { key: 'days_since_last_movement',header: 'سن (روز)', numeric: true, align: 'center' },
-  { key: 'is_dead_stock',           header: 'راکد', align: 'center' },
+  { key: 'value_rial',              header: 'موجودی ریالی', numeric: true },
+  { key: 'unit_cost',               header: 'فی خرید', numeric: true },
+  { key: 'reorder_point',           header: 'نقطه سفارش', numeric: true },
 ]);
 
 // ----- RPT_CONSUMPTION_REPORT ---------------------------------------
@@ -145,7 +130,6 @@ const rptReorderPoint: ColumnDef[] = build([
 // REPORT_CATALOG exactly.
 export const REPORT_COLUMNS: ColumnRegistry = {
   'RPT-001': rpt001,
-  'RPT_INVENTORY_VALUATION_SUMMARY': rptInventoryValuationSummary,
   'RPT_INVENTORY_STOCK': rptInventoryStock,
   'RPT_CONSUMPTION_REPORT': rptConsumptionReport,
   'RPT_SALES_TRANSFERS': rptSalesTransfers,

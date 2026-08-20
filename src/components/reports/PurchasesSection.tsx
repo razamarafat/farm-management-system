@@ -22,16 +22,16 @@ import { getReportColumnsFromBff } from './reportColumns';
 import { useReportSection } from '@/hooks/useReportSection';
 import { triggerServerExport } from '@/lib/excelServer';
 import { cn } from '@/utils/cn';
-import { toPersianDigits } from '@/utils/persianNumbers';
 import { REPORT_EMPTY_MESSAGE } from '@/types/report.types';
 import type { ColumnDef, SortState } from '@/types/report.types';
+import { rpcError } from '@/utils/rpcError';
 
 interface PurchasesSectionProps {
   date_from: string;
   date_to: string;
   farm_id: string | null;
   supplier_id: string | null;
-  item_id: string | null;
+  item_ids: string[];
 }
 
 type PurchaseRow = {
@@ -68,30 +68,31 @@ function sortRows<T extends Record<string, unknown>>(
   });
 }
 
-function sumColumn(rows: PurchaseRow[], key: keyof PurchaseRow): number {
-  return rows.reduce(
-    (acc, r) => acc + (typeof r[key] === 'number' ? (r[key] as number) : 0),
-    0,
-  );
-}
-
 export function PurchasesSection({
   date_from,
   date_to,
   farm_id,
   supplier_id,
-  item_id,
+  item_ids,
 }: PurchasesSectionProps) {
-  const { rows, totalCount, isLoading, error, refetch } = useReportSection<PurchaseRow>(
+  const { rows: rawRows, isLoading, error, refetch } = useReportSection<PurchaseRow>(
     'reporting_purchases_v3',
     {
       p_date_from: date_from,
       p_date_to: date_to,
       p_farm_id: farm_id,
       p_supplier_id: supplier_id,
-      p_item_id: item_id,
+      p_item_id: null,
     },
+    !!farm_id,
   );
+
+  const rows = useMemo(() => {
+    if (!item_ids || item_ids.length === 0) return rawRows;
+    return rawRows.filter((r) => item_ids.includes(r.item_id));
+  }, [rawRows, item_ids]);
+
+  const totalCount = rows.length;
 
   const columns = useMemo<ColumnDef[]>(
     () => getReportColumnsFromBff('RPT_PURCHASES'),
@@ -107,7 +108,7 @@ export function PurchasesSection({
 
   useEffect(() => {
     setPage(1);
-  }, [date_from, date_to, farm_id, supplier_id, item_id]);
+  }, [date_from, date_to, farm_id, supplier_id, item_ids]);
 
   // Client-side pagination + sort across the FULL result of the
   // current RPC call. The v3 RPC returns the unfiltered set; the SPA
@@ -120,17 +121,6 @@ export function PurchasesSection({
     return sortedRows.slice(start, start + PAGE_SIZE);
   }, [sortedRows, page]);
 
-  // Totals footer — sums qty + total_amount across the full row set
-  // (not the current page slice) so the operator sees the unfiltered
-  // window total. Matches the BFF registry's totalsColumns hints.
-  const totals = useMemo(
-    () => ({
-      qty: sumColumn(rows, 'qty'),
-      total_amount: sumColumn(rows, 'total_amount'),
-    }),
-    [rows],
-  );
-
   const onExportClick = async () => {
     if (isExporting) return;
     setIsExporting(true);
@@ -141,12 +131,12 @@ export function PurchasesSection({
         date_to,
         farm_id,
         supplier_id,
-        item_id,
+        item_id: item_ids[0] ?? null,
       });
       toast.success('فایل اکسل خریدها آماده شد', { id: tid });
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : 'خطای ناشناخته در ساخت فایل',
+        rpcError(e) ?? 'خطای ناشناخته در ساخت فایل',
         { id: tid },
       );
     } finally {
@@ -154,21 +144,19 @@ export function PurchasesSection({
     }
   };
 
+  if (!farm_id) {
+    return (
+      <div className="rounded-[14px] border border-dashed border-[var(--c-border)] bg-[var(--c-card)]/40 p-12 text-center text-sm text-[var(--c-muted-fg)]">
+        <p className="font-medium text-[var(--c-fg)]">لطفاً ابتدا یک فارم انتخاب کنید</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-3 text-sm text-[var(--c-muted-fg)]">
-          <span>
-            {isLoading
-              ? 'در حال دریافت…'
-              : `${toPersianDigits(String(totalCount))} خرید در بازهٔ انتخابی`}
-          </span>
-          {!isLoading && rows.length > 0 && (
-            <span className="font-mono">
-              · جمع مقدار: {toPersianDigits(String(totals.qty))} · جمع مبلغ:{' '}
-              {toPersianDigits(totals.total_amount.toLocaleString('en-US'))} ریال
-            </span>
-          )}
+          {isLoading && <span>در حال دریافت…</span>}
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -200,8 +188,8 @@ export function PurchasesSection({
       {error ? (
         <div
           className={cn(
-            'rounded-[14px] border border-dashed border-red-300 bg-red-50',
-            'p-6 text-center text-sm text-red-700',
+            'rounded-[14px] border border-dashed border-[color-mix(in_srgb,var(--c-destructive)_30%,transparent)] bg-[color-mix(in_srgb,var(--c-destructive)_10%,transparent)]',
+            'p-6 text-center text-sm text-[var(--c-error)]',
           )}
         >
           <p className="font-bold mb-2">خطا در دریافت گزارش خریدها</p>

@@ -18,9 +18,9 @@ import { getReportColumnsFromBff } from './reportColumns';
 import { useReportSection } from '@/hooks/useReportSection';
 import { triggerServerExport } from '@/lib/excelServer';
 import { cn } from '@/utils/cn';
-import { toPersianDigits } from '@/utils/persianNumbers';
 import { REPORT_EMPTY_MESSAGE } from '@/types/report.types';
 import type { ColumnDef, SortState } from '@/types/report.types';
+import { rpcError } from '@/utils/rpcError';
 
 interface ConsumptionReportSectionProps {
   date_from: string;
@@ -86,6 +86,7 @@ export function ConsumptionReportSection({
       p_hall_ids: hallIds ?? [],
       p_formula_ids: formulaIds ?? [],
     },
+    !!farm_id,
   );
 
   const baseColumns = useMemo<ColumnDef[]>(
@@ -129,15 +130,6 @@ export function ConsumptionReportSection({
     return sortedRows.slice(start, start + PAGE_SIZE);
   }, [sortedRows, page]);
 
-  const totals = useMemo(
-    () => ({
-      consumed_qty: rows.reduce((acc, r) => acc + (r.consumed_qty ?? 0), 0),
-      waste_qty: rows.reduce((acc, r) => acc + (r.waste_qty ?? 0), 0),
-      rial_value: rows.reduce((acc, r) => acc + (r.rial_value ?? 0), 0),
-    }),
-    [rows],
-  );
-
   const onExportClick = async () => {
     if (isExporting) return;
     setIsExporting(true);
@@ -154,28 +146,25 @@ export function ConsumptionReportSection({
       });
       toast.success('فایل اکسل گزارش مصرف آماده شد', { id: tid });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'خطای ناشناخته', { id: tid });
+      toast.error(rpcError(e) ?? 'خطای ناشناخته', { id: tid });
     } finally {
       setIsExporting(false);
     }
   };
 
+  if (!farm_id) {
+    return (
+      <div className="rounded-[14px] border border-dashed border-[var(--c-border)] bg-[var(--c-card)]/40 p-12 text-center text-sm text-[var(--c-muted-fg)]">
+        <p className="font-medium text-[var(--c-fg)]">لطفاً ابتدا یک فارم انتخاب کنید</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-3 text-sm text-[var(--c-muted-fg)] flex-wrap">
-          <span>
-            {isLoading
-              ? 'در حال دریافت…'
-              : `${toPersianDigits(String(totalCount))} ردیف گزارش مصرف در بازهٔ انتخابی`}
-          </span>
-          {!isLoading && (
-            <span className="font-mono">
-              · جمع مصرف: {toPersianDigits(totals.consumed_qty.toLocaleString('en-US'))} ·{' '}
-              جمع ضایعات: {toPersianDigits(totals.waste_qty.toLocaleString('en-US'))} ·{' '}
-              جمع ارزش ریالی: {toPersianDigits(totals.rial_value.toLocaleString('en-US'))} ریال
-            </span>
-          )}
+          {isLoading && <span>در حال دریافت…</span>}
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="ghost" onClick={refetch} disabled={isLoading}>
@@ -195,7 +184,7 @@ export function ConsumptionReportSection({
       </div>
 
       {error ? (
-        <div className={cn('rounded-[14px] border border-dashed border-red-300 bg-red-50 p-6 text-center text-sm text-red-700')}>
+        <div className={cn('rounded-[14px] border border-dashed border-[color-mix(in_srgb,var(--c-destructive)_30%,transparent)] bg-[color-mix(in_srgb,var(--c-destructive)_10%,transparent)] p-6 text-center text-sm text-[var(--c-error)]')}>
           <p className="font-bold mb-2">خطا در دریافت گزارش مصرف</p>
           <p className="text-xs">{error}</p>
           <Button size="sm" variant="outline" className="mt-3" onClick={refetch}>تلاش مجدد</Button>

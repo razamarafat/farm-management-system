@@ -29,6 +29,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+// Aliased because the PostgREST error is destructured as `rpcError` below.
+import { rpcError as toPersianError } from '@/utils/rpcError';
 
 /**
  * Local typed shape for supabase.rpc when called with a string-typed
@@ -41,12 +43,6 @@ type SupabaseRpcFn = (
   args: Record<string, unknown>,
 ) => Promise<{ data: unknown[] | null; error: { message: string } | null }>;
 
-// `as` is necessary because supabase.rpc's literal-typed overload does
-// not accept `string` names. The shape below is exactly what the
-// generic (T extends Record<string, unknown>) caller will receive
-// and re-cast on top of.
-const rpcFn = supabase.rpc as unknown as SupabaseRpcFn;
-
 export interface UseReportSectionResult<T extends Record<string, unknown>> {
   rows: T[];
   totalCount: number;
@@ -58,6 +54,7 @@ export interface UseReportSectionResult<T extends Record<string, unknown>> {
 export function useReportSection<T extends Record<string, unknown>>(
   rpcName: string,
   params: Record<string, unknown>,
+  enabled = true,
 ): UseReportSectionResult<T> {
   const [rows, setRows] = useState<T[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -84,11 +81,11 @@ export function useReportSection<T extends Record<string, unknown>>(
       // NOTE: `supabase.rpc` does not natively wire AbortSignal, but
       // we mark the in-flight ctrl as aborted on cleanup so unmount
       // drops the response instead of calling setRows on a dead tree.
-      const result = await rpcFn(rpcName, params);
+      const result = await (supabase.rpc as unknown as SupabaseRpcFn).bind(supabase)(rpcName, params);
       if (ctrl.signal.aborted) return;
       const { data, error: rpcError } = result;
       if (rpcError) {
-        setError(rpcError.message);
+        setError(toPersianError(rpcError) ?? 'خطای ناشناخته');
         setRows([]);
       } else {
         // Two-step cast: `unknown` first to satisfy strict mode's
@@ -98,7 +95,7 @@ export function useReportSection<T extends Record<string, unknown>>(
       }
     } catch (e) {
       if (ctrl.signal.aborted) return;
-      const msg = e instanceof Error ? e.message : 'خطای ناشناخته';
+      const msg = toPersianError(e) ?? 'خطای ناشناخته';
       setError(msg);
       setRows([]);
     } finally {
@@ -109,13 +106,19 @@ export function useReportSection<T extends Record<string, unknown>>(
   }, [rpcName, paramsKey]);
 
   useEffect(() => {
+    if (!enabled) {
+      setRows([]);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
     void fetchOnce();
     return () => {
       // Cleanup marks the in-flight ctrl as aborted; fetchOnce's
       // own check will short-circuit subsequent setState.
       inflightRef.current?.abort();
     };
-  }, [fetchOnce, refreshIndex]);
+  }, [fetchOnce, refreshIndex, enabled]);
 
   const refetch = useCallback(() => {
     setRefreshIndex((i) => i + 1);

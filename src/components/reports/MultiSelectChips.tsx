@@ -213,7 +213,7 @@ function MultiSelectChipsInner({
               <button
                 type="button"
                 onClick={() => onChange([])}
-                className="text-[var(--c-muted-fg)] hover:text-[var(--c-destructive)] transition-colors"
+                className="text-[var(--c-muted-fg)] hover:text-[var(--c-error)] transition-colors"
               >
                 پاک کردن همه
               </button>

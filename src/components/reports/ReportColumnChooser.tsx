@@ -137,7 +137,7 @@ function ReportColumnChooserInner({ columns, visibleColumns, onChange, className
                       className={cn(
                         'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
                         isVisible
-                          ? 'bg-[var(--c-primary)] border-[var(--c-primary)] text-white'
+                          ? 'bg-[var(--c-primary)] border-[var(--c-primary)] text-[var(--c-primary-fg)]'
                           : 'border-[var(--c-border)] text-transparent',
                       )}
                     >

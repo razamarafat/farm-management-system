@@ -6,7 +6,7 @@
   "description": "Render Web Service BFF for Supabase auth.admin operations. Holds the service-role key server-side only; the SPA talks to it from the authenticated admin's browser session.",
   "main": "server.mjs",
   "scripts": {
-    "start": "node server.mjs",
+    "start": "node --env-file=.env server.mjs",
     "dev": "node --watch server.mjs"
   },
   "engines": {

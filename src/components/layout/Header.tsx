@@ -4,6 +4,7 @@ import { useUIStore } from '../../store/uiStore';
 import { useAuthStore } from '../../store/authStore';
 import { ThemeToggle } from './ThemeToggle';
 import { DateTimeDisplay } from './DateTimeDisplay';
+import { ConnectivityIcon } from '@/components/ui/ConnectivityIcon';
 
 export const Header = () => {
   const openSidebar = useUIStore((state) => state.openSidebar);
@@ -47,7 +48,7 @@ export const Header = () => {
         {!isOnDashboard && profile && (
           <button
             onClick={() => navigate(dashboardPath)}
-            className="flex items-center justify-center gap-1.5 h-9 px-4 rounded-[10px] transition-all duration-200 text-sm font-semibold bg-[var(--c-primary)] text-white shadow-[0_2px_8px_color-mix(in_srgb,var(--c-primary)_25%,transparent)] hover:shadow-[0_4px_16px_color-mix(in_srgb,var(--c-primary)_35%,transparent)] hover:brightness-105 active:scale-[0.97]"
+            className="flex items-center justify-center gap-1.5 h-9 px-4 rounded-[10px] transition-all duration-200 text-sm font-semibold bg-[var(--c-primary)] text-[var(--c-primary-fg)] shadow-[0_2px_8px_color-mix(in_srgb,var(--c-primary)_25%,transparent)] hover:shadow-[0_4px_16px_color-mix(in_srgb,var(--c-primary)_35%,transparent)] hover:brightness-105 active:scale-[0.97]"
             title="بازگشت به صفحه اصلی"
           >
             <Home size={16} />
@@ -63,8 +64,9 @@ export const Header = () => {
         </span>
       </div>
 
-      {/* Left side (RTL end): DateTime + Theme toggle */}
+      {/* Left side (RTL end): connectivity + DateTime + Theme toggle */}
       <div className="flex items-center gap-2">
+        <ConnectivityIcon />
         <DateTimeDisplay />
         <ThemeToggle />
       </div>

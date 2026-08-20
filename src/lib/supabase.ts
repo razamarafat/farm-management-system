@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database.types';
+import { rememberMeStorage } from '@/lib/auth-storage';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -27,6 +28,9 @@ export const supabase = createClient<Database>(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
+      // Routes the session through localStorage (Remember Me checked) or
+      // sessionStorage (unchecked) based on the choice made at login time.
+      storage: rememberMeStorage,
     }
   }
 );

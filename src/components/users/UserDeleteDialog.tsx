@@ -51,7 +51,7 @@ export const UserDeleteDialog = ({ user, isOpen, onClose, onSuccess }: UserDelet
     >
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center dark:bg-amber-900/30 dark:text-amber-400">
+          <div className="h-10 w-10 rounded-full bg-[color-mix(in_srgb,var(--c-warning)_16%,transparent)] text-[var(--c-warning)] flex items-center justify-center">
             <AlertTriangle size={20} />
           </div>
           <div className="text-sm">آیا از حذف کاربر {fullName} اطمینان دارید؟</div>
@@ -79,7 +79,7 @@ export const UserDeleteDialog = ({ user, isOpen, onClose, onSuccess }: UserDelet
             <span>
               <div className="font-medium">حذف کامل</div>
               <div className="text-xs text-muted-foreground">حذف دائمی کاربر و تمام اطلاعات مرتبط</div>
-              <div className="text-xs text-destructive mt-1">این عمل غیرقابل بازگشت است</div>
+              <div className="text-xs text-[var(--c-error)] mt-1">این عمل غیرقابل بازگشت است</div>
             </span>
           </label>
         </div>

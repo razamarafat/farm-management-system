@@ -16,7 +16,7 @@
 // =====================================================================
 
 import { useEffect, useMemo, useState } from 'react';
-import { Download, Loader2, AlertTriangle } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -25,9 +25,9 @@ import { getReportColumnsFromBff } from './reportColumns';
 import { useReportSection } from '@/hooks/useReportSection';
 import { triggerServerExport } from '@/lib/excelServer';
 import { cn } from '@/utils/cn';
-import { toPersianDigits } from '@/utils/persianNumbers';
 import { REPORT_EMPTY_MESSAGE } from '@/types/report.types';
 import type { ColumnDef, SortState } from '@/types/report.types';
+import { rpcError } from '@/utils/rpcError';
 
 interface ReorderPointSectionProps {
   farm_id: string | null;
@@ -87,9 +87,9 @@ function sortRows<T extends Record<string, unknown>>(
 }
 
 const ABC_BADGE: Record<'A' | 'B' | 'C', { label: string; bg: string; text: string }> = {
-  A: { label: 'A', bg: 'bg-red-100',    text: 'text-red-700' },
-  B: { label: 'B', bg: 'bg-amber-100',  text: 'text-amber-700' },
-  C: { label: 'C', bg: 'bg-zinc-100',   text: 'text-zinc-700' },
+  A: { label: 'A', bg: 'bg-[color-mix(in_srgb,var(--c-destructive)_16%,transparent)]', text: 'text-[var(--c-error)]' },
+  B: { label: 'B', bg: 'bg-[color-mix(in_srgb,var(--c-warning)_16%,transparent)]',  text: 'text-[var(--c-warning)]' },
+  C: { label: 'C', bg: 'bg-[var(--c-muted)]',   text: 'text-[var(--c-muted-fg)]' },
 };
 
 export function ReorderPointSection({
@@ -106,6 +106,7 @@ export function ReorderPointSection({
       p_abc_class: abcClass,
       p_reorder_needed_only: reorderNeededOnly,
     },
+    !!farm_id,
   );
 
   const baseColumns = useMemo<ColumnDef[]>(
@@ -138,9 +139,9 @@ export function ReorderPointSection({
           render: (_row, raw) => {
             const rec = raw === true;
             return rec ? (
-              <Badge className="bg-red-100 text-red-700">نیازمند سفارش</Badge>
+              <Badge className="bg-[color-mix(in_srgb,var(--c-destructive)_16%,transparent)] text-[var(--c-error)]">نیازمند سفارش</Badge>
             ) : (
-              <Badge className="bg-emerald-100 text-emerald-700">کافی</Badge>
+              <Badge className="bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)] text-[var(--c-success)]">کافی</Badge>
             );
           },
         };
@@ -166,21 +167,6 @@ export function ReorderPointSection({
     return sortedRows.slice(start, start + PAGE_SIZE);
   }, [sortedRows, page]);
 
-  // Footer chips: total needing reorder + breakdown by ABC class.
-  const summary = useMemo(() => {
-    let needingReorder = 0;
-    const byAbc = { A: 0, B: 0, C: 0 } as Record<'A' | 'B' | 'C', number>;
-    for (const r of rows) {
-      if (r.reorder_recommended) {
-        needingReorder += 1;
-        if (r.abc_class && (r.abc_class === 'A' || r.abc_class === 'B' || r.abc_class === 'C')) {
-          byAbc[r.abc_class] += 1;
-        }
-      }
-    }
-    return { needingReorder, byAbc };
-  }, [rows]);
-
   const onExportClick = async () => {
     if (isExporting) return;
     setIsExporting(true);
@@ -195,7 +181,7 @@ export function ReorderPointSection({
       toast.success('فایل اکسل نقطه سفارش آماده شد', { id: tid });
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : 'خطای ناشناخته در ساخت فایل',
+        rpcError(e) ?? 'خطای ناشناخته در ساخت فایل',
         { id: tid },
       );
     } finally {
@@ -203,26 +189,19 @@ export function ReorderPointSection({
     }
   };
 
+  if (!farm_id) {
+    return (
+      <div className="rounded-[14px] border border-dashed border-[var(--c-border)] bg-[var(--c-card)]/40 p-12 text-center text-sm text-[var(--c-muted-fg)]">
+        <p className="font-medium text-[var(--c-fg)]">لطفاً ابتدا یک فارم انتخاب کنید</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-3 text-sm text-[var(--c-muted-fg)] flex-wrap">
-          <span>
-            {isLoading
-              ? 'در حال دریافت…'
-              : `${toPersianDigits(String(totalCount))} قلم ارزیابی‌شده`}
-          </span>
-          {!isLoading && (
-            <span className="inline-flex items-center gap-2 font-mono">
-              <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-              <span>
-                نیازمند سفارش: {toPersianDigits(String(summary.needingReorder))} (
-                {toPersianDigits(String(summary.byAbc.A))} A ·{' '}
-                {toPersianDigits(String(summary.byAbc.B))} B ·{' '}
-                {toPersianDigits(String(summary.byAbc.C))} C)
-              </span>
-            </span>
-          )}
+          {isLoading && <span>در حال دریافت…</span>}
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -253,8 +232,8 @@ export function ReorderPointSection({
       {error ? (
         <div
           className={cn(
-            'rounded-[14px] border border-dashed border-red-300 bg-red-50',
-            'p-6 text-center text-sm text-red-700',
+            'rounded-[14px] border border-dashed border-[color-mix(in_srgb,var(--c-destructive)_30%,transparent)] bg-[color-mix(in_srgb,var(--c-destructive)_10%,transparent)]',
+            'p-6 text-center text-sm text-[var(--c-error)]',
           )}
         >
           <p className="font-bold mb-2">خطا در دریافت گزارش نقطه سفارش</p>

@@ -107,8 +107,8 @@ export default function AdminLogsPage() {
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-              <AlertTriangle className="h-10 w-10 text-[var(--c-destructive)]" aria-hidden="true" />
-              <p className="text-[var(--c-destructive)]">{error}</p>
+              <AlertTriangle className="h-10 w-10 text-[var(--c-error)]" aria-hidden="true" />
+              <p className="text-[var(--c-error)]">{error}</p>
               <Button variant="outline" size="sm" onClick={refetch}>تلاش مجدد</Button>
             </div>
           ) : rows.length === 0 ? (

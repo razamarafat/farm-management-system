@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { AuthState } from '@/types/auth.types';
 import { Profile } from '@/types/user.types';
 import { supabase } from '@/lib/supabase';
+import { rememberMeStorage } from '@/lib/auth-storage';
 import { User } from '@supabase/supabase-js';
 
 const SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour for non-admin users
@@ -71,6 +72,9 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
+      // Follow the same Remember-Me backend as the Supabase session so the
+      // cached user/profile data doesn't outlive a session-only login.
+      storage: createJSONStorage(() => rememberMeStorage),
       partialize: (state) => ({
         user: state.user,
         profile: state.profile,

@@ -64,15 +64,15 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 
 export const ROLE_COLORS: Record<UserRole, { bg: string; text: string }> = {
   admin: {
-    bg: 'bg-red-100 dark:bg-red-900/30',
-    text: 'text-red-700 dark:text-red-400',
+    bg: 'bg-[color-mix(in_srgb,var(--c-destructive)_16%,transparent)]',
+    text: 'text-[var(--c-error)]',
   },
   supervisor: {
-    bg: 'bg-blue-100 dark:bg-blue-900/30',
-    text: 'text-blue-700 dark:text-blue-400',
+    bg: 'bg-[color-mix(in_srgb,var(--c-info)_16%,transparent)]',
+    text: 'text-[var(--c-info)]',
   },
   operator: {
-    bg: 'bg-green-100 dark:bg-green-900/30',
-    text: 'text-green-700 dark:text-green-400',
+    bg: 'bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)]',
+    text: 'text-[var(--c-success)]',
   },
 };

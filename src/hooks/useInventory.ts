@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
+import { readFarmItems, readFarmTransactions } from '@/lib/offline/reads';
 import type {
   InventoryTransaction,
   StockBalance,
@@ -29,32 +30,10 @@ export function useStockBalances(farmId: string | null, category: 'feed' | 'pack
     setError(null);
 
     try {
-      // Get all farm items — uses JWT-bound `supabase` (NOT
-      // `supabaseAdmin`) so the request satisfies helper-based RLS
-      // policies introduced by migration 012_fix_profiles_recursion.sql.
-      // See FIX-voucher-entry bug: anon-keyed supabaseAdmin returned
-      // 0 rows because auth.uid() was NULL.
-      let itemsQuery = supabase
-        .from('farm_items')
-        .select('id, name, unit, category, reorder_point')
-        .eq('farm_id', farmId)
-        .eq('is_active', true);
-
-      if (category !== 'all') {
-        itemsQuery = itemsQuery.eq('category', category);
-      }
-
-      const { data: items, error: itemsError } = await itemsQuery.order('priority', { ascending: true });
-
-      if (itemsError) throw itemsError;
-
-      // Get all transactions for this farm
-      const { data: transactions, error: txnError } = await supabase
-        .from('inventory_transactions')
-        .select('item_id, txn_type, qty_in, qty_out, txn_ts')
-        .eq('farm_id', farmId);
-
-      if (txnError) throw txnError;
+      // Farm items + transactions come through the offline read facade
+      // (local RxDB when offline, unchanged Supabase queries when online).
+      const items = await readFarmItems(farmId, category === 'all' ? undefined : category);
+      const transactions = await readFarmTransactions(farmId);
 
       // Calculate balances
       const balanceMap = new Map<string, {
@@ -181,7 +160,7 @@ export function useInventoryTransactions(farmId: string | null, filters: Invento
 
       // Get item details separately
       const itemIds = [...new Set((txnData || []).map((t) => t.item_id))];
-      let itemsMap = new Map<string, { id: string; name: string; unit: string; category: string }>();
+      const itemsMap = new Map<string, { id: string; name: string; unit: string; category: string }>();
 
       if (itemIds.length > 0) {
         const { data: itemsData } = await supabase
@@ -440,7 +419,8 @@ export function useInventoryMutations(farmId: string | null) {
 
     setIsSubmitting(true);
     try {
-      const updateData: Record<string, unknown> = { ...updates };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const updateData: any = { ...updates };
       if (updates.unit_price && updates.qty_in) {
         updateData.total_price = updates.unit_price * updates.qty_in;
       }

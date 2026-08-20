@@ -53,6 +53,8 @@ interface ReportFilterBarProps {
   /** Optional boolean toggle backed by filters.reorderNeededOnly. */
   booleanFilterLabel?: string;
   showDateFilter?: boolean;
+  itemFilterLabel?: string;
+  itemFilterPlaceholder?: string;
   className?: string;
 }
 
@@ -91,6 +93,8 @@ function ReportFilterBarInner({
   basisOptions,
   booleanFilterLabel,
   showDateFilter = true,
+  itemFilterLabel,
+  itemFilterPlaceholder,
   className,
 }: ReportFilterBarProps) {
   const { from, to } = buildGregorianRange(filters.datePreset, filters.dateFrom, filters.dateTo);
@@ -127,7 +131,7 @@ function ReportFilterBarInner({
         {showDateFilter && (
           <div>
             <Select
-              label="بازه زمانی"
+              label="انتخاب تاریخ"
               value={filters.datePreset}
               onChange={(e) =>
                 onChange({ ...filters, datePreset: e.target.value as DateRangePreset })
@@ -212,15 +216,22 @@ function ReportFilterBarInner({
         {/* Multi-selects */}
         {farmOptions.length > 0 && (
           <div>
-            <label className="text-sm font-medium text-[var(--c-fg)] mb-1.5 block">
-              فارم‌ها
-            </label>
-            <MultiSelectChips
-              values={filters.farmIds}
-              onChange={(farmIds) => onChange({ ...filters, farmIds })}
-              options={farmOptions}
-              placeholder="همه فارم‌ها"
-            />
+            <Select
+              label="انتخاب فارم"
+              value={filters.farmIds[0] ?? ''}
+              disabled={farmOptions.length === 1}
+              onChange={(e) => {
+                const val = e.target.value;
+                onChange({ ...filters, farmIds: val ? [val] : [] });
+              }}
+            >
+              {farmOptions.length > 1 && <option value="">انتخاب فارم</option>}
+              {farmOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
           </div>
         )}
 
@@ -241,13 +252,13 @@ function ReportFilterBarInner({
         {itemOptions.length > 0 && (
           <div>
             <label className="text-sm font-medium text-[var(--c-fg)] mb-1.5 block">
-              اقلام
+              {itemFilterLabel || 'اقلام'}
             </label>
             <MultiSelectChips
               values={filters.itemIds}
               onChange={(itemIds) => onChange({ ...filters, itemIds })}
               options={itemOptions}
-              placeholder="همه اقلام"
+              placeholder={itemFilterPlaceholder || 'همه اقلام'}
             />
           </div>
         )}
@@ -269,13 +280,13 @@ function ReportFilterBarInner({
         {categoryOptions && categoryOptions.length > 0 && (
           <div>
             <label className="text-sm font-medium text-[var(--c-fg)] mb-1.5 block">
-              دسته‌ها
+              نوع کالا
             </label>
             <MultiSelectChips
               values={filters.categories}
               onChange={(categories) => onChange({ ...filters, categories })}
               options={categoryOptions}
-              placeholder="همه دسته‌ها"
+              placeholder="همه انواع کالا"
             />
           </div>
         )}
@@ -301,7 +312,7 @@ function ReportFilterBarInner({
               className={cn(
                 'mt-1.5 text-[11px] leading-snug transition-colors',
                 filters.txnTypes.length > 1
-                  ? 'text-[var(--c-destructive)] font-semibold'
+                  ? 'text-[var(--c-error)] font-semibold'
                   : 'text-[var(--c-muted-fg)]',
               )}
               title="برای حفظ صحت موجودی لحظه‌ای، فقط با انتخاب یک نوع، فیلتر اعمال می‌شود."

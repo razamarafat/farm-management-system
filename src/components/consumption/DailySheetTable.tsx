@@ -15,9 +15,9 @@ interface DailySheetTableProps {
 
 const StatusIcon = memo(({ status }: { status: 'ok' | 'warning' | 'danger' }) => {
   switch (status) {
-    case 'ok': return <CheckCircle className="w-4 h-4 text-green-500" />;
-    case 'warning': return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
-    case 'danger': return <AlertCircle className="w-4 h-4 text-red-500" />;
+    case 'ok': return <CheckCircle className="w-4 h-4 text-[var(--c-success)]" />;
+    case 'warning': return <AlertTriangle className="w-4 h-4 text-[var(--c-warning)]" />;
+    case 'danger': return <AlertCircle className="w-4 h-4 text-[var(--c-error)]" />;
     default: return null;
   }
 });
@@ -100,16 +100,16 @@ function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine
 
             {/* Per-mixer qty from formula */}
             {isFeed && (
-              <th className="px-3 py-3 text-center font-semibold text-purple-700 dark:text-purple-400 w-28 bg-purple-50 dark:bg-purple-900/20">
+              <th className="px-3 py-3 text-center font-semibold text-[var(--c-accent)] w-28 bg-[color-mix(in_srgb,var(--c-accent)_12%,transparent)]">
                 هر میکسر
               </th>
             )}
 
-            <th className="px-3 py-3 text-center font-semibold text-green-700 dark:text-green-400 w-32 bg-green-50 dark:bg-green-900/10">
+            <th className="px-3 py-3 text-center font-semibold text-[var(--c-success)] w-32 bg-[color-mix(in_srgb,var(--c-success)_10%,transparent)]">
               جمع مصرف
             </th>
-            <th className="px-3 py-3 text-center font-semibold text-blue-700 dark:text-blue-400 w-28">خرید امروز</th>
-            <th className="px-3 py-3 text-center font-semibold text-orange-700 dark:text-orange-400 w-28">ضایعات</th>
+            <th className="px-3 py-3 text-center font-semibold text-[var(--c-info)] w-28">خرید امروز</th>
+            <th className="px-3 py-3 text-center font-semibold text-[var(--c-accent)] w-28">ضایعات</th>
             <th className="px-3 py-3 text-center font-semibold text-[var(--c-fg)] w-32">مانده انبار</th>
             <th className="px-3 py-3 text-center font-semibold text-[var(--c-fg)] min-w-[140px]">توضیحات</th>
             <th className="px-3 py-3 text-center font-semibold text-[var(--c-fg)] w-12">🔔</th>
@@ -120,9 +120,9 @@ function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine
           {items.map((item, index) => {
             const rowStatus = item.status || 'ok';
             const rowBg = rowStatus === 'danger'
-              ? 'bg-red-50/50 dark:bg-red-900/5'
+              ? 'bg-[color-mix(in_srgb,var(--c-destructive)_6%,transparent)]'
               : rowStatus === 'warning'
-                ? 'bg-yellow-50/50 dark:bg-yellow-900/5'
+                ? 'bg-[color-mix(in_srgb,var(--c-warning)_6%,transparent)]'
                 : '';
 
             return (
@@ -145,24 +145,24 @@ function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine
 
                 {/* Per-mixer from formula */}
                 {isFeed && (
-                  <td className="px-3 py-2 text-center bg-purple-50/50 dark:bg-purple-900/10">
-                    <span className="font-medium text-purple-700 dark:text-purple-400">
+                  <td className="px-3 py-2 text-center bg-[color-mix(in_srgb,var(--c-accent)_6%,transparent)]">
+                    <span className="font-medium text-[var(--c-accent)]">
                       {item.qty_per_mixer > 0 ? toPersianDigits(item.qty_per_mixer.toFixed(2)) : '—'}
                     </span>
                   </td>
                 )}
 
                 {/* Total consumed */}
-                <td className="px-3 py-2 text-center bg-green-50/30 dark:bg-green-900/5">
+                <td className="px-3 py-2 text-center bg-[color-mix(in_srgb,var(--c-success)_5%,transparent)]">
                   {!hasHalls && canEdit ? (
                     <NumericCell
                       value={item.consumed_qty}
                       onChange={(val) => onUpdateLine(item.id, 'consumed_qty', toNumber(val))}
                       disabled={!(item.has_initial || item.today_purchase > 0)}
-                      highlight="text-green-700 dark:text-green-400"
+                      highlight="text-[var(--c-success)]"
                     />
                   ) : (
-                    <span className="font-bold text-green-700 dark:text-green-400">
+                    <span className="font-bold text-[var(--c-success)]">
                       {item.consumed_qty > 0 ? toPersianDigits(item.consumed_qty.toFixed(2)) : '—'}
                     </span>
                   )}
@@ -170,7 +170,7 @@ function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine
 
                 {/* Today Purchase (read-only) */}
                 <td className="px-3 py-2 text-center">
-                  <span className="text-sm text-blue-600 dark:text-blue-400">
+                  <span className="text-sm text-[var(--c-info)]">
                     {item.today_purchase > 0 ? toPersianDigits(item.today_purchase.toFixed(2)) : '—'}
                   </span>
                 </td>
@@ -181,7 +181,7 @@ function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine
                     value={item.waste_qty}
                     onChange={(val) => onUpdateLine(item.id, 'waste_qty', toNumber(val))}
                     disabled={!canEdit}
-                    highlight="text-orange-600 dark:text-orange-400"
+                    highlight="text-[var(--c-accent)]"
                   />
                 </td>
 
@@ -190,15 +190,15 @@ function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine
                   <div className="flex flex-col items-center gap-1">
                     <span className={`font-bold ${
                       item.remaining_preview < 0
-                        ? 'text-red-600 dark:text-red-400'
+                        ? 'text-[var(--c-error)]'
                         : item.remaining_preview < item.reorder_point
-                          ? 'text-yellow-600 dark:text-yellow-400'
+                          ? 'text-[var(--c-warning)]'
                           : 'text-[var(--c-fg)]'
                     }`}>
                       {toPersianDigits(item.remaining_preview.toFixed(2))}
                     </span>
                     {!item.has_initial && item.today_purchase <= 0 && (
-                      <span className="text-[10px] text-purple-600 dark:text-purple-400">
+                      <span className="text-[10px] text-[var(--c-accent)]">
                         بدون موجودی اولیه/خرید
                       </span>
                     )}
@@ -235,13 +235,13 @@ function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine
               <span className="text-[var(--c-fg)]">جمع کل</span>
             </td>
 
-            <td className="px-3 py-3 text-center text-green-700 dark:text-green-400">
+            <td className="px-3 py-3 text-center text-[var(--c-success)]">
               {toPersianDigits(totalConsumed.toFixed(2))}
             </td>
-            <td className="px-3 py-3 text-center text-blue-600">
+            <td className="px-3 py-3 text-center text-[var(--c-info)]">
               {totalPurchase > 0 ? toPersianDigits(totalPurchase.toFixed(2)) : '—'}
             </td>
-            <td className="px-3 py-3 text-center text-orange-600">
+            <td className="px-3 py-3 text-center text-[var(--c-accent)]">
               {totalWaste > 0 ? toPersianDigits(totalWaste.toFixed(2)) : '—'}
             </td>
             <td className="px-3 py-3" colSpan={3}></td>

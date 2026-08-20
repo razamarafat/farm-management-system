@@ -63,7 +63,7 @@ export const UserCard = ({ user, index, onEdit, onDelete, onToggleStatus }: User
           <Button variant="ghost" size="icon" onClick={onEdit}>
             <Pencil size={16} />
           </Button>
-          <Button variant="ghost" size="icon" onClick={onDelete} className="text-destructive">
+          <Button variant="ghost" size="icon" onClick={onDelete} className="text-[var(--c-error)]">
             <Trash2 size={16} />
           </Button>
         </div>

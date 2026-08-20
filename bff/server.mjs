@@ -21,7 +21,7 @@
 import { createServer } from 'node:http';
 import { createClient } from '@supabase/supabase-js';
 
-const PORT = Number(process.env.PORT || 10000);
+const PORT = 10000;
 const SUPABASE_URL       = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY  = process.env.VITE_SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE   = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;

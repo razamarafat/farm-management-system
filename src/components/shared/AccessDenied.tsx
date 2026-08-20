@@ -6,9 +6,9 @@ const AccessDenied = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
       <div className="bg-destructive/10 p-4 rounded-full">
-        <ShieldAlert className="h-12 w-12 text-destructive" />
+        <ShieldAlert className="h-12 w-12 text-[var(--c-error)]" />
       </div>
-      <h1 className="text-2xl font-bold text-destructive">دسترسی غیرمجاز</h1>
+      <h1 className="text-2xl font-bold text-[var(--c-error)]">دسترسی غیرمجاز</h1>
       <p className="text-muted-foreground max-w-sm">
         شما اجازه دسترسی به این صفحه را ندارید.
       </p>

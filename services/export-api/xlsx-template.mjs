@@ -48,6 +48,7 @@
 // =====================================================================
 
 import ExcelJS from 'exceljs';
+import { toJalaliDisplay, localizeByColumnKey } from './localization.mjs';
 
 // ---------------------------------------------------------------------
 // 1. Workbook metadata constants
@@ -203,12 +204,17 @@ export function maybeFormat(v) {
   return String(v);
 }
 
-function formatByType(v, type) {
+function formatByType(v, type, colKey) {
   if (v === null || v === undefined) return '';
   if (type === COLUMN_TYPES.DATE) {
-    if (v instanceof Date) return v.toISOString().slice(0, 10);
-    // Pass through string dates — ExcelJS parses as date when numFmt set.
-    return v;
+    // Persian-only archive: emit Jalali display text (Persian digits),
+    // never a Gregorian ISO date. Written as a string cell (no numFmt).
+    return toJalaliDisplay(v);
+  }
+  // Enum-like string columns (category / txn_type / unit) → Persian label.
+  if (colKey) {
+    const localized = localizeByColumnKey(colKey, v);
+    if (localized !== v) return maybeFormat(localized);
   }
   return maybeFormat(v);
 }
@@ -338,7 +344,7 @@ function paintBodyRows(ws, columns, rows, firstDataRow) {
     const excelRowIdx = firstDataRow + idx;
     const excelRow = ws.getRow(excelRowIdx);
     excelRow.values = resolved.map(({ col, type }) =>
-      maybeFormatForCell(row[col.key], type),
+      maybeFormatForCell(row[col.key], type, col.key),
     );
     const tint = idx % 2 === 1 ? COLORS.rowTint : COLORS.rowBase;
     excelRow.eachCell((cell, colNumber) => {
@@ -353,8 +359,8 @@ function paintBodyRows(ws, columns, rows, firstDataRow) {
   });
 }
 
-function maybeFormatForCell(v, type) {
-  return formatByType(v, type);
+function maybeFormatForCell(v, type, colKey) {
+  return formatByType(v, type, colKey);
 }
 
 // ---------------------------------------------------------------------

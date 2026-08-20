@@ -49,7 +49,7 @@ export const Modal = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-[fadeIn_200ms_ease-out]"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-[fadeIn_200ms_ease-out]"
       onClick={(e) => {
         if (!disableBackdropClose && e.target === e.currentTarget) onClose();
       }}

@@ -42,8 +42,8 @@ export const INPUT_CATEGORY_LABELS: Record<InputCategory, string> = {
 };
 
 export const INPUT_CATEGORY_COLORS: Record<InputCategory, string> = {
-  feed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  packaging: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  feed: 'bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)] text-[var(--c-success)]',
+  packaging: 'bg-[color-mix(in_srgb,var(--c-info)_16%,transparent)] text-[var(--c-info)]',
 };
 
 export const DEFAULT_UNITS = [
@@ -52,6 +52,15 @@ export const DEFAULT_UNITS = [
   'تن',
   'لیتر',
   'متر مکعب',
+  'عدد',
+  'کیسه',
+  'بسته',
+  'کارتن',
+  'شانه',
+] as const;
+
+/** Count-based units only — for packaging items (no weight/volume). */
+export const PACKAGING_UNITS = [
   'عدد',
   'کیسه',
   'بسته',

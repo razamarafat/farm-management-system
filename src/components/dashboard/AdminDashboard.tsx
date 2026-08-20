@@ -1,4 +1,4 @@
-import { Package, Settings, Activity } from 'lucide-react';
+import { Settings, Activity } from 'lucide-react';
 import { Tile } from '@/components/ui/Tile';
 import { getNavLabel, navItemsForRole, roleBase } from '@/navigation/manifest';
 import { useReorderAlertCount } from '@/hooks/useReorderAlertCount';
@@ -30,22 +30,15 @@ const AdminDashboard = () => {
         ))}
 
         <Tile
-          icon={Package}
-          label="اقلام بسته‌بندی"
-          color="slate"
-          to="/admin/packaging"
-          disabled
-        />
-        <Tile
           icon={Activity}
           label="لاگ فعالیت‌ها"
-          color="slate"
+          color="sand"
           to="/admin/logs"
         />
         <Tile
           icon={Settings}
           label="تنظیمات"
-          color="slate"
+          color="sand"
           to="/admin/settings"
           disabled
         />

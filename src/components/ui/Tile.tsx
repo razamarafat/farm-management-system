@@ -8,7 +8,7 @@ import { toPersianDigits } from '@/utils/persianNumbers';
 interface TileProps {
   icon: LucideIcon;
   label: string;
-  color: 'blue' | 'green' | 'orange' | 'purple' | 'teal' | 'red' | 'indigo' | 'amber' | 'cyan' | 'slate' | 'rose';
+  color: 'sage' | 'forest' | 'olive' | 'mint' | 'grain' | 'terracotta' | 'clay' | 'earth' | 'sky' | 'sand' | 'red';
   to?: string;
   onClick?: () => void;
   disabled?: boolean;
@@ -25,7 +25,7 @@ const TileInner = ({ icon: Icon, label, color, to, onClick, disabled, badgeCount
   const content = (
     <div className="relative flex flex-col justify-between h-full">
       {typeof badgeCount === 'number' && badgeCount > 0 && (
-        <span className="absolute top-2 left-2 min-w-[22px] h-[22px] px-1.5 rounded-full bg-[var(--c-destructive)] text-white text-xs font-bold flex items-center justify-center">
+        <span className="absolute top-2 left-2 min-w-[22px] h-[22px] px-1.5 rounded-full bg-[var(--c-destructive)] text-[var(--c-destructive-fg)] text-xs font-bold flex items-center justify-center">
           {toPersianDigits(String(badgeCount))}
         </span>
       )}

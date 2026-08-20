@@ -190,8 +190,8 @@ export function FileUpload({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
           >
-            <Card className="relative overflow-hidden border-2 border-green-200 dark:border-green-800">
-              <div className="aspect-video relative bg-gray-100 dark:bg-gray-800">
+            <Card className="relative overflow-hidden border-2 border-[color-mix(in_srgb,var(--c-success)_30%,transparent)]">
+              <div className="aspect-video relative bg-[var(--c-muted)]">
                 <img
                   src={previewUrl || value || ''}
                   alt="Preview"
@@ -218,9 +218,9 @@ export function FileUpload({
                   </Button>
                 </div>
               </div>
-              <div className="p-2 bg-green-50 dark:bg-green-900/20 flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                <span className="text-xs text-green-700 dark:text-green-400">تصویر آپلود شده</span>
+              <div className="p-2 bg-[color-mix(in_srgb,var(--c-success)_10%,transparent)] flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-[var(--c-success)]" />
+                <span className="text-xs text-[var(--c-success)]">تصویر آپلود شده</span>
               </div>
             </Card>
           </motion.div>
@@ -235,10 +235,10 @@ export function FileUpload({
               className={`
                 relative border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer
                 ${isDragging 
-                  ? 'border-green-500 bg-green-50 dark:bg-green-900/20' 
-                  : 'border-gray-300 dark:border-gray-600 hover:border-green-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  ? 'border-green-500 bg-[color-mix(in_srgb,var(--c-success)_10%,transparent)]' 
+                  : 'border-[var(--c-border)] hover:border-[var(--c-success)]/60 hover:bg-[var(--c-muted)]'
                 }
-                ${error ? 'border-red-400 bg-red-50 dark:bg-red-900/20' : ''}
+                ${error ? 'border-[var(--c-destructive)] bg-[color-mix(in_srgb,var(--c-destructive)_10%,transparent)]' : ''}
               `}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -255,13 +255,13 @@ export function FileUpload({
 
               {isCompressing ? (
                 <div className="flex flex-col items-center py-4">
-                  <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-2" />
+                  <Loader2 className="w-10 h-10 text-[var(--c-info)] animate-spin mb-2" />
                   <p className="text-sm text-[var(--c-muted-fg)]">در حال فشرده‌سازی تصویر...</p>
                 </div>
               ) : isUploading ? (
                 <div className="flex flex-col items-center py-4">
                   <div className="w-10 h-10 relative mb-2">
-                    <Loader2 className="w-10 h-10 text-green-500 animate-spin absolute" />
+                    <Loader2 className="w-10 h-10 text-[var(--c-success)] animate-spin absolute" />
                     <svg className="w-10 h-10 -rotate-90">
                       <circle
                         cx="20"
@@ -270,7 +270,7 @@ export function FileUpload({
                         stroke="currentColor"
                         strokeWidth="3"
                         fill="none"
-                        className="text-gray-200"
+                        className="text-[var(--c-muted-fg)]/40"
                       />
                       <circle
                         cx="20"
@@ -281,7 +281,7 @@ export function FileUpload({
                         fill="none"
                         strokeDasharray={100}
                         strokeDashoffset={100 - uploadProgress}
-                        className="text-green-500 transition-all"
+                        className="text-[var(--c-success)] transition-all"
                       />
                     </svg>
                   </div>
@@ -290,8 +290,8 @@ export function FileUpload({
               ) : (
                 <>
                   <div className="flex flex-col items-center">
-                    <div className="w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-3">
-                      <Upload className="w-7 h-7 text-blue-600 dark:text-blue-400" />
+                    <div className="w-14 h-14 rounded-full bg-[color-mix(in_srgb,var(--c-info)_16%,transparent)] flex items-center justify-center mb-3">
+                      <Upload className="w-7 h-7 text-[var(--c-info)]" />
                     </div>
                     <p className="text-sm font-medium text-[var(--c-fg)] mb-1">
                       آپلود تصویر فاکتور یا بارنامه
@@ -311,12 +311,12 @@ export function FileUpload({
                   </div>
 
                   {/* Camera button for mobile */}
-                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="mt-4 pt-4 border-t border-[var(--c-border)]">
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="text-blue-600"
+                      className="text-[var(--c-info)]"
                       onClick={(e) => {
                         e.stopPropagation();
                         cameraInputRef.current?.click();
@@ -338,7 +338,7 @@ export function FileUpload({
               )}
 
               {error && (
-                <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded-md text-xs">
+                <div className="absolute bottom-2 left-2 right-2 flex items-center gap-2 bg-[color-mix(in_srgb,var(--c-destructive)_16%,transparent)] text-[var(--c-error)] px-3 py-2 rounded-md text-xs">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
                   {error}
                 </div>

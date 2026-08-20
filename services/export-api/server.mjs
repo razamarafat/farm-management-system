@@ -32,7 +32,7 @@ import ExcelJS from 'exceljs';
 import { reportRegistry } from './registry.mjs';
 import { buildReportWorkbook, buildMultiReportWorkbook } from './xlsx-template.mjs';
 
-const PORT = Number(process.env.PORT || 3000);
+const PORT = 10001;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
@@ -76,14 +76,18 @@ const fastify = Fastify({
   bodyLimit: 5 * 1024 * 1024,
 });
 
+// Dev default when ALLOWED_ORIGIN is unset: only the local SPA origins,
+// never '*' — CORS stays closed to arbitrary/untrusted origins in every
+// environment. Production with an empty allowlist refuses all cross-
+// origin requests (fail-closed) so a misconfigured deploy cannot open
+// the service to everyone.
+const DEV_DEFAULT_ORIGINS = ['http://localhost:3000', 'http://127.0.0.1:3000'];
 await fastify.register(cors, {
-  // In dev, allow any origin if ALLOWED_ORIGIN is empty (handy for the
-  // smoke test). In production, lock to the SPA + smoke caller.
   origin: ALLOWED_ORIGIN.length
     ? ALLOWED_ORIGIN
     : NODE_ENV === 'production'
-      ? false   // refuse all cross-origin in prod if not allow-listed
-      : true,
+      ? false
+      : DEV_DEFAULT_ORIGINS,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 });

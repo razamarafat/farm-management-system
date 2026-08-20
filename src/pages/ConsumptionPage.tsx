@@ -161,7 +161,7 @@ export default function ConsumptionPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {isAdmin && !adminFarmId && (
           <Card className="p-4 md:col-span-2 border border-destructive/30 bg-destructive/5">
-            <div className="text-sm text-destructive">برای ادامه ابتدا یک فارم انتخاب کنید.</div>
+            <div className="text-sm text-[var(--c-error)]">برای ادامه ابتدا یک فارم انتخاب کنید.</div>
           </Card>
         )}
         {/* Feed Card */}
@@ -171,13 +171,13 @@ export default function ConsumptionPage() {
           transition={{ duration: 0.15 }}
         >
           <Card
-            className="p-6 cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-green-500/30"
+            className="p-6 cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-[var(--c-success)]/30"
             onClick={() => openSheet('feed')}
             style={{ pointerEvents: isAdmin && !adminFarmId ? 'none' : 'auto', opacity: isAdmin && !adminFarmId ? 0.6 : 1 }}
           >
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
-                <ClipboardList className="w-7 h-7 text-green-600 dark:text-green-400" />
+              <div className="w-14 h-14 rounded-xl bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)] flex items-center justify-center flex-shrink-0">
+                <ClipboardList className="w-7 h-7 text-[var(--c-success)]" />
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-[var(--c-fg)] mb-2">
@@ -189,7 +189,7 @@ export default function ConsumptionPage() {
                     : 'ثبت مصرف روزانه ذرت، سویا، گندم و سایر نهاده‌ها'
                   }
                 </p>
-                <div className="mt-4 flex items-center text-green-600 dark:text-green-400 text-sm font-medium">
+                <div className="mt-4 flex items-center text-[var(--c-success)] text-sm font-medium">
                   <span>{isReadOnly ? 'مشاهده' : 'ورود به فرم'}</span>
                   <ChevronLeft className="w-4 h-4 mr-1" />
                 </div>
@@ -205,13 +205,13 @@ export default function ConsumptionPage() {
           transition={{ duration: 0.15 }}
         >
           <Card
-            className="p-6 cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-blue-500/30"
+            className="p-6 cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-[var(--c-info)]/30"
             onClick={() => openSheet('packaging')}
             style={{ pointerEvents: isAdmin && !adminFarmId ? 'none' : 'auto', opacity: isAdmin && !adminFarmId ? 0.6 : 1 }}
           >
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                <Package className="w-7 h-7 text-blue-600 dark:text-blue-400" />
+              <div className="w-14 h-14 rounded-xl bg-[color-mix(in_srgb,var(--c-info)_16%,transparent)] flex items-center justify-center flex-shrink-0">
+                <Package className="w-7 h-7 text-[var(--c-info)]" />
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-[var(--c-fg)] mb-2">
@@ -223,7 +223,7 @@ export default function ConsumptionPage() {
                     : 'ثبت مصرف روزانه کارتن، شانه، نایلون و سایر اقلام'
                   }
                 </p>
-                <div className="mt-4 flex items-center text-blue-600 dark:text-blue-400 text-sm font-medium">
+                <div className="mt-4 flex items-center text-[var(--c-info)] text-sm font-medium">
                   <span>{isReadOnly ? 'مشاهده' : 'ورود به فرم'}</span>
                   <ChevronLeft className="w-4 h-4 mr-1" />
                 </div>
@@ -234,16 +234,16 @@ export default function ConsumptionPage() {
       </div>
 
       {/* Info Box */}
-      <Card className="p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+      <Card className="p-4 bg-[color-mix(in_srgb,var(--c-info)_16%,transparent)] border-[color-mix(in_srgb,var(--c-info)_30%,transparent)]">
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0">
-            <span className="text-blue-600 dark:text-blue-400 text-lg">💡</span>
+          <div className="w-8 h-8 rounded-full bg-[color-mix(in_srgb,var(--c-info)_30%,transparent)] flex items-center justify-center flex-shrink-0">
+            <span className="text-[var(--c-info)] text-lg">💡</span>
           </div>
           <div>
-            <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">
+            <h4 className="text-sm font-medium text-[var(--c-info)] mb-1">
               راهنما
             </h4>
-            <p className="text-sm text-blue-700 dark:text-blue-300">
+            <p className="text-sm text-[var(--c-info)]">
               {isReadOnly 
                 ? 'شما فقط امکان مشاهده حواله‌ها را دارید. برای ویرایش با مدیر سیستم تماس بگیرید.'
                 : 'پس از ثبت نهایی حواله، تا ۲۴ ساعت امکان ویرایش وجود دارد. پس از آن حواله قفل می‌شود.'

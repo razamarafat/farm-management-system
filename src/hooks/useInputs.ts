@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { rpc } from '@/utils/rpc';
 import { rpcError } from '@/utils/rpcError';
 import { toast } from 'sonner';
+import { normalizeName } from '@/utils/helpers';
 import type { Input, InputInsert, InputFilters } from '@/types/input.types';
 
 export function useInputs(filters: InputFilters) {
@@ -75,14 +76,15 @@ export function useCreateInput() {
   const [isCreating, setIsCreating] = useState(false);
 
   const createInput = async (input: InputInsert) => {
-    if (!input.name.trim()) {
+    const name = normalizeName(input.name);
+    if (!name) {
       toast.error('لطفاً نام نهاده را وارد کنید');
       return false;
     }
     setIsCreating(true);
     try {
       const { error } = await rpc('rpc_admin_create_input', {
-        p_name:         input.name,
+        p_name:         name,
         p_category:     input.category,
         p_default_unit: input.default_unit ?? 'کیلوگرم',
         p_description:  input.description ?? '',
@@ -106,7 +108,7 @@ export function useUpdateInput() {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const updateInput = async (id: string, input: Partial<InputInsert>) => {
-    if (input.name !== undefined && !input.name.trim()) {
+    if (input.name !== undefined && !normalizeName(input.name)) {
       toast.error('نام نهاده نمی‌تواند خالی باشد');
       return false;
     }
@@ -119,7 +121,7 @@ export function useUpdateInput() {
       const merged = { ...(current as Input), ...input };
       const { error } = await rpc('rpc_admin_update_input', {
         p_id:           id,
-        p_name:         merged.name ?? '',
+        p_name:         normalizeName(merged.name ?? ''),
         p_category:     merged.category ?? 'feed',
         p_default_unit: merged.default_unit ?? '',
         p_description:  merged.description ?? '',

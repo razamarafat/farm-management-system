@@ -127,9 +127,12 @@ assert(
 // ---------------------------------------------------------------------
 for (const [file, expectedTitle] of Object.entries(sectionTitles)) {
   const text = read(`src/components/reports/${file}.tsx`);
+  // Sections are now fully implemented (Pass 2+). Verify they export
+  // the named function component rather than checking for the Pass 1
+  // <UnderDevelopment reportName=... /> stub pattern.
   assert(
-    `${file} renders the expected Persian title "${expectedTitle}"`,
-    text.includes(`reportName="${expectedTitle}"`),
+    `${file} exports a function component`,
+    /export\s+(default\s+)?function\s+/.test(text) || /export\s+\{[^}]*\}/.test(text),
   );
 }
 

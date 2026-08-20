@@ -15,15 +15,15 @@ const badgeVariants = cva(
         outline:
           "border-[var(--c-border)] text-[var(--c-fg)] bg-transparent",
         success:
-          "border-transparent bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300",
+          "border-transparent bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)] text-[var(--c-success)]",
         warning:
-          "border-transparent bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
+          "border-transparent bg-[color-mix(in_srgb,var(--c-warning)_16%,transparent)] text-[var(--c-warning)]",
         info:
-          "border-transparent bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+          "border-transparent bg-[color-mix(in_srgb,var(--c-info)_16%,transparent)] text-[var(--c-info)]",
         muted:
           "border-transparent bg-[var(--c-muted)] text-[var(--c-muted-fg)]",
         accent:
-          "border-transparent bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300",
+          "border-transparent bg-[var(--c-accent)] text-[var(--c-accent-fg)]",
       },
     },
     defaultVariants: {

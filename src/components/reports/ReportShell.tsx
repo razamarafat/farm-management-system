@@ -132,13 +132,6 @@ function ReportShellInner<T extends Record<string, unknown>>({
             <FileText className="w-5 h-5 text-[var(--c-primary)]" />
             <h2 className="text-xl font-bold text-[var(--c-fg)]">{report.title}</h2>
           </div>
-          <p className="text-sm text-[var(--c-muted-fg)] flex items-center gap-1.5" dir="ltr">
-            <span>{report.subtitle}</span>
-            <span aria-hidden="true">·</span>
-            <span className="font-mono truncate inline-block max-w-[180px]" title={report.id}>
-              {report.id}
-            </span>
-          </p>
         </div>
       </div>
 

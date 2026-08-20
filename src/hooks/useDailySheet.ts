@@ -1,6 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { checkSupabaseReachability } from '@/lib/supabaseReachability';
+import {
+  readFarmItems,
+  readFarmTransactions,
+  readTodayPurchases,
+  readVoucherLines,
+  readFeedFormulas,
+  readFormulaItems,
+  readFarmHalls,
+  findVoucher,
+} from '@/lib/offline/reads';
+import { rpcError } from '@/utils/rpcError';
 import {
   type VoucherCategory,
   type DailySheetData,
@@ -48,13 +60,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
   // auth.uid()).
   const fetchFormulas = useCallback(async (): Promise<FarmFeedFormula[]> => {
     try {
-      const { data: formulas } = await supabase
-        .from('farm_feed_formulas')
-        .select('*')
-        .eq('farm_id', farmId)
-        .eq('is_active', true)
-        .order('formula_no', { ascending: false });
-      return (formulas || []) as unknown as FarmFeedFormula[];
+      return (await readFeedFormulas(farmId)) as unknown as FarmFeedFormula[];
     } catch (err) {
       console.error('[useDailySheet] fetchFormulas failed', err);
       return [];
@@ -64,11 +70,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
   // Fetch formula items — same JWT-bound swap pattern.
   const fetchFormulaItems = useCallback(async (formulaId: string): Promise<FormulaItem[]> => {
     try {
-      const { data: items } = await supabase
-        .from('farm_formula_items')
-        .select('*')
-        .eq('formula_id', formulaId);
-      return (items || []) as unknown as FormulaItem[];
+      return (await readFormulaItems(formulaId)) as unknown as FormulaItem[];
     } catch (err) {
       console.error('[useDailySheet] fetchFormulaItems failed', err);
       return [];
@@ -78,13 +80,8 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
   // Fetch halls for farm — same JWT-bound swap pattern.
   const fetchHalls = useCallback(async (): Promise<HallConfig[]> => {
     try {
-      const { data: halls } = await supabase
-        .from('farm_halls')
-        .select('*')
-        .eq('farm_id', farmId)
-        .eq('is_active', true)
-        .order('hall_number', { ascending: true });
-      return (halls || []).map((h: Record<string, unknown>) => ({
+      const halls = await readFarmHalls(farmId);
+      return halls.map((h) => ({
         hallNumber: numVal(h.hall_number),
         hallName: String(h.name || `سالن ${h.hall_number}`),
         mixerCount: 1,
@@ -116,14 +113,18 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
       // HALL, ITEM, and VOUCHER queries returned 0 rows (RLS deny)
       // — the user-facing symptom was «خطا در دریافت اطلاعات» on open
       // and «خطا در ایجاد حواله» on submit.
-      const client = supabase;
+      const offline = !(await checkSupabaseReachability());
 
-      // 1. Get or create voucher
+      // 1. Get or create voucher. Offline: local lookup only (offline draft
+      // creation is the write path's job). Online: unchanged find-or-create.
       let voucherId: string;
       let voucherStatus = 'draft';
       let voucherCreatedAt = new Date().toISOString();
       let voucherSubmittedAt: string | null = null;
 
+      const client = supabase;
+
+      if (!offline) {
       const { data: existingVoucher } = await client
         .from('daily_vouchers')
         .select('id, farm_id, voucher_date, category, status, created_at, submitted_at')
@@ -165,33 +166,30 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
           voucherCreatedAt = newVoucher.created_at;
         }
       }
+      } else {
+        const localVoucher = await findVoucher(farmId, date, category);
+        if (!localVoucher) {
+          throw new Error('خطا در ایجاد حواله');
+        }
+        voucherId = localVoucher.id as string;
+        voucherStatus = (localVoucher.status as string) || 'draft';
+        voucherCreatedAt = (localVoucher.created_at as string) || voucherCreatedAt;
+        voucherSubmittedAt = (localVoucher.submitted_at as string) ?? null;
+      }
 
       const isEditable =
         ignoreEditWindow ||
         voucherStatus === 'draft' ||
         (voucherStatus === 'submitted' && voucherSubmittedAt !== null &&
           Date.now() - new Date(voucherSubmittedAt).getTime() < 24 * 60 * 60 * 1000);
-      // 2. Fetch farm items
-      const { data: farmItems } = await client
-        .from('farm_items')
-        .select('id, name, unit, priority, reorder_point')
-        .eq('farm_id', farmId)
-        .eq('category', category)
-        .eq('is_active', true)
-        .order('priority', { ascending: true })
-        .order('name', { ascending: true });
+      // 2. Fetch farm items (local when offline)
+      const farmItems = await readFarmItems(farmId, category);
 
-      // 3. Fetch voucher lines
-      const { data: existingLines } = await client
-        .from('daily_voucher_lines')
-        .select('id, item_id, formula_no, mixer_count, hall_numbers, consumed_qty, waste_qty, notes, hall_consumed, formula_id')
-        .eq('voucher_id', voucherId);
+      // 3. Fetch voucher lines (local when offline)
+      const existingLines = await readVoucherLines(voucherId);
 
-  // 4. Get stock balances
-  const { data: allTxns } = await client
-    .from('inventory_transactions')
-    .select('item_id, qty_in, qty_out, txn_type')
-    .eq('farm_id', farmId);
+  // 4. Get stock balances (local when offline)
+  const allTxns = await readFarmTransactions(farmId);
 
   const balanceMap = new Map<string, number>();
   const totalInMap = new Map<string, number>();
@@ -204,13 +202,8 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
     }
   }
 
-      // 5. Get today's purchases
-      const { data: purchases } = await client
-        .from('inventory_transactions')
-        .select('item_id, qty_in')
-        .eq('farm_id', farmId)
-        .eq('txn_date', date)
-        .eq('txn_type', 'purchase');
+      // 5. Get today's purchases (local when offline)
+      const purchases = await readTodayPurchases(farmId, date);
 
       const purchaseMap = new Map<string, number>();
       if (purchases) {
@@ -223,7 +216,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
       // 6. Fetch formulas and halls (feed only)
       let formulas: FarmFeedFormula[] = [];
       let selectedFormula: FarmFeedFormula | null = null;
-      let formulaItemsMap = new Map<string, number>();
+      const formulaItemsMap = new Map<string, number>();
       let halls: HallConfig[] = [];
 
       if (category === 'feed') {
@@ -514,62 +507,59 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
         return false;
       }
 
-      // Check for negative stock
-      const negativeItems = data.items.filter(i => i.remaining_preview < 0 && (i.consumed_qty > 0 || i.waste_qty > 0));
-      if (negativeItems.length > 0) {
-        const list = negativeItems.map(i => `• ${i.name}: کمبود ${Math.abs(i.remaining_preview).toFixed(2)} ${i.unit}`).join('\n');
+      // Build the payload for the atomic submit RPC (single transaction with
+      // server-side stock enforcement + row locking + 24h window).
+      const items = data.items
+        .filter(item => toNumber(item.consumed_qty) > 0 || toNumber(item.waste_qty) > 0)
+        .map(item => ({
+          item_id: item.id,
+          consumed_qty: toNumber(item.consumed_qty),
+          waste_qty: toNumber(item.waste_qty),
+          adjustment_qty: 0,
+        }));
+
+      const { data: result, error: rpcErr } = await supabase.rpc('submit_daily_voucher', {
+        p_voucher_id: data.voucher.id,
+        p_farm_id: data.voucher.farm_id,
+        p_voucher_date: data.voucher.voucher_date,
+        p_items: items,
+        p_ignore_window: ignoreEditWindow,
+      });
+
+      if (rpcErr) {
+        throw new Error(rpcErr.message || 'خطا در ثبت نهایی');
+      }
+
+      const r = result as unknown as {
+        success: boolean;
+        code?: string;
+        message?: string;
+        detail?: string;
+        items?: Array<{ item_name?: string; unit?: string; shortage?: number }>;
+      };
+
+      // The RPC keeps the raw technical detail server-side; log it here
+      // for debugging but never render it to the user.
+      if (r?.detail) console.error('Submit RPC technical detail:', r.detail);
+
+      if (r?.success === true) {
+        toast.success('حواله با موفقیت ثبت شد');
+        await fetchData();
+        return true;
+      }
+
+      if (r?.code === 'NEGATIVE_STOCK') {
+        const list = (r.items ?? [])
+          .map(it => `• ${it.item_name ?? 'آیتم'}: کمبود ${Number(it.shortage ?? 0).toFixed(2)} ${it.unit ?? ''}`.trim())
+          .join('\n');
         toast.error(`موجودی کافی نیست:\n${list}`, { duration: 10000 });
-        setIsSaving(false);
         return false;
       }
 
-      // If admin override, allow resubmitting by clearing previous transactions
-      if (ignoreEditWindow) {
-        await supabase.from('inventory_transactions')
-          .delete()
-          .eq('source_type', 'daily_voucher')
-          .eq('source_id', data.voucher.id);
-      }
-
-      // Create inventory transactions
-      for (const item of data.items) {
-        if (item.consumed_qty > 0) {
-          await supabase.from('inventory_transactions').insert({
-            farm_id: data.voucher.farm_id,
-            item_id: item.id,
-            txn_date: data.voucher.voucher_date,
-            txn_type: 'consumption' as const,
-            qty_out: item.consumed_qty,
-            qty_in: 0,
-            source_type: 'daily_voucher',
-            source_id: data.voucher.id,
-          });
-        }
-        if (item.waste_qty > 0) {
-          await supabase.from('inventory_transactions').insert({
-            farm_id: data.voucher.farm_id,
-            item_id: item.id,
-            txn_date: data.voucher.voucher_date,
-            txn_type: 'waste' as const,
-            qty_out: item.waste_qty,
-            qty_in: 0,
-            source_type: 'daily_voucher',
-            source_id: data.voucher.id,
-          });
-        }
-      }
-
-      // Update voucher status
-      await supabase.from('daily_vouchers').update({
-        status: 'submitted' as const,
-        submitted_at: new Date().toISOString(),
-      }).eq('id', data.voucher.id);
-
-      toast.success('حواله با موفقیت ثبت شد');
-      await fetchData();
-      return true;
+      toast.error(rpcError(r?.message) ?? 'خطا در ثبت نهایی');
+      return false;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'خطا در ثبت نهایی';
+      const message = rpcError(err) ?? 'خطا در ثبت نهایی';
       console.error('Submit error:', err);
       toast.error(message);
       return false;
@@ -578,26 +568,40 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
     }
   }, [data, saveDraft, fetchData, ignoreEditWindow]);
 
-  // Revert
+  // Revert — routes through the atomic revert_daily_voucher RPC (SECURITY
+  // DEFINER, row-locked, structured Persian error codes) instead of the old
+  // two-step client delete+update, which could leave partial state on failure
+  // and bypassed the 24h window / role checks.
   const revertSheet = useCallback(async () => {
     if (!data) return;
     setIsSaving(true);
     try {
-      await supabase.from('inventory_transactions')
-        .delete()
-        .eq('source_type', 'daily_voucher')
-        .eq('source_id', data.voucher.id);
+      const { data: result, error: rpcErr } = await supabase.rpc('revert_daily_voucher', {
+        p_voucher_id: data.voucher.id,
+      });
 
-      await supabase.from('daily_vouchers').update({
-        status: 'draft' as const,
-        submitted_at: null,
-        reverted_at: new Date().toISOString(),
-      }).eq('id', data.voucher.id);
+      if (rpcErr) {
+        throw new Error(rpcErr.message || 'خطا در برگشت حواله');
+      }
 
-      toast.success('حواله به حالت پیش‌نویس برگشت داده شد');
-      await fetchData();
+      const r = result as unknown as {
+        success: boolean;
+        code?: string;
+        message?: string;
+        detail?: string;
+      };
+
+      if (r?.detail) console.error('Revert RPC technical detail:', r.detail);
+
+      if (r?.success === true) {
+        toast.success('حواله به حالت پیش‌نویس برگشت داده شد');
+        await fetchData();
+        return;
+      }
+
+      toast.error(rpcError(r?.message) ?? 'خطا در برگشت حواله');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'خطا در برگشت حواله';
+      const message = rpcError(err) ?? 'خطا در برگشت حواله';
       console.error('Revert error:', err);
       toast.error(message);
     } finally {

@@ -244,9 +244,9 @@ export default function ReorderPointPage() {
   const getRowBgClass = (balance: number, reorderPoint: number): string => {
     if (reorderPoint === 0) return '';
     const ratio = balance / reorderPoint;
-    if (ratio <= 0.5) return 'bg-red-50 dark:bg-red-950/30';
-    if (ratio <= 1) return 'bg-orange-50 dark:bg-orange-950/30';
-    if (ratio <= 1.5) return 'bg-orange-50/50 dark:bg-orange-950/20';
+    if (ratio <= 0.5) return 'bg-[color-mix(in_srgb,var(--c-destructive)_10%,transparent)]';
+    if (ratio <= 1) return 'bg-[color-mix(in_srgb,var(--c-warning)_10%,transparent)]';
+    if (ratio <= 1.5) return 'bg-[color-mix(in_srgb,var(--c-accent)_8%,transparent)]';
     return '';
   };
 
@@ -342,22 +342,22 @@ export default function ReorderPointPage() {
     }
     const ratio = balance / reorderPoint;
     if (ratio <= 0.5) {
-      return <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">بحرانی</Badge>;
+      return <Badge className="bg-[color-mix(in_srgb,var(--c-destructive)_16%,transparent)] text-[var(--c-error)]">بحرانی</Badge>;
     } else if (ratio <= 1) {
-      return <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">هشدار</Badge>;
+      return <Badge className="bg-[color-mix(in_srgb,var(--c-warning)_16%,transparent)] text-[var(--c-warning)]">هشدار</Badge>;
     } else if (ratio <= 1.5) {
-      return <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">نزدیک</Badge>;
+      return <Badge className="bg-[color-mix(in_srgb,var(--c-accent)_16%,transparent)] text-[var(--c-accent)]">نزدیک</Badge>;
     }
-    return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">مناسب</Badge>;
+    return <Badge className="bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)] text-[var(--c-success)]">مناسب</Badge>;
   };
 
   const getBalanceColor = (balance: number, reorderPoint: number): string => {
     if (reorderPoint === 0) return 'text-[var(--c-muted-fg)]';
-    if (balance <= 0) return 'text-red-600 font-bold';
-    if (balance <= reorderPoint * 0.5) return 'text-red-600 font-bold';
-    if (balance <= reorderPoint) return 'text-amber-600 font-semibold';
-    if (balance <= reorderPoint * 1.5) return 'text-orange-600 font-medium';
-    return 'text-green-600 font-medium';
+    if (balance <= 0) return 'text-[var(--c-error)] font-bold';
+    if (balance <= reorderPoint * 0.5) return 'text-[var(--c-error)] font-bold';
+    if (balance <= reorderPoint) return 'text-[var(--c-warning)] font-semibold';
+    if (balance <= reorderPoint * 1.5) return 'text-[var(--c-accent)] font-medium';
+    return 'text-[var(--c-success)] font-medium';
   };
 
   // ─── Render table for a category ─────────────────────────────
@@ -367,7 +367,7 @@ export default function ReorderPointPage() {
       return (
         <Card>
           <CardContent className="py-8 text-center">
-            <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-2" />
+            <CheckCircle className="w-12 h-12 mx-auto text-[var(--c-success)] mb-2" />
             <p className="text-[var(--c-muted-fg)]">موردی در این دسته وجود ندارد</p>
           </CardContent>
         </Card>
@@ -456,7 +456,7 @@ export default function ReorderPointPage() {
                             <button
                               onClick={() => handleSaveReorder(item.item_id)}
                               disabled={isSubmitting}
-                              className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                              className="p-1 text-[var(--c-success)] hover:bg-[color-mix(in_srgb,var(--c-success)_10%,transparent)] rounded"
                               title="ذخیره"
                             >
                               {isSubmitting ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -464,7 +464,7 @@ export default function ReorderPointPage() {
                             <button
                               onClick={handleCancelEditReorder}
                               disabled={isSubmitting}
-                              className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                              className="p-1 text-[var(--c-error)] hover:bg-[color-mix(in_srgb,var(--c-destructive)_10%,transparent)] rounded"
                               title="انصراف"
                             >
                               <X className="w-4 h-4" />
@@ -503,14 +503,14 @@ export default function ReorderPointPage() {
                             />
                             <button
                               onClick={() => handleSaveLastPrice(item.item_id)}
-                              className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                              className="p-1 text-[var(--c-success)] hover:bg-[color-mix(in_srgb,var(--c-success)_10%,transparent)] rounded"
                               title="ذخیره"
                             >
                               <Save className="w-4 h-4" />
                             </button>
                             <button
                               onClick={handleCancelEditLastPrice}
-                              className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                              className="p-1 text-[var(--c-error)] hover:bg-[color-mix(in_srgb,var(--c-destructive)_10%,transparent)] rounded"
                               title="انصراف"
                             >
                               <X className="w-4 h-4" />
@@ -518,7 +518,7 @@ export default function ReorderPointPage() {
                           </div>
                         ) : (
                           <div className="flex items-center justify-center gap-1">
-                            <span className={`text-sm ${isManualPrice ? 'text-purple-600 dark:text-purple-400 font-medium' : 'text-indigo-600 dark:text-indigo-400'}`}>
+                            <span className={`text-sm ${isManualPrice ? 'text-[var(--c-accent)] font-medium' : 'text-[var(--c-info)]'}`}>
                               {effectivePrice > 0 ? formatRial(effectivePrice) : '—'}
                             </span>
                             {isAdmin && (
@@ -545,9 +545,9 @@ export default function ReorderPointPage() {
                       <td className="py-3 px-2 text-center" dir="ltr">
                         <span className={`text-sm font-medium ${
                           dailyAvg > 0 && (item.balance / dailyAvg) <= (item.reorder_point > 0 ? item.reorder_point / dailyAvg * 0.5 : 3)
-                            ? 'text-red-600'
+                            ? 'text-[var(--c-error)]'
                             : dailyAvg > 0 && (item.balance / dailyAvg) <= (item.reorder_point > 0 ? item.reorder_point / dailyAvg : 7)
-                            ? 'text-amber-600'
+                            ? 'text-[var(--c-warning)]'
                             : 'text-[var(--c-muted-fg)]'
                         }`}>
                           {getDaysRemaining(item.balance, item.item_id)}
@@ -629,15 +629,15 @@ export default function ReorderPointPage() {
             transition={{ duration: 0.2 }}
             className="grid grid-cols-2 lg:grid-cols-4 gap-3"
           >
-            <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+            <Card className="bg-[color-mix(in_srgb,var(--c-destructive)_10%,transparent)] border-[color-mix(in_srgb,var(--c-destructive)_30%,transparent)]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
-                    <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                  <div className="w-10 h-10 rounded-full bg-[color-mix(in_srgb,var(--c-destructive)_25%,transparent)] flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5 text-[var(--c-error)]" />
                   </div>
                   <div>
-                    <p className="text-xs text-red-600 dark:text-red-400">زیر نقطه سفارش</p>
-                    <p className="text-xl font-bold text-red-700 dark:text-red-300">
+                    <p className="text-xs text-[var(--c-error)]">زیر نقطه سفارش</p>
+                    <p className="text-xl font-bold text-[var(--c-error)]">
                       {toPersianNumbers(categorizedItems.belowReorder.length)}
                     </p>
                   </div>
@@ -645,15 +645,15 @@ export default function ReorderPointPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800">
+            <Card className="bg-[color-mix(in_srgb,var(--c-warning)_10%,transparent)] border-[color-mix(in_srgb,var(--c-warning)_30%,transparent)]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
-                    <Clock className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                  <div className="w-10 h-10 rounded-full bg-[color-mix(in_srgb,var(--c-warning)_25%,transparent)] flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-[var(--c-warning)]" />
                   </div>
                   <div>
-                    <p className="text-xs text-orange-600 dark:text-orange-400">نزدیک نقطه سفارش</p>
-                    <p className="text-xl font-bold text-orange-700 dark:text-orange-300">
+                    <p className="text-xs text-[var(--c-warning)]">نزدیک نقطه سفارش</p>
+                    <p className="text-xl font-bold text-[var(--c-warning)]">
                       {toPersianNumbers(categorizedItems.nearReorder.length)}
                     </p>
                   </div>
@@ -661,15 +661,15 @@ export default function ReorderPointPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+            <Card className="bg-[color-mix(in_srgb,var(--c-success)_10%,transparent)] border-[color-mix(in_srgb,var(--c-success)_30%,transparent)]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
-                    <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  <div className="w-10 h-10 rounded-full bg-[color-mix(in_srgb,var(--c-success)_25%,transparent)] flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-[var(--c-success)]" />
                   </div>
                   <div>
-                    <p className="text-xs text-green-600 dark:text-green-400">موجودی کافی</p>
-                    <p className="text-xl font-bold text-green-700 dark:text-green-300">
+                    <p className="text-xs text-[var(--c-success)]">موجودی کافی</p>
+                    <p className="text-xl font-bold text-[var(--c-success)]">
                       {toPersianNumbers(categorizedItems.aboveReorder.length)}
                     </p>
                   </div>
@@ -677,15 +677,15 @@ export default function ReorderPointPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800">
+            <Card className="bg-[var(--c-muted)] border-[var(--c-border)]">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-900/40 flex items-center justify-center">
-                    <AlertCircle className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  <div className="w-10 h-10 rounded-full bg-[color-mix(in_srgb,var(--c-muted-fg)_25%,transparent)] flex items-center justify-center">
+                    <AlertCircle className="w-5 h-5 text-[var(--c-muted-fg)]" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">بدون نقطه سفارش</p>
-                    <p className="text-xl font-bold text-gray-700 dark:text-gray-300">
+                    <p className="text-xs text-[var(--c-muted-fg)]">بدون نقطه سفارش</p>
+                    <p className="text-xl font-bold text-[var(--c-muted-fg)]">
                       {toPersianNumbers(categorizedItems.noReorderPoint.length)}
                     </p>
                   </div>
@@ -697,23 +697,23 @@ export default function ReorderPointPage() {
           {/* Legend */}
           <div className="flex flex-wrap gap-4 text-xs text-[var(--c-muted-fg)]">
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-red-500" />
+              <div className="w-3 h-3 rounded bg-[var(--c-destructive)]" />
               <span>موجودی ≤ ۵۰٪ نقطه سفارش (بحرانی)</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-amber-500" />
+              <div className="w-3 h-3 rounded bg-[var(--c-warning)]" />
               <span>موجودی ≤ نقطه سفارش (هشدار)</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-orange-400" />
+              <div className="w-3 h-3 rounded bg-[var(--c-accent)]" />
               <span>موجودی ≤ ۱.۵ برابر نقطه سفارش (نزدیک)</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-green-500" />
+              <div className="w-3 h-3 rounded bg-[var(--c-success)]" />
               <span>موجودی کافی (مناسب)</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded bg-purple-500" />
+              <div className="w-3 h-3 rounded bg-[var(--c-accent)]" />
               <span>قیمت دستی (ویرایش شده توسط کاربر)</span>
             </div>
           </div>
@@ -729,12 +729,12 @@ export default function ReorderPointPage() {
                 exit={{ opacity: 0, y: -10 }}
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <AlertTriangle className="w-5 h-5 text-red-600" />
-                  <h2 className="text-lg font-bold text-red-600 dark:text-red-400">
+                  <AlertTriangle className="w-5 h-5 text-[var(--c-error)]" />
+                  <h2 className="text-lg font-bold text-[var(--c-error)]">
                     زیر نقطه سفارش ({toPersianNumbers(categorizedItems.belowReorder.length)})
                   </h2>
                 </div>
-                {renderCategoryTable(categorizedItems.belowReorder, 'bg-red-100 dark:bg-red-900/30')}
+                {renderCategoryTable(categorizedItems.belowReorder, 'bg-[color-mix(in_srgb,var(--c-destructive)_16%,transparent)]')}
               </motion.div>
             )}
 
@@ -747,12 +747,12 @@ export default function ReorderPointPage() {
                 exit={{ opacity: 0, y: -10 }}
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <Clock className="w-5 h-5 text-orange-600" />
-                  <h2 className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                  <Clock className="w-5 h-5 text-[var(--c-warning)]" />
+                  <h2 className="text-lg font-bold text-[var(--c-warning)]">
                     نزدیک به نقطه سفارش ({toPersianNumbers(categorizedItems.nearReorder.length)})
                   </h2>
                 </div>
-                {renderCategoryTable(categorizedItems.nearReorder, 'bg-orange-100 dark:bg-orange-900/30')}
+                {renderCategoryTable(categorizedItems.nearReorder, 'bg-[color-mix(in_srgb,var(--c-warning)_16%,transparent)]')}
               </motion.div>
             )}
 
@@ -765,12 +765,12 @@ export default function ReorderPointPage() {
                 exit={{ opacity: 0, y: -10 }}
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <TrendingUp className="w-5 h-5 text-green-600" />
-                  <h2 className="text-lg font-bold text-green-600 dark:text-green-400">
+                  <TrendingUp className="w-5 h-5 text-[var(--c-success)]" />
+                  <h2 className="text-lg font-bold text-[var(--c-success)]">
                     موجودی کافی ({toPersianNumbers(categorizedItems.aboveReorder.length)})
                   </h2>
                 </div>
-                {renderCategoryTable(categorizedItems.aboveReorder, 'bg-green-100 dark:bg-green-900/30')}
+                {renderCategoryTable(categorizedItems.aboveReorder, 'bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)]')}
               </motion.div>
             )}
 
@@ -783,12 +783,12 @@ export default function ReorderPointPage() {
                 exit={{ opacity: 0, y: -10 }}
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <AlertCircle className="w-5 h-5 text-gray-500" />
-                  <h2 className="text-lg font-bold text-gray-500 dark:text-gray-400">
+                  <AlertCircle className="w-5 h-5 text-[var(--c-muted-fg)]" />
+                  <h2 className="text-lg font-bold text-[var(--c-muted-fg)]">
                     بدون نقطه سفارش ({toPersianNumbers(categorizedItems.noReorderPoint.length)})
                   </h2>
                 </div>
-                {renderCategoryTable(categorizedItems.noReorderPoint, 'bg-gray-100 dark:bg-gray-900/30')}
+                {renderCategoryTable(categorizedItems.noReorderPoint, 'bg-[var(--c-muted)]')}
               </motion.div>
             )}
 

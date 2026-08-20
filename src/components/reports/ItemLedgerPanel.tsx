@@ -1,7 +1,7 @@
 // =====================================================================
 // ItemLedgerPanel
 //
-// Drilldown for RPT_INVENTORY_VALUATION_SUMMARY. Opens inside the
+// Drilldown for item ledger detail. Opens inside the
 // left-anchored SidePanel and lists the ledger of ONE item.
 //
 // Date window:
@@ -109,7 +109,7 @@ function ItemLedgerPanelInner({
         ) : null}
 
         {error && (
-          <div className="rounded-[10px] border border-[var(--c-destructive)]/30 bg-[var(--c-destructive)]/10 px-3 py-2.5 text-sm text-[var(--c-destructive)]">
+          <div className="rounded-[10px] border border-[var(--c-destructive)]/30 bg-[var(--c-destructive)]/10 px-3 py-2.5 text-sm text-[var(--c-error)]">
             {error}
           </div>
         )}
@@ -189,10 +189,10 @@ function LedgerRowView({ row }: { row: ItemLedgerRow }) {
       ) : (
         <Badge variant="secondary" className="shrink-0">{label}</Badge>
       )}
-      <span className="font-bold text-green-600 tabular-nums" dir="ltr">
+      <span className="font-bold text-[var(--c-success)] tabular-nums" dir="ltr">
         {row.qty_in > 0 ? `+${toPersianDigits(row.qty_in.toLocaleString('en-US'))}` : '—'}
       </span>
-      <span className="font-bold text-red-500 tabular-nums" dir="ltr">
+      <span className="font-bold text-[var(--c-error)] tabular-nums" dir="ltr">
         {row.qty_out > 0 ? `-${toPersianDigits(row.qty_out.toLocaleString('en-US'))}` : '—'}
       </span>
       <span className="ms-auto text-[var(--c-muted-fg)] tabular-nums" dir="ltr">

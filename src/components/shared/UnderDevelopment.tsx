@@ -20,11 +20,11 @@ const UnderDevelopment = ({
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-5 max-w-2xl mx-auto px-4">
-      <div className="bg-amber-100 p-4 rounded-full dark:bg-amber-900/30">
-        <Hammer className="h-12 w-12 text-amber-600 dark:text-amber-500" />
+      <div className="bg-[color-mix(in_srgb,var(--c-warning)_16%,transparent)] p-4 rounded-full">
+        <Hammer className="h-12 w-12 text-[var(--c-warning)]" />
       </div>
       <div className="space-y-1.5">
-        <h1 className="text-2xl font-bold text-amber-600 dark:text-amber-500">
+        <h1 className="text-2xl font-bold text-[var(--c-warning)]">
           {reportName ?? 'در حال توسعه'}
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -34,17 +34,17 @@ const UnderDevelopment = ({
 
       {plannedFeatures && plannedFeatures.length > 0 ? (
         <div
-          className="w-full max-w-lg rounded-2xl border border-amber-200/70 dark:border-amber-800/40
-                     bg-amber-50/60 dark:bg-amber-950/20 p-4 text-right"
+          className="w-full max-w-lg rounded-2xl border border-[color-mix(in_srgb,var(--c-warning)_30%,transparent)]
+                     bg-[color-mix(in_srgb,var(--c-warning)_8%,transparent)] p-4 text-right"
           dir="rtl"
         >
           <div className="flex items-center gap-2 mb-3 justify-end">
-            <span className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+            <span className="text-sm font-semibold text-[var(--c-warning)]">
               قابلیت‌های برنامه‌ریزی‌شده
             </span>
-            <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <Sparkles className="h-4 w-4 text-[var(--c-warning)]" />
           </div>
-          <ul className="space-y-2 text-sm text-amber-900 dark:text-amber-200">
+          <ul className="space-y-2 text-sm text-[var(--c-warning)]">
             {plannedFeatures.map((feat, idx) => (
               <li key={idx} className="leading-7">
                 <span aria-hidden="true" className="ml-2">•</span>

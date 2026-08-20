@@ -125,7 +125,7 @@ export const REPORT_CATALOG: readonly ReportCatalogEntry[] = [
     id: 'RPT_INVENTORY_STOCK',
     title: 'موجودی انبار',
     subtitle: 'Inventory Stock',
-    description: 'موجودی فعلی هر کالا + ارزش ریالی + سن حرکت + وضعیت راکد — با کلیک روی ردیف، گردش ۹۰ روز اخیر باز می‌شود',
+    description: 'موجودی فعلی هر کالا + ارزش ریالی + سن حرکت — با کلیک روی ردیف، گردش ۹۰ روز اخیر باز می‌شود',
     group: 'inventory',
     status: 'stub',
     iconName: 'Warehouse',

@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { FileUpload } from '@/components/ui/FileUpload';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { toast } from 'sonner';
 import { toPersianNumbers, formatNumberWithSeparator } from '@/utils/persianNumbers';
 import { getJalaliToday, jalaliToGregorian } from '@/utils/jalaliDate';
@@ -379,7 +379,7 @@ export default function PurchasesPage() {
       <div className="flex items-center justify-center min-h-[400px]">
         <Card className="w-full max-w-md">
           <CardContent className="p-6 text-center">
-            <div className="w-12 h-12 text-amber-500 mx-auto mb-4">⚠️</div>
+            <div className="w-12 h-12 text-[var(--c-warning)] mx-auto mb-4">⚠️</div>
             <h3 className="text-lg font-bold mb-2">دسترسی محدود</h3>
             <p className="text-[var(--c-muted-fg)]">شما مجوز ثبت خرید و انتقال را ندارید.</p>
           </CardContent>
@@ -422,7 +422,7 @@ export default function PurchasesPage() {
             </select>
             {isLoadingFarms && <span className="block mt-1 text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
             {farmsError && (
-              <button type="button" onClick={loadFarms} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+              <button type="button" onClick={loadFarms} className="mt-1 text-xs text-[var(--c-error)] underline">
                 تلاش مجدد
               </button>
             )}
@@ -466,20 +466,17 @@ export default function PurchasesPage() {
                     transition={{ duration: 0.15 }}
                   >
                     <Card 
-                      className="cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-green-500/30 h-full"
+                      className="cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-[var(--c-success)]/30 h-full"
                       onClick={() => navigateToForm('purchase')}
                     >
                       <CardHeader className="pb-2">
-                        <div className="w-14 h-14 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-3">
-                          <ShoppingCart className="w-7 h-7 text-green-600 dark:text-green-400" />
+                        <div className="w-14 h-14 rounded-xl bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)] flex items-center justify-center mb-3">
+                          <ShoppingCart className="w-7 h-7 text-[var(--c-success)]" />
                         </div>
                         <CardTitle className="text-lg">ثبت خرید</CardTitle>
-                        <CardDescription className="text-sm">
-                          ثبت خرید نهاده‌ها و اقلام بسته‌بندی از تأمین‌کنندگان
-                        </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="flex items-center text-green-600 dark:text-green-400 text-sm font-medium mt-4">
+                        <div className="flex items-center text-[var(--c-success)] text-sm font-medium mt-4">
                           <span>ورود به فرم ثبت</span>
                           <ChevronLeft className="w-4 h-4 mr-1" />
                         </div>
@@ -494,20 +491,17 @@ export default function PurchasesPage() {
                     transition={{ duration: 0.15 }}
                   >
                     <Card 
-                      className="cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-teal-500/30 h-full"
+                      className="cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-[#3A7D5C]/30 h-full"
                       onClick={() => navigateToForm('transfer_in')}
                     >
                       <CardHeader className="pb-2">
-                        <div className="w-14 h-14 rounded-xl bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center mb-3">
-                          <ArrowDownToLine className="w-7 h-7 text-teal-600 dark:text-teal-400" />
+                        <div className="w-14 h-14 rounded-xl bg-[color-mix(in_srgb,#3A7D5C_16%,transparent)] flex items-center justify-center mb-3">
+                          <ArrowDownToLine className="w-7 h-7 text-[#3A7D5C]" />
                         </div>
                         <CardTitle className="text-lg">دریافت از واحدها</CardTitle>
-                        <CardDescription className="text-sm">
-                          ثبت کالاهای دریافتی از سایر فارم‌ها و واحدهای سازمان
-                        </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="flex items-center text-teal-600 dark:text-teal-400 text-sm font-medium mt-4">
+                        <div className="flex items-center text-[#3A7D5C] text-sm font-medium mt-4">
                           <span>ورود به فرم ثبت</span>
                           <ChevronLeft className="w-4 h-4 mr-1" />
                         </div>
@@ -522,20 +516,17 @@ export default function PurchasesPage() {
                     transition={{ duration: 0.15 }}
                   >
                     <Card 
-                      className="cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-orange-500/30 h-full"
+                      className="cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-[var(--c-accent)]/30 h-full"
                       onClick={() => navigateToForm('transfer_out')}
                     >
                       <CardHeader className="pb-2">
-                        <div className="w-14 h-14 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mb-3">
-                          <Truck className="w-7 h-7 text-orange-600 dark:text-orange-400" />
+                        <div className="w-14 h-14 rounded-xl bg-[color-mix(in_srgb,var(--c-accent)_16%,transparent)] flex items-center justify-center mb-3">
+                          <Truck className="w-7 h-7 text-[var(--c-accent)]" />
                         </div>
                         <CardTitle className="text-lg">ارسال به واحدها</CardTitle>
-                        <CardDescription className="text-sm">
-                          ثبت ارسال کالا به سایر فارم‌ها و واحدهای سازمان
-                        </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <div className="flex items-center text-orange-600 dark:text-orange-400 text-sm font-medium mt-4">
+                        <div className="flex items-center text-[var(--c-accent)] text-sm font-medium mt-4">
                           <span>ورود به فرم ثبت</span>
                           <ChevronLeft className="w-4 h-4 mr-1" />
                         </div>
@@ -545,15 +536,15 @@ export default function PurchasesPage() {
                 </div>
 
                 {/* Info Card */}
-                <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                <Card className="bg-[color-mix(in_srgb,var(--c-info)_16%,transparent)] border-[color-mix(in_srgb,var(--c-info)_30%,transparent)]">
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0">
-                        <span className="text-blue-600 dark:text-blue-400 text-lg">💡</span>
+                      <div className="w-8 h-8 rounded-full bg-[color-mix(in_srgb,var(--c-info)_30%,transparent)] flex items-center justify-center flex-shrink-0">
+                        <span className="text-[var(--c-info)] text-lg">💡</span>
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-1">راهنما</h4>
-                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                        <h4 className="text-sm font-medium text-[var(--c-info)] mb-1">راهنما</h4>
+                        <p className="text-sm text-[var(--c-info)]">
                           برای ثبت خرید، از تأمین‌کننده فاکتور دریافت کنید و اطلاعات آن را وارد کنید. 
                           برای انتقال، هماهنگی لازم با واحد مقصد انجام شده باشد.
                         </p>
@@ -575,12 +566,9 @@ export default function PurchasesPage() {
                 <Card>
                   <CardHeader className="border-b border-[var(--c-border)]">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <ShoppingCart className="w-5 h-5 text-green-600" />
+                      <ShoppingCart className="w-5 h-5 text-[var(--c-success)]" />
                       {getFormTitle()}
                     </CardTitle>
-                    <CardDescription>
-                      ثبت اطلاعات خرید کالا از تأمین‌کننده
-                    </CardDescription>
                   </CardHeader>
                   <CardContent className="p-6">
                     <div className="space-y-6">
@@ -606,7 +594,7 @@ export default function PurchasesPage() {
                         />
                         {isLoadingFarmItems && <span className="mt-1 block text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
                         {farmItemsError && (
-                          <button type="button" onClick={loadFarmItems} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                          <button type="button" onClick={loadFarmItems} className="mt-1 text-xs text-[var(--c-error)] underline">
                             تلاش مجدد
                           </button>
                         )}
@@ -761,12 +749,9 @@ export default function PurchasesPage() {
                 <Card>
                   <CardHeader className="border-b border-[var(--c-border)]">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <ArrowDownToLine className="w-5 h-5 text-teal-600" />
+                      <ArrowDownToLine className="w-5 h-5 text-[#3A7D5C]" />
                       {getFormTitle()}
                     </CardTitle>
-                    <CardDescription>
-                      ثبت اطلاعات کالای دریافتی از سایر واحدها
-                    </CardDescription>
                   </CardHeader>
                   <CardContent className="p-6">
                     <div className="space-y-6">
@@ -792,7 +777,7 @@ export default function PurchasesPage() {
                         />
                         {isLoadingOtherFarms && <span className="mt-1 block text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
                         {otherFarmsError && (
-                          <button type="button" onClick={loadOtherFarms} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                          <button type="button" onClick={loadOtherFarms} className="mt-1 text-xs text-[var(--c-error)] underline">
                             تلاش مجدد
                           </button>
                         )}
@@ -810,7 +795,7 @@ export default function PurchasesPage() {
                         />
                         {isLoadingFarmItems && <span className="mt-1 block text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
                         {farmItemsError && (
-                          <button type="button" onClick={loadFarmItems} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                          <button type="button" onClick={loadFarmItems} className="mt-1 text-xs text-[var(--c-error)] underline">
                             تلاش مجدد
                           </button>
                         )}
@@ -907,12 +892,9 @@ export default function PurchasesPage() {
                 <Card>
                   <CardHeader className="border-b border-[var(--c-border)]">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <Truck className="w-5 h-5 text-orange-600" />
+                      <Truck className="w-5 h-5 text-[var(--c-accent)]" />
                       {getFormTitle()}
                     </CardTitle>
-                    <CardDescription>
-                      ثبت اطلاعات کالای ارسالی به سایر واحدها
-                    </CardDescription>
                   </CardHeader>
                   <CardContent className="p-6">
                     <div className="space-y-6">
@@ -938,7 +920,7 @@ export default function PurchasesPage() {
                         />
                         {isLoadingOtherFarms && <span className="mt-1 block text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
                         {otherFarmsError && (
-                          <button type="button" onClick={loadOtherFarms} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                          <button type="button" onClick={loadOtherFarms} className="mt-1 text-xs text-[var(--c-error)] underline">
                             تلاش مجدد
                           </button>
                         )}
@@ -956,7 +938,7 @@ export default function PurchasesPage() {
                         />
                         {isLoadingFarmItems && <span className="mt-1 block text-xs text-[var(--c-muted-fg)]">در حال بارگذاری...</span>}
                         {farmItemsError && (
-                          <button type="button" onClick={loadFarmItems} className="mt-1 text-xs text-[var(--c-destructive)] underline">
+                          <button type="button" onClick={loadFarmItems} className="mt-1 text-xs text-[var(--c-error)] underline">
                             تلاش مجدد
                           </button>
                         )}

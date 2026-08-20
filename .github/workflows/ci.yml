@@ -26,6 +26,15 @@ jobs:
       - name: Check merge conflict markers
         run: npm run check:conflicts
 
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Security & env checks
+        run: npm run check:secrets && npm run check:env
+
       - name: Build
         run: npm run build
 

@@ -15,6 +15,7 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { usePaginatedTransactions } from '@/hooks/useInventory';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { rpcError } from '@/utils/rpcError';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -61,7 +62,7 @@ export default function InventoryItemHistoryPage() {
 
     // ===========================================================================
     // Server-side Excel export — TASK 09 invariant: NO client-side xlsx generation.
-    // delegates to src/lib/excelServer.ts → POST /api/export/RPT_INVENTORY_LEDGER.
+    // delegates to src/lib/excelServer.ts → POST /api/export/RPT_INVENTORY_STOCK (item-scoped).
     // Filters passed forward are the FULL page-level filter set, NOT just the
     // visible 15 rows — operators can hit «download» to walk the whole audit
     // trail for the item, not a single page. We forward item_id, the optional
@@ -74,7 +75,7 @@ export default function InventoryItemHistoryPage() {
         const toastId = toast.loading('در حال ساخت فایل اکسل…');
         try {
             const { fileName, rowCount } = await triggerServerExport(
-                'RPT_INVENTORY_LEDGER',
+                'RPT_INVENTORY_STOCK',
                 {
                     date_from: gregorianFilters.date_from || undefined,
                     date_to: gregorianFilters.date_to || undefined,
@@ -96,8 +97,7 @@ export default function InventoryItemHistoryPage() {
                 { id: toastId },
             );
         } catch (e) {
-            const msg =
-                e instanceof Error ? e.message : 'خطای ناشناخته در ساخت فایل اکسل';
+            const msg = rpcError(e) ?? 'خطای ناشناخته در ساخت فایل اکسل';
             toast.error(msg, { id: toastId });
         } finally {
             setIsExporting(false);
@@ -169,12 +169,12 @@ export default function InventoryItemHistoryPage() {
                     </Button>
                     <Button
                         onClick={onExportClick}
-                        className="bg-green-600 hover:bg-green-700 text-white border-none"
+                        className="bg-[var(--c-success)] hover:brightness-110 text-[var(--c-primary-fg)] border-none"
                         size="sm"
                         disabled={transactions.length === 0 || isExporting}
                     >
                         {isExporting ? (
-                            <span className="inline-block w-4 h-4 ml-1 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span className="inline-block w-4 h-4 ml-1 border-2 border-[var(--c-primary-fg)] border-t-transparent rounded-full animate-spin" />
                         ) : (
                             <Download className="w-4 h-4 ml-1" />
                         )}
@@ -211,6 +211,7 @@ export default function InventoryItemHistoryPage() {
                                         <label className="text-xs text-[var(--c-muted-fg)] mb-1 block">نوع تراکنش</label>
                                         <select
                                             value={filters.txn_type}
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                             onChange={(e) => setFilters({ ...filters, txn_type: e.target.value as any })}
                                             className="w-full h-9 px-3 rounded-md border border-[var(--c-border)] bg-[var(--c-bg)] text-[var(--c-fg)] text-sm"
                                         >
@@ -268,7 +269,7 @@ export default function InventoryItemHistoryPage() {
                         </div>
                     ) : error ? (
                         <div className="text-center py-20">
-                            <AlertTriangle className="w-12 h-12 mx-auto text-red-500 mb-4" />
+                            <AlertTriangle className="w-12 h-12 mx-auto text-[var(--c-error)] mb-4" />
                             <p className="text-[var(--c-fg)]">{error}</p>
                             <Button onClick={() => window.location.reload()} className="mt-4">تلاش مجدد</Button>
                         </div>
@@ -308,10 +309,10 @@ export default function InventoryItemHistoryPage() {
                                                             {TXN_TYPE_LABELS[txn.txn_type as TransactionType] || txn.txn_type}
                                                         </Badge>
                                                     </td>
-                                                    <td className="py-4 px-4 text-center font-bold text-green-600">
+                                                    <td className="py-4 px-4 text-center font-bold text-[var(--c-success)]">
                                                         {txn.qty_in > 0 ? `+${toPersianNumbers(txn.qty_in.toLocaleString())}` : '—'}
                                                     </td>
-                                                    <td className="py-4 px-4 text-center font-bold text-red-600">
+                                                    <td className="py-4 px-4 text-center font-bold text-[var(--c-error)]">
                                                         {txn.qty_out > 0 ? `-${toPersianNumbers(txn.qty_out.toLocaleString())}` : '—'}
                                                     </td>
                                                     <td className="py-4 px-4 text-center text-[var(--c-muted-fg)]">{toPersianNumbers(txn.reference_no || '—')}</td>
@@ -357,7 +358,7 @@ export default function InventoryItemHistoryPage() {
                                                     key={i}
                                                     onClick={() => setCurrentPage(i + 1)}
                                                     className={`w-8 h-8 rounded-md text-sm font-medium transition-colors ${currentPage === i + 1
-                                                        ? 'bg-primary text-white'
+                                                        ? 'bg-primary text-[var(--c-primary-fg)]'
                                                         : 'hover:bg-[var(--c-muted)] text-[var(--c-fg)]'
                                                         }`}
                                                 >

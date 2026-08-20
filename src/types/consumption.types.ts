@@ -193,10 +193,10 @@ export const STATUS_LABELS: Record<VoucherStatus, string> = {
 };
 
 export const STATUS_COLORS: Record<VoucherStatus, { bg: string; text: string }> = {
-  draft: { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-400' },
-  submitted: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400' },
-  locked: { bg: 'bg-gray-100 dark:bg-gray-900/30', text: 'text-gray-700 dark:text-gray-400' },
-  reverted: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
+  draft: { bg: 'bg-[color-mix(in_srgb,var(--c-warning)_16%,transparent)]', text: 'text-[var(--c-warning)]' },
+  submitted: { bg: 'bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)]', text: 'text-[var(--c-success)]' },
+  locked: { bg: 'bg-[var(--c-muted)]', text: 'text-[var(--c-muted-fg)]' },
+  reverted: { bg: 'bg-[color-mix(in_srgb,var(--c-destructive)_16%,transparent)]', text: 'text-[var(--c-error)]' },
 };
 
 export const TXN_TYPE_LABELS: Record<TransactionType, string> = {

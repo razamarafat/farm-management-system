@@ -107,14 +107,27 @@ export async function triggerServerExport(
   const baseUrl = resolveBffBaseUrl();
   const url = `${baseUrl}/api/export/${reportId}`;
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify(filters),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(filters),
+    });
+  } catch (e) {
+    // Network-level failure: the browser never returns an HTTP status
+    // here — CORS rejection, server down, offline, DNS, etc. Surface a
+    // clear Persian message and keep the raw detail for the console.
+    console.error('Export server unreachable:', url, e);
+    throw makeError(
+      'خطا در اتصال به سرور خروجی اکسل. لطفاً دوباره تلاش کنید',
+      0,
+      'export_server_unreachable',
+    );
+  }
 
   if (!response.ok) {
     let detail = '';
@@ -125,6 +138,15 @@ export async function triggerServerExport(
       detail = payload?.detail ?? '';
     } catch {
       // Non-JSON response — fall through with the raw status text.
+    }
+    // Surface server-provided detail ONLY when it is already Persian
+    // (the server sends Persian details in production). Raw/technical
+    // detail (dev-mode err.message, SQL text, etc.) never reaches the
+    // UI — it is logged for debugging instead.
+    const isPersian = /[\u0600-\u06FF]/.test(detail);
+    if (!isPersian && detail) {
+      console.error('Export API error detail:', code, detail);
+      detail = '';
     }
     throw makeError(
       `خطا در دریافت خروجی اکسل (${response.status})${detail ? ` — ${detail}` : ''}`,
