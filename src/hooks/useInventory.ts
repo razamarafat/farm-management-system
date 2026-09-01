@@ -96,7 +96,6 @@ export function useStockBalances(farmId: string | null, category: 'feed' | 'pack
 
       setBalances(result);
     } catch (err) {
-      console.error('Error fetching balances:', err);
       setError('خطا در دریافت موجودی انبار');
     } finally {
       setIsLoading(false);
@@ -186,7 +185,6 @@ export function useInventoryTransactions(farmId: string | null, filters: Invento
 
       setTransactions(result);
     } catch (err) {
-      console.error('Error fetching transactions:', err);
       setError('خطا در دریافت تراکنش‌ها');
     } finally {
       setIsLoading(false);
@@ -246,7 +244,6 @@ export function useInventoryMutations(farmId: string | null) {
       toast.success('موجودی اولیه با موفقیت ثبت شد');
       return true;
     } catch (err) {
-      console.error('Error adding initial stock:', err);
       toast.error('خطا در ثبت موجودی اولیه');
       return false;
     } finally {
@@ -286,7 +283,6 @@ export function useInventoryMutations(farmId: string | null) {
       toast.success('خرید با موفقیت ثبت شد');
       return true;
     } catch (err) {
-      console.error('Error adding purchase:', err);
       toast.error('خطا در ثبت خرید');
       return false;
     } finally {
@@ -325,7 +321,6 @@ export function useInventoryMutations(farmId: string | null) {
       toast.success(direction === 'in' ? 'انتقال ورودی ثبت شد' : 'انتقال خروجی ثبت شد');
       return true;
     } catch (err) {
-      console.error('Error adding transfer:', err);
       toast.error('خطا در ثبت انتقال');
       return false;
     } finally {
@@ -368,7 +363,6 @@ export function useInventoryMutations(farmId: string | null) {
       toast.success('تعدیل موجودی با موفقیت ثبت شد');
       return true;
     } catch (err) {
-      console.error('Error adding adjustment:', err);
       toast.error('خطا در ثبت تعدیل');
       return false;
     } finally {
@@ -395,7 +389,6 @@ export function useInventoryMutations(farmId: string | null) {
       toast.success('تراکنش با موفقیت حذف شد');
       return true;
     } catch (err) {
-      console.error('Error deleting transaction:', err);
       toast.error('خطا در حذف تراکنش');
       return false;
     } finally {
@@ -435,7 +428,6 @@ export function useInventoryMutations(farmId: string | null) {
       toast.success('تراکنش با موفقیت بروزرسانی شد');
       return true;
     } catch (err) {
-      console.error('Error updating transaction:', err);
       toast.error('خطا در بروزرسانی تراکنش');
       return false;
     } finally {
@@ -507,7 +499,7 @@ export function useItemInitialCheck(farmId: string | null) {
       const itemIds = new Set((data || []).map((t) => t.item_id));
       setItemsWithInitial(itemIds);
     } catch (err) {
-      console.error('Error checking initial stock:', err);
+      // Silently fail - initial stock check is informational only
     } finally {
       setIsLoading(false);
     }

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { usePaginatedTransactions } from '@/hooks/useInventory';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabase } from '@/lib/supabase';
 import { rpcError } from '@/utils/rpcError';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -124,7 +124,7 @@ export default function InventoryItemHistoryPage() {
 
     useEffect(() => {
         if (itemId) {
-            supabaseAdmin
+            supabase
                 .from('farm_items')
                 .select('name, unit, category')
                 .eq('id', itemId)

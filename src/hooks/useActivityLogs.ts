@@ -71,7 +71,7 @@ export function useActivityLogs(page: number, actionFilter: string | null) {
       })));
       setTotalCount(count ?? 0);
     } catch (err) {
-      console.error('useActivityLogs error:', err);
+      // Error silently handled - toast will show error
       setRows([]);
       setTotalCount(0);
       setError('خطا در دریافت سوابق فعالیت‌ها');

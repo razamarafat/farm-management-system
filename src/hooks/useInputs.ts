@@ -36,7 +36,6 @@ export function useInputs(filters: InputFilters) {
       if (fetchError) throw fetchError;
       setInputs((data || []) as Input[]);
     } catch (err) {
-      console.error('Error fetching inputs:', err);
       setError('خطا در دریافت اطلاعات نهاده‌ها');
     } finally {
       setIsLoading(false);
@@ -61,7 +60,7 @@ export function useActiveInputs(category?: 'feed' | 'packaging') {
         const { data } = await query;
         setInputs((data || []) as Input[]);
       } catch (err) {
-        console.error('Error fetching active inputs:', err);
+        // Error silently handled - UI will show empty state
       } finally {
         setIsLoading(false);
       }

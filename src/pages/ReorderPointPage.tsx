@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useStockBalances } from '@/hooks/useInventory';
-import { supabaseAdmin } from '@/lib/supabase-admin';
 import { supabase } from '@/lib/supabase';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -76,7 +75,7 @@ async function fetch7DayAvgConsumption(
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   const fromDate = sevenDaysAgo.toISOString().split('T')[0];
 
-  const { data } = await supabaseAdmin
+  const { data } = await supabase
     .from('inventory_transactions')
     .select('item_id, qty_out')
     .eq('farm_id', farmId)
@@ -120,7 +119,7 @@ export default function ReorderPointPage() {
     }
 
     try {
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('inventory_transactions')
         .select('item_id, unit_price, txn_ts')
         .eq('farm_id', farmId)
@@ -141,7 +140,6 @@ export default function ReorderPointPage() {
       });
       setLastPurchasePriceMap(latestPriceMap);
     } catch (err) {
-      console.error('Error fetching last purchase prices:', err);
       setLastPurchasePriceMap({});
     }
   }, []);
@@ -191,7 +189,7 @@ export default function ReorderPointPage() {
           }
         }
       } catch (err) {
-        console.error('Error loading farms:', err);
+        // Error silently handled - UI will show empty state
       }
     };
 
@@ -271,7 +269,7 @@ export default function ReorderPointPage() {
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabaseAdmin
+      const { error } = await supabase
         .from('farm_items')
         .update({ reorder_point: newValue })
         .eq('id', itemId);
@@ -283,7 +281,6 @@ export default function ReorderPointPage() {
       setEditValue('');
       refetch();
     } catch (err) {
-      console.error('Error updating reorder point:', err);
       toast.error('خطا در بروزرسانی نقطه سفارش');
     } finally {
       setIsSubmitting(false);

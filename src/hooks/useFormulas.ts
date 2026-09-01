@@ -96,7 +96,6 @@ export function useFormulas(farmId: string | null) {
       }
       setFormulas(results);
     } catch (err) {
-      console.error('Fetch formulas error:', err);
       setError('خطا در دریافت فرمول‌ها');
     } finally {
       setIsLoading(false);
@@ -131,7 +130,7 @@ export function useFarmFeedItems(farmId: string | null) {
           })),
         );
       } catch (err) {
-        console.error('Fetch farm items error:', err);
+        // Error fetching farm items - silently fail
       } finally {
         setIsLoading(false);
       }
