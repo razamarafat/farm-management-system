@@ -17,7 +17,7 @@ import {
   generateUniqueFileName,
   CompressedFile 
 } from '@/utils/imageCompression';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 interface FileUploadProps {
@@ -70,7 +70,6 @@ export function FileUpload({
       
       await uploadFile(compressed.file);
     } catch (err) {
-      console.error('Compression error:', err);
       setError('خطا در فشرده‌سازی تصویر');
     } finally {
       setIsCompressing(false);
@@ -85,7 +84,7 @@ export function FileUpload({
       const fileName = generateUniqueFileName(folderName, 'jpg');
       const filePath = `${folderName}/${fileName}`;
 
-      const { error: uploadError } = await supabaseAdmin.storage
+      const { error: uploadError } = await supabase.storage
         .from(bucketName)
         .upload(filePath, file, {
           cacheControl: '31536000',
@@ -95,14 +94,13 @@ export function FileUpload({
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabaseAdmin.storage
+      const { data: { publicUrl } } = supabase.storage
         .from(bucketName)
         .getPublicUrl(filePath);
 
       onChange(publicUrl);
       toast.success('تصویر با موفقیت آپلود شد');
     } catch (err) {
-      console.error('Upload error:', err);
       setError('خطا در آپلود تصویر');
       toast.error('خطا در آپلود تصویر');
     } finally {
@@ -156,12 +154,12 @@ export function FileUpload({
       try {
         const path = value.split(`${bucketName}/`)[1];
         if (path) {
-          await supabaseAdmin.storage
+          await supabase.storage
             .from(bucketName)
             .remove([path]);
         }
       } catch (err) {
-        console.error('Error removing file:', err);
+        // Ignore removal errors
       }
     }
     setPreviewUrl(null);

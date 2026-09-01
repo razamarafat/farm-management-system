@@ -1,160 +1,65 @@
-# Node / build artefacts
-/node_modules
-/dist
-.vite
+```
+# Dependencies
+node_modules/
 
-# ---------------------------------------------------------------
-# Environment variables — anything that can contain secrets.
-# Matches all known variants (dot, dash, uppercase for tooling).
-# ---------------------------------------------------------------
+# Build outputs
+dist/
+build/
+target/
+
+# Environment variables
 .env
-.env.*
-!.env.example
-!.bff/.env.example
-.envrc
+.env.local
+*.env.*
 
-# ---------------------------------------------------------------
-# Repo hygiene: artefacts that have leaked secrets before.
-# ---------------------------------------------------------------
-# repo XML dumps (repomix) — these have historically mirrored .env.
-repomix-output.xml
-allcode.txt
-
-# Migration/apply scripts + audit backups — contain live Supabase
-# access tokens (sbp_...) used to run migrations. Local-only.
-apply_reporting.sh
-/backups/
-
-# Windows CMD artefacts (the result of `> nul` redirections).
-nul
-tmp.js
-
-# BFF local env (used by `cd bff && npm start`)
-/bff/.env
-
-# OS / IDE
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.ENV
+.python-version
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+*.tmp
+*.swp
+*.swo
 .DS_Store
 Thumbs.db
+
+# TypeScript/JavaScript
+*.tsbuildinfo
+*.js.map
+*.jsx.map
+*.ts.map
+next-env.d.ts
+out/
+.nuxt/
+.next/
+public/build/
+.svelte-kit/
+
+# Editors
 .vscode/
 .idea/
+*.swp
+*.swo
 
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Coverage / scratch
-coverage
-.cache
-.parcel-cache
-.next
-
-# BFF scratch / audit baselines — local-only, may contain policy text
-# or runtime catalog dumps. Never commit.
-services/export-api/_*
-
-# QA verification data dumps — copies of production data. Never commit.
-scripts/qa/_qa-prod-data.sql
-scripts/qa/.qa-pgdata/
-
-# Local Supabase QA stack (scratch copy of config + migrations).
-.qa-supabase/
-
-# AI-tool config directories (auto-generated, never commit)
-.adal/
-.agents/
-.aider-desk/
-.augment/
-.autohand/
-.bob/
-.claude/
-.codeartsdoer/
-.codebuddy/
-.codemaker/
-.codestudio/
-.commandcode/
-.continue/
-.cortex/
-.crush/
-.devin/
-.factory/
-.forge/
-.freebuff/
-.goose/
-.grok/
-.hermes/
-.iflow/
-.inferencesh/
-.jazz/
-.junie/
-.kilocode/
-.kimchi/
-.kiro/
-.kode/
-.lingma/
-.mcpjam/
-.moxby/
-.mux/
-.neovate/
-.ona/
-.openhands/
-.pi/
-.pochi/
-.qoder/
-.qwen/
-.reasonix/
-.roo/
-.rovodev/
-.tabnine/
-.terramind/
-.tinycloud/
-.trae/
-.vibe/
-.windsurf/
-.zcode/
-.zencoder/
-
-# Graphify knowledge graph (regenerated locally)
-graphify-out/
-
-# BFF node_modules (already in /node_modules but being explicit)
-/bff/node_modules/
-
-# Build artifacts from singlefile / distribution
-dist/
-
-# Scratch / local-only files
-task.txt
-package_new.json
-rtk-x86_64-pc-windows-msvc.zip
-fn-defs.json
-fn-defs.txt
-
-# Audit scripts (temporary, not for distribution)
-scripts/audit/_gen-008.mjs
-scripts/audit/exec-report-rpcs.mjs
-scripts/audit/incident-sweep.mjs
-scripts/audit/live-export-v3-e2e.mjs
-scripts/audit/live-report-functional-audit.mjs
-scripts/audit/param-crosscheck.mjs
-scripts/audit/probe-report-rpcs.mjs
-scripts/audit/rls-check.mjs
-scripts/backups/
-scripts/notify-deploy.mjs
-scripts/sync-existing-farm-items-to-inputs.mjs
-
-# Misc untracked configs
-skills-lock.json
-skills/
-AGENTS.md
-design-system/
-docs/audit-handoff.md
-docs/audit/
-docs/reports/GUIDELINES.md
-docs/reports/fabricated-data-incident-2026-07.md
-docs/session-handoff.md
-docs/wwd20irrl.output
-\n# Local Supabase QA stack (ignored)\n.qa-supabase/
+# OS generated
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+```

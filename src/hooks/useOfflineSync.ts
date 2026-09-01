@@ -118,7 +118,7 @@ export function useOfflineSync() {
             await deleteSyncedChange(change.id);
           }
         } catch (err) {
-          console.error('Failed to sync change:', change.id, err);
+          // Failed to sync change - will be retried later
           // Don't delete failed changes, they'll be retried
         }
       }
@@ -134,7 +134,6 @@ export function useOfflineSync() {
         toast.success('همگام‌سازی با موفقیت انجام شد');
       }
     } catch (err) {
-      console.error('Sync failed:', err);
       toast.error('خطا در همگام‌سازی');
     } finally {
       syncInProgressRef.current = false;
