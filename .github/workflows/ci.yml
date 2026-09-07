@@ -58,6 +58,10 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Pure unit tests over src/utils — no DB, no browser, no network.
+      - name: Unit tests
+        run: npm run test:unit
+
       - name: Security & env checks
         run: npm run check:secrets && npm run check:env
 
