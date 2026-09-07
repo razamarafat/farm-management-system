@@ -1,10 +1,11 @@
-import { RouteObject, Navigate } from 'react-router-dom';
+import { RouteObject } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import type { ReactNode } from 'react';
 
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+import { RedirectIfAuthed, RoleHomeRedirect } from '@/components/layout/RoleHomeRedirect';
 import { Spinner } from '@/components/ui/Spinner';
 
 // Eagerly loaded critical pages
@@ -41,7 +42,7 @@ function LazyPage({ children }: { children: ReactNode }) {
 export const routes: RouteObject[] = [
   {
     path: '/',
-    element: <Navigate to="/login" replace />,
+    element: <RoleHomeRedirect />,
   },
   {
     path: '/login',
@@ -49,7 +50,7 @@ export const routes: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <LoginPage />,
+        element: <RedirectIfAuthed><LoginPage /></RedirectIfAuthed>,
       },
     ],
   },
