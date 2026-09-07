@@ -19,7 +19,7 @@ import { execSync } from 'node:child_process';
 
 const ROOT = process.cwd();
 const INCLUDE_EXT = /\.(ts|tsx|js|mjs|cjs|jsx|html|json|css|md|sql|env|yml|yaml|xml|txt)$/i;
-const SKIP_DIRS = new Set(['.git', 'node_modules', 'dist', '.vite', 'coverage', '.cache', 'bff']);
+const SKIP_DIRS = new Set(['.git', 'node_modules', 'dist', '.vite', 'coverage', '.cache']);
 
 // Files this scan ignores. All entries are paths relative to repo root
 // in POSIX form. Add docs here ONLY when they intentionally paste a
