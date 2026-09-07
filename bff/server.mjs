@@ -25,7 +25,14 @@ const PORT = 10000;
 const SUPABASE_URL       = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY  = process.env.VITE_SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE   = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
-const ALLOWED_ORIGIN     = process.env.ALLOWED_ORIGIN || '*';
+const ALLOWED_ROLES = ['admin', 'supervisor', 'operator'];
+// Fail-closed CORS allowlist: comma-separated origins (e.g.
+// "https://app.example,https://admin.example"). Empty/unset means NO
+// origin is echoed — browsers then block cross-site reads by default.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGIN || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 const BODY_LIMIT_BYTES   = 64 * 1024; // 64 KB — small JSON payloads only.
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE) {
@@ -43,16 +50,21 @@ const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-function cors(res) {
-  res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+function cors(res, req) {
+  // Echo the request Origin ONLY when it is explicitly allowlisted.
+  // Otherwise omit the header entirely (fail-closed).
+  const origin = req?.headers?.origin;
+  if (typeof origin === 'string' && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
   res.setHeader('Access-Control-Max-Age', '86400');
   res.setHeader('Vary', 'Origin');
 }
 
-function send(res, status, body) {
-  cors(res);
+function send(res, status, body, req) {
+  cors(res, req);
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(body));
 }
@@ -77,6 +89,35 @@ function readBody(req) {
     });
     req.on('error', reject);
   });
+}
+
+// ---- Per-IP sliding-window throttling (zero deps, no timers) ---------
+const RATE_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_GET = 60;      // GET requests per IP per window
+const RATE_LIMIT_MUTATING = 20; // POST/PATCH/DELETE per IP per window
+const rateBuckets = new Map(); // ip -> { start, get, mutating }
+
+function isRateLimited(req) {
+  const fwd = (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  const ip = fwd || (req.socket && req.socket.remoteAddress) || 'unknown';
+  const now = Date.now();
+  let bucket = rateBuckets.get(ip);
+  if (!bucket || now - bucket.start >= RATE_WINDOW_MS) {
+    bucket = { start: now, get: 0, mutating: 0 };
+    rateBuckets.set(ip, bucket);
+    // Opportunistic cleanup of stale buckets (no timers/keep-alive).
+    if (rateBuckets.size > 5000) {
+      for (const [key, val] of rateBuckets) {
+        if (now - val.start >= RATE_WINDOW_MS) rateBuckets.delete(key);
+      }
+    }
+  }
+  if (req.method === 'GET') {
+    bucket.get += 1;
+    return bucket.get > RATE_LIMIT_GET;
+  }
+  bucket.mutating += 1;
+  return bucket.mutating > RATE_LIMIT_MUTATING;
 }
 
 // Verify the caller's bearer token AND confirm admin role. Reject bad or
@@ -108,14 +149,18 @@ async function handle(req, res, pathname, ctx) {
   if (req.method === 'POST' && pathname === '/api/auth-admin/users') {
     const body = await readBody(req);
     const { email, password, role = 'operator', username, email_confirm = true } = body || {};
-    if (!email || !password) return send(res, 400, { error: 'email_and_password_required' });
-    if (String(password).length < 8) return send(res, 400, { error: 'password_too_short' });
+    if (!email || !password) return send(res, 400, { error: 'email_and_password_required' }, req);
+    if (String(password).length < 8) return send(res, 400, { error: 'password_too_short' }, req);
+    if (!ALLOWED_ROLES.includes(role)) return send(res, 400, { error: 'invalid_role' }, req);
     const { data, error } = await admin.auth.admin.createUser({
       email, password, email_confirm,
       user_metadata: { role, username: (username || '').toLowerCase().trim() },
     });
-    if (error) return send(res, 400, { error: error.message });
-    return send(res, 200, { id: data.user?.id, user: data.user });
+    if (error) {
+      console.error('[bff] admin createUser failed:', String(error));
+      return send(res, 400, { error: 'admin_operation_failed' }, req);
+    }
+    return send(res, 200, { id: data.user?.id }, req);
   }
 
   // ---- GET /api/auth-admin/users  (listUsers, paged) ---------------
@@ -123,8 +168,11 @@ async function handle(req, res, pathname, ctx) {
     const page    = Number(req.url.match(/[?&]page=(\d+)/)?.[1] || '1');
     const perPage = Math.min(Number(req.url.match(/[?&]perPage=(\d+)/)?.[1] || '100'), 200);
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-    if (error) return send(res, 400, { error: error.message });
-    return send(res, 200, data);
+    if (error) {
+      console.error('[bff] admin listUsers failed:', String(error));
+      return send(res, 400, { error: 'admin_operation_failed' }, req);
+    }
+    return send(res, 200, data, req);
   }
 
   // ---- POST /api/auth-admin/users/:id/password  (reset / change) ---
@@ -134,11 +182,14 @@ async function handle(req, res, pathname, ctx) {
     const body = await readBody(req);
     const { password } = body || {};
     if (!password || String(password).length < 8) {
-      return send(res, 400, { error: 'password_too_short' });
+      return send(res, 400, { error: 'password_too_short' }, req);
     }
     const { error } = await admin.auth.admin.updateUserById(id, { password });
-    if (error) return send(res, 400, { error: error.message });
-    return send(res, 200, { ok: true });
+    if (error) {
+      console.error('[bff] admin password update failed:', String(error));
+      return send(res, 400, { error: 'admin_operation_failed' }, req);
+    }
+    return send(res, 200, { ok: true }, req);
   }
 
   // ---- PATCH/DELETE /api/auth-admin/users/:id ---------------------
@@ -146,16 +197,25 @@ async function handle(req, res, pathname, ctx) {
   if (userMatch) {
     const id = decodeURIComponent(userMatch[1]);
     if (id === ctx.userId && req.method === 'DELETE') {
-      return send(res, 400, { error: 'cannot_self_delete' });
+      return send(res, 400, { error: 'cannot_self_delete' }, req);
     }
     if (req.method === 'PATCH') {
       const body = await readBody(req);
       // Translate { role, username } into Supabase user_metadata.
+      // Only allowlisted fields are accepted — arbitrary user_metadata
+      // from the request body is never merged.
+      if (body?.role !== undefined && !ALLOWED_ROLES.includes(body.role)) {
+        return send(res, 400, { error: 'invalid_role' }, req);
+      }
       const patch = {};
-      if (body?.password)   patch.password = body.password;
+      if (body?.password !== undefined) {
+        if (String(body.password).length < 8) {
+          return send(res, 400, { error: 'password_too_short' }, req);
+        }
+        patch.password = body.password;
+      }
       if (body?.role || body?.username) {
         patch.user_metadata = {
-          ...(body?.user_metadata || {}),
           ...(body?.role ? { role: body.role } : {}),
           ...(body?.username ? { username: String(body.username).toLowerCase().trim() } : {}),
         };
@@ -163,23 +223,29 @@ async function handle(req, res, pathname, ctx) {
       if (body?.email)      patch.email = body.email;
       if (body?.email_confirm !== undefined) patch.email_confirm = !!body.email_confirm;
       const { data, error } = await admin.auth.admin.updateUserById(id, patch);
-      if (error) return send(res, 400, { error: error.message });
-      return send(res, 200, { id: data.user?.id, user: data.user });
+      if (error) {
+        console.error('[bff] admin updateUserById failed:', String(error));
+        return send(res, 400, { error: 'admin_operation_failed' }, req);
+      }
+      return send(res, 200, { id: data.user?.id }, req);
     }
     if (req.method === 'DELETE') {
       const { error } = await admin.auth.admin.deleteUser(id);
-      if (error) return send(res, 400, { error: error.message });
-      return send(res, 200, { ok: true });
+      if (error) {
+        console.error('[bff] admin deleteUser failed:', String(error));
+        return send(res, 400, { error: 'admin_operation_failed' }, req);
+      }
+      return send(res, 200, { ok: true }, req);
     }
   }
 
-  return send(res, 404, { error: 'route_not_found', path: pathname });
+  return send(res, 404, { error: 'route_not_found', path: pathname }, req);
 }
 
 const server = createServer(async (req, res) => {
-  // CORS preflight.
+  // CORS preflight — never throttled or authenticated.
   if (req.method === 'OPTIONS') {
-    cors(res);
+    cors(res, req);
     res.writeHead(204);
     res.end();
     return;
@@ -189,27 +255,34 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host || 'bff'}`);
     pathname = url.pathname;
   } catch {
-    return send(res, 400, { error: 'bad_url' });
+    return send(res, 400, { error: 'bad_url' }, req);
+  }
+  // Throttle BEFORE authenticate so bearer-token probing is capped.
+  if (isRateLimited(req)) {
+    return send(res, 429, { error: 'rate_limited' }, req);
   }
   if (!pathname.startsWith('/api/auth-admin/')) {
-    return send(res, 404, { error: 'not_found' });
+    return send(res, 404, { error: 'not_found' }, req);
   }
   let ctx;
   try { ctx = await authenticate(req); }
-  catch (e) { return send(res, 500, { error: 'auth_failed', detail: String(e) }); }
-  if (ctx.error) return send(res, ctx.status, { error: ctx.error });
+  catch (e) {
+    console.error('[bff] authenticate threw:', String(e));
+    return send(res, 500, { error: 'auth_failed' }, req);
+  }
+  if (ctx.error) return send(res, ctx.status, { error: ctx.error }, req);
 
   try {
     await handle(req, res, pathname, ctx);
   } catch (e) {
     const msg = String(e?.message || e);
-    if (msg === 'payload_too_large') return send(res, 413, { error: 'payload_too_large' });
-    if (msg === 'bad_json')         return send(res, 400, { error: 'bad_json' });
+    if (msg === 'payload_too_large') return send(res, 413, { error: 'payload_too_large' }, req);
+    if (msg === 'bad_json')         return send(res, 400, { error: 'bad_json' }, req);
     console.error('[bff] handler error:', msg);
-    return send(res, 500, { error: 'internal' });
+    return send(res, 500, { error: 'internal' }, req);
   }
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`[bff] listening on :${PORT}, allowed_origin=${ALLOWED_ORIGIN}`);
+  console.log(`[bff] listening on :${PORT}, allowed_origins=${ALLOWED_ORIGINS.join(',') || '(none - fail-closed)'}`);
 });
