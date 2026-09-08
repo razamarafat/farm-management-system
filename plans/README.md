@@ -154,14 +154,38 @@ touched by multiple branches — resolve by taking both code changes, then
   fallback default. Also remove the truncated-token `console.log` at
   `Simple-Qwen-Proxy.js:13`. Plan 011 only made the file unstageable — it did
   not and cannot rotate the credential.
-- **Merge status 2026-09-07**: ten reviewed+approved branches (worktree copies
-  under `C:\Users\Reza\AppData\Local\Temp\opencode\mf-adv-*`) — all MERGED
-  into `main` (zero conflicts) and pushed to `origin/main`. The live working
-  tree's user WIP (v1.1.1 root/bff/constants bumps + login-card theme-toggle
-  reposition) was committed first as `chore(release)`; the stray unused
-  `express` hunk and root proxy-tooling files were deliberately NOT committed,
-  and `dist/index.html` was rebuilt once at the merged tip + verified
-  demo-string-clean (AGENTS RULE 2).
+- **Merge status 2026-09-08 (FINAL, pushed to origin/main)**: all ten
+  reviewed+approved branches merged into local `main` (zero conflicts among
+  themselves; validated twice in disposable integration worktrees first), then
+  `origin/main` — which had independently advanced to **PR #8 (`628594e`)** —
+  was merged in (`dc251e8`). Two conflicts/regressions came from PR #8 and
+  were resolved deliberately:
+  1. `.gitignore`: PR #8 replaced our curated file with a generic template
+     (pasted WITH its markdown fences) that silently un-ignored
+     `repomix-output.xml`, `allcode.txt`, `/backups/`, `apply_reporting.sh`,
+     `/bff/.env`, QA prod-data dumps and the AI-tool dirs — an AGENTS.md-class
+     hygiene regression. Resolution: keep the curated rules, absorb PR #8's
+     genuinely-additive generic entries, drop the fences.
+  2. `src/hooks/useUsers.ts`: PR #8's BFF migration (`bff-client.ts`) was
+     broken — **`origin/main` itself fails `npx tsc --noEmit` with 6 errors**
+     (imported `createUser`/`listUsers` shadowed by local hooks,
+     `email` passed to a `CreateUserInput` that lacks it, `string | null`
+     assigned to `string`, undefined `resetPassword`). Repaired in `610bd95`
+     with minimal alias/null-guard fixes (bff-client.ts untouched). Same
+     commit restores the `console.error` diagnostic in `src/utils/rpcError.ts`
+     that PR #8 deleted while leaving its file header claiming "always logged"
+     (plan 013's characterization test catches this class on purpose).
+  After the fixes: `tsc` 0, unit suite **93/93**, lint 14w/0e (baseline),
+  build 0, `dist/index.html` rebuilt + verified free of forbidden strings and
+  of the `sb_secret_`/service-role-JWT shapes, export-api template+contracts
+  green on this tree. NOT pushed as part of plans (user's explicit choice): plan 002's branch
+  `cb1adf5` — merge-test against final main: **src hunks apply clean**, only
+  `dist/index.html` conflicts (resolve by rebuild). Its fixes (UTC→local date
+  defaults, hash-safe voucher link) are still live-relevant.
+  PR #8 also removed the last `@/lib/supabase-admin` consumers — the
+  admin-client migration (queued "plan 020") is now ready to finish: delete
+  `src/lib/supabase-admin.ts` + `scripts/check-legacy-admin.baseline.json`,
+  flip CI legacy-admin to strict — a NEW executor plan, not this one.
 - **Still unmerged (operator's choice 2026-09-07)**: plan 002's approved
   branch `worktree-agent-a43e74edb1a0475be` (`cb1adf5` — local-date defaults +
   hash-safe voucher link). Merge-test ran on top of merged main: **src files
