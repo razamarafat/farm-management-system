@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
-// NOTE: supabaseAdmin (`auth.admin.*` calls) is intentionally retained
-// below for the createUser / updateUserById / deleteUser paths.
-// auth.admin.* REQUIRES the service_role key, which supabaseAdmin no
-// longer carries on production renders (see lib/supabase-admin.ts
-// deprecation comment). The fix for those is the Render BFF route
-// documented in supabase-admin.ts — OUT OF SCOPE per the current task
-// (consumption / packaging voucher entry). The .from() queries below
-// were migrated to `supabase` to satisfy RLS with helper-based auth.uid().
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { createUser, listUsers, updateUserById, deleteUser as bffDeleteUser, resetPassword as bffClientResetPassword } from '@/lib/bff-client';
 import { CreateUserInput, ProfileWithFarm, UpdateUserInput, UserFilters } from '@/types/user.types';
 import { generateRandomPassword } from '@/utils/userHelpers';
 import { escapePostgrestOrValue } from '@/utils/postgrestEscape';
@@ -63,13 +55,11 @@ export const useUsers = (filters: UserFilters) => {
 
       const { data, error: fetchError } = await query;
       if (fetchError) {
-        console.error('Fetch users error:', fetchError);
         throw fetchError;
       }
 
       setUsers((data || []) as unknown as ProfileWithFarm[]);
     } catch (err) {
-      console.error('useUsers error:', err);
       setError('خطا در دریافت اطلاعات کاربران');
     } finally {
       setIsLoading(false);
@@ -104,52 +94,55 @@ export const useCreateUser = () => {
         throw new Error('این نام کاربری قبلا استفاده شده');
       }
 
-      // Step 2: Check if auth user exists with this email (still uses
-      // supabaseAdmin.auth.admin.listUsers — service_role required,
-      // addressed by the Render BFF plan; see top-of-file note).
+      // Step 2: Check if auth user exists with this email via BFF
       let authUserId: string | null = null;
 
-      // Try to find existing auth user
-      const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
-      const existingAuthUser = usersData?.users?.find(u => u.email === email);
+      try {
+        // Try to find existing auth user through BFF
+        const { users: allUsers } = await listUsers(1, 200);
+        const existingAuthUser = allUsers?.find(u => u.email === email);
 
-      if (existingAuthUser) {
-        // Auth user exists - check if they have a profile
-        const { data: profileForAuth } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', existingAuthUser.id)
-          .maybeSingle();
+        if (existingAuthUser) {
+          // Auth user exists - check if they have a profile
+          const { data: profileForAuth } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', existingAuthUser.id)
+            .maybeSingle();
 
-        if (profileForAuth) {
-          // Both exist - this shouldn't happen but handle it
+          if (profileForAuth) {
+            // Both exist - this shouldn't happen but handle it
+            throw new Error('این نام کاربری قبلا استفاده شده');
+          }
+
+          // Auth exists but no profile - update auth and create profile
+          authUserId = existingAuthUser.id;
+          await updateUserById(authUserId, {
+            password: input.password,
+            email_confirm: true,
+            role: input.role,
+            username: input.username.toLowerCase().trim(),
+          });
+        } else {
+          // Create new auth user via BFF
+          const { id, user } = await createUser({
+            email,
+            password: input.password,
+            role: input.role,
+            username: input.username.toLowerCase().trim(),
+            email_confirm: true,
+          });
+
+          if (!user) {
+            throw new Error('خطا در ایجاد کاربر. لطفا دوباره تلاش کنید');
+          }
+          authUserId = id;
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('already been registered')) {
           throw new Error('این نام کاربری قبلا استفاده شده');
         }
-
-        // Auth exists but no profile - update auth and create profile
-        authUserId = existingAuthUser.id;
-        await supabaseAdmin.auth.admin.updateUserById(authUserId, {
-          password: input.password,
-          email_confirm: true,
-          user_metadata: { role: input.role, username: input.username.toLowerCase().trim() },
-        });
-      } else {
-        // Create new auth user
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-          email,
-          password: input.password,
-          email_confirm: true,
-          user_metadata: { role: input.role, username: input.username.toLowerCase().trim() },
-        });
-
-        if (authError || !authData.user) {
-          console.error('Auth create error:', authError);
-          const msg = authError?.message?.includes('already been registered')
-            ? 'این نام کاربری قبلا استفاده شده'
-            : 'خطا در ایجاد کاربر. لطفا دوباره تلاش کنید';
-          throw new Error(msg);
-        }
-        authUserId = authData.user.id;
+        throw err;
       }
 
       // Step 3: Insert or update profile (JWT-bound)
@@ -167,10 +160,13 @@ export const useCreateUser = () => {
         }, { onConflict: 'id' });
 
       if (profileError) {
-        console.error('Profile insert error:', profileError);
         // Cleanup: delete the auth user if we just created it
-        if (!existingAuthUser && authUserId) {
-          await supabaseAdmin.auth.admin.deleteUser(authUserId);
+        if (authUserId) {
+          try {
+            await bffDeleteUser(authUserId);
+          } catch {
+            // Ignore cleanup errors
+          }
         }
         throw new Error('خطا در ایجاد پروفایل کاربر. لطفا دوباره تلاش کنید');
       }
@@ -210,24 +206,18 @@ export const useUpdateUser = () => {
         .eq('id', userId);
 
       if (profileError) {
-        console.error('Profile update error:', profileError);
         throw new Error('خطا در بروزرسانی اطلاعات کاربر');
       }
 
-      // Update password if requested
+      // Update password if requested via BFF
       if (input.changePassword && input.newPassword) {
-        const { error: passError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
-          password: input.newPassword,
-        });
-        if (passError) {
-          console.error('Password update error:', passError);
-          throw new Error('خطا در تغییر رمز عبور');
-        }
+        await resetPassword(userId, input.newPassword);
       }
 
-      // Update user metadata in auth
-      await supabaseAdmin.auth.admin.updateUserById(userId, {
-        user_metadata: { role: input.role, username },
+      // Update user metadata in auth via BFF
+      await updateUserById(userId, {
+        role: input.role,
+        username,
       });
 
       await logActivity('user_updated', userId);
@@ -256,7 +246,6 @@ export const useDeleteUser = () => {
           .update({ is_active: false })
           .eq('id', userId);
         if (error) {
-          console.error('Soft delete error:', error);
           throw new Error('خطا در غیرفعالسازی کاربر');
         }
         await logActivity('user_deactivated', userId);
@@ -269,13 +258,10 @@ export const useDeleteUser = () => {
         .delete()
         .eq('id', userId);
       if (profileError) {
-        console.error('Hard delete profile error:', profileError);
         throw new Error('خطا در حذف کاربر');
       }
-      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
-      if (authError) {
-        console.error('Hard delete auth error:', authError);
-      }
+      // Delete auth user via BFF
+      await bffDeleteUser(userId);
       await logActivity('user_deleted', userId);
       return true;
     } finally {
@@ -294,7 +280,6 @@ export const useToggleUserStatus = () => {
         .update({ is_active: !currentStatus })
         .eq('id', userId);
       if (error) {
-        console.error('Toggle status error:', error);
         throw error;
       }
       await logActivity(currentStatus ? 'user_deactivated' : 'user_activated', userId);
@@ -316,11 +301,7 @@ export const useResetPassword = () => {
     setIsResetting(true);
     try {
       const newPass = customPassword || generateRandomPassword(8);
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, { password: newPass });
-      if (error) {
-        console.error('Reset password error:', error);
-        throw error;
-      }
+      await bffClientResetPassword(userId, newPass);
       await logActivity('password_reset', userId);
       return newPass;
     } catch {

@@ -62,7 +62,6 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
     try {
       return (await readFeedFormulas(farmId)) as unknown as FarmFeedFormula[];
     } catch (err) {
-      console.error('[useDailySheet] fetchFormulas failed', err);
       return [];
     }
   }, [farmId]);
@@ -72,7 +71,6 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
     try {
       return (await readFormulaItems(formulaId)) as unknown as FormulaItem[];
     } catch (err) {
-      console.error('[useDailySheet] fetchFormulaItems failed', err);
       return [];
     }
   }, []);
@@ -88,7 +86,6 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
         isSelected: false,
       }));
     } catch (err) {
-      console.error('[useDailySheet] fetchHalls failed', err);
       return [];
     }
   }, [farmId]);
@@ -319,7 +316,6 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
     } catch (err) {
       const message = err instanceof Error ? err.message : 'خطای ناشناخته';
       setError(message);
-      console.error('Fetch daily sheet error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -476,7 +472,6 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
       setTimeout(() => setSaveStatus('idle'), 2000);
       return true;
     } catch (err) {
-      console.error('Save draft error:', err);
       setSaveStatus('error');
       toast.error('خطا در ذخیره');
       return false;
@@ -550,10 +545,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
         items?: Array<{ item_name?: string; unit?: string; shortage?: number }>;
       };
 
-      // The RPC keeps the raw technical detail server-side; log it here
-      // for debugging but never render it to the user.
-      if (r?.detail) console.error('Submit RPC technical detail:', r.detail);
-
+      // The RPC keeps the raw technical detail server-side; never render it to the user.
       if (r?.success === true) {
         toast.success('حواله با موفقیت ثبت شد');
         await fetchData();
@@ -572,7 +564,6 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
       return false;
     } catch (err) {
       const message = rpcError(err) ?? 'خطا در ثبت نهایی';
-      console.error('Submit error:', err);
       toast.error(message);
       return false;
     } finally {
@@ -603,8 +594,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
         detail?: string;
       };
 
-      if (r?.detail) console.error('Revert RPC technical detail:', r.detail);
-
+      // The RPC keeps the raw technical detail server-side; never render it to the user.
       if (r?.success === true) {
         toast.success('حواله به حالت پیش‌نویس برگشت داده شد');
         await fetchData();
@@ -614,7 +604,6 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
       toast.error(rpcError(r?.message) ?? 'خطا در برگشت حواله');
     } catch (err) {
       const message = rpcError(err) ?? 'خطا در برگشت حواله';
-      console.error('Revert error:', err);
       toast.error(message);
     } finally {
       setIsSaving(false);

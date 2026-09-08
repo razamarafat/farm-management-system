@@ -53,7 +53,7 @@ export const useFarms = (filters: FarmFilters) => {
       if (fe) throw fe;
       setFarms((data || []) as Farm[]);
     } catch (e) {
-      console.error(e);
+      // Error silently handled
       setError('خطا در دریافت اطلاعات');
     } finally {
       setIsLoading(false);
@@ -112,7 +112,7 @@ export const useUpdateFarm = () => {
       toast.success('اطلاعات فارم بروزرسانی شد');
       return true;
     } catch (e) {
-      console.error(e);
+      // Error silently handled
       toast.error(rpcError(e) ?? 'خطا در بروزرسانی فارم');
       return false;
     } finally {
@@ -136,7 +136,7 @@ export const useDeleteFarm = () => {
       toast.success(hard ? 'فارم حذف شد' : 'فارم غیرفعال شد');
       return true;
     } catch (e) {
-      console.error(e);
+      // Error silently handled
       toast.error(rpcError(e) ?? 'خطا در حذف فارم');
       return false;
     } finally {
@@ -161,7 +161,7 @@ export const useToggleFarmStatus = () => {
       toast.success(next ? 'فارم فعال شد' : 'فارم غیرفعال شد');
       return true;
     } catch (e) {
-      console.error(e);
+      // Error silently handled
       toast.error(rpcError(e) ?? 'خطا در بروزرسانی وضعیت فارم');
       return false;
     }

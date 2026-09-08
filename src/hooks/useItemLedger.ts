@@ -136,7 +136,6 @@ export function useItemLedger({
 
       if (cancelled) return;
       if (rpcError) {
-        console.error('Item ledger RPC error:', rpcError);
         setError(toPersianError(rpcError) ?? 'خطا در دریافت گردش کالا');
         setIsLoading(false);
         fetchingRef.current = false;

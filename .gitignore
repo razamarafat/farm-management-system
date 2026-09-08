@@ -4,7 +4,7 @@
 .vite
 
 # ---------------------------------------------------------------
-# Environment variables — anything that can contain secrets.
+# Environment variables ΓÇö anything that can contain secrets.
 # Matches all known variants (dot, dash, uppercase for tooling).
 # ---------------------------------------------------------------
 .env
@@ -16,11 +16,11 @@
 # ---------------------------------------------------------------
 # Repo hygiene: artefacts that have leaked secrets before.
 # ---------------------------------------------------------------
-# repo XML dumps (repomix) — these have historically mirrored .env.
+# repo XML dumps (repomix) ΓÇö these have historically mirrored .env.
 repomix-output.xml
 allcode.txt
 
-# Migration/apply scripts + audit backups — contain live Supabase
+# Migration/apply scripts + audit backups ΓÇö contain live Supabase
 # access tokens (sbp_...) used to run migrations. Local-only.
 apply_reporting.sh
 /backups/
@@ -52,11 +52,11 @@ coverage
 .parcel-cache
 .next
 
-# BFF scratch / audit baselines — local-only, may contain policy text
+# BFF scratch / audit baselines ΓÇö local-only, may contain policy text
 # or runtime catalog dumps. Never commit.
 services/export-api/_*
 
-# QA verification data dumps — copies of production data. Never commit.
+# QA verification data dumps ΓÇö copies of production data. Never commit.
 scripts/qa/_qa-prod-data.sql
 scripts/qa/.qa-pgdata/
 
@@ -157,9 +157,43 @@ docs/reports/GUIDELINES.md
 docs/reports/fabricated-data-incident-2026-07.md
 docs/session-handoff.md
 docs/wwd20irrl.output
-\n# Local Supabase QA stack (ignored)\n.qa-supabase/
 
-# Local developer LLM tooling — never part of the product, and the proxy
+# Local developer LLM tooling ΓÇö never part of the product, and the proxy
 # script holds a bearer credential. Keep both out of git entirely.
 /Simple-Qwen-Proxy.js
 /claude-code-model-router-plus
+# ---------------------------------------------------------------
+# Generic artefacts absorbed from the PR #8 .gitignore refresh,
+# de-duplicated against the curated rules above. Reviewer note:
+# PR #8 replaced this file with a generic template pasted WITH its
+# markdown code fences and dropped every project-specific secret-
+# hygiene rule (repomix-output.xml, allcode.txt, /backups/,
+# apply_reporting.sh, /bff/.env, QA prod-data dumps, AI-tool dirs,
+# graphify-out/). Those rules are restored here — the fence chars
+# and the weaker .env section are NOT adopted.
+# ---------------------------------------------------------------
+build/
+target/
+out/
+.nuxt/
+public/build/
+.svelte-kit/
+next-env.d.ts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.tox/
+venv/
+.venv/
+.python-version
+pip-log.txt
+nosetests.xml
+coverage.xml
+*.cover
+*.tmp
+*.js.map
+*.jsx.map
+*.ts.map
+ehthumbs.db
+Icon?

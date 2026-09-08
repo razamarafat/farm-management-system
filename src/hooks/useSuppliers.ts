@@ -34,7 +34,6 @@ export function useSuppliers(filters: SupplierFilters) {
       if (fetchError) throw fetchError;
       setSuppliers((data || []) as Supplier[]);
     } catch (err) {
-      console.error(err);
       setError('خطا در دریافت اطلاعات تأمین‌کنندگان');
     } finally {
       setIsLoading(false);
@@ -61,7 +60,7 @@ export function useActiveSuppliers() {
           .order('name', { ascending: true });
         setSuppliers((data || []) as Supplier[]);
       } catch (err) {
-        console.error('Error fetching suppliers:', err);
+        // Error silently handled - UI will show empty state
       } finally {
         setIsLoading(false);
       }
