@@ -158,3 +158,8 @@ docs/reports/fabricated-data-incident-2026-07.md
 docs/session-handoff.md
 docs/wwd20irrl.output
 \n# Local Supabase QA stack (ignored)\n.qa-supabase/
+
+# Local developer LLM tooling — never part of the product, and the proxy
+# script holds a bearer credential. Keep both out of git entirely.
+/Simple-Qwen-Proxy.js
+/claude-code-model-router-plus

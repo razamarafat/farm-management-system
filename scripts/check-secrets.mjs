@@ -15,6 +15,7 @@
 // =====================================================================
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
+import { execSync } from 'node:child_process';
 
 const ROOT = process.cwd();
 const INCLUDE_EXT = /\.(ts|tsx|js|mjs|cjs|jsx|html|json|css|md|sql|env|yml|yaml|xml|txt)$/i;
@@ -96,3 +97,100 @@ if (hits.length > 0) {
 }
 
 console.log('[check-secrets] OK — no VITE_*SERVICE_ROLE assignments or service-role JWT literals found.');
+
+// =====================================================================
+// Bearer-token / API-key literal guard.
+//
+// Scans exactly the files git would track
+// (`git ls-files --cached --others --exclude-standard`) and fails on a
+// long high-entropy literal assigned to an identifier containing
+// key/token/secret/password. JWT shape (three base64url segments, the
+// first starting eyJ) is the key shape.
+//
+// Skips: binary files, lockfiles, node_modules, dist, *.example, .env*
+// files, and the SELF set above. Prints path:line plus the IDENTIFIER
+// NAME ONLY — never the matched value.
+// =====================================================================
+const BEARER_SKIP_DIR = new Set(['node_modules', 'dist']);
+const BEARER_SKIP_FILE = [/\.lock$/i, /(^|\/)package-lock\.json$/, /\.example$/];
+const SENSITIVE_ASSIGN =
+  /([A-Za-z_$][\w$]*(?:key|token|secret|password)[\w$]*)\s*[:=]\s*["'`]([^"'`\r\n]{1,600})["'`]/gi;
+const JWT_SHAPE = /^eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}$/;
+const OPAQUE_SHAPE = /^[A-Za-z0-9_~+/.=-]{32,}$/;
+const MIN_OPAQUE_ENTROPY = 4.0;
+
+function shannonEntropy(s) {
+  const counts = new Map();
+  for (const ch of s) counts.set(ch, (counts.get(ch) ?? 0) + 1);
+  let entropy = 0;
+  for (const n of counts.values()) {
+    const p = n / s.length;
+    entropy -= p * Math.log2(p);
+  }
+  return entropy;
+}
+
+function isBearerLike(value) {
+  if (JWT_SHAPE.test(value)) return 'JWT-shaped literal';
+  if (OPAQUE_SHAPE.test(value) && shannonEntropy(value) >= MIN_OPAQUE_ENTROPY) {
+    return 'long high-entropy literal';
+  }
+  return null;
+}
+
+function listGitFiles() {
+  const out = execSync('git ls-files --cached --others --exclude-standard -z', {
+    cwd: ROOT,
+    maxBuffer: 16 * 1024 * 1024,
+  }).toString('utf8');
+  return out.split('\0').filter(Boolean);
+}
+
+function isBearerSkipped(rel) {
+  if (SELF.has(rel)) return true;
+  if (BEARER_SKIP_DIR.has(rel.split('/')[0])) return true;
+  if (BEARER_SKIP_FILE.some((re) => re.test(rel))) return true;
+  const base = rel.split('/').pop();
+  if (base === '.env' || base.startsWith('.env.')) return true;
+  return false;
+}
+
+const bearerHits = [];
+let gitFiles;
+try {
+  gitFiles = listGitFiles();
+} catch {
+  console.error('[check-secrets] FAIL — could not list git files (git unavailable?).');
+  process.exit(1);
+}
+for (const rel of gitFiles) {
+  if (isBearerSkipped(rel)) continue;
+  let buf;
+  try { buf = readFileSync(join(ROOT, rel)); } catch { continue; }
+  if (buf.length === 0 || buf.length > 1024 * 1024) continue;
+  if (buf.slice(0, 8000).includes(0)) continue; // binary
+  const lines = buf.toString('utf8').split('\n');
+  lines.forEach((line, idx) => {
+    SENSITIVE_ASSIGN.lastIndex = 0;
+    let m;
+    while ((m = SENSITIVE_ASSIGN.exec(line))) {
+      const kind = isBearerLike(m[2]);
+      if (kind) bearerHits.push({ file: rel, line: idx + 1, identifier: m[1], kind });
+    }
+  });
+}
+
+if (bearerHits.length > 0) {
+  console.error('[check-secrets] FAIL — bearer/API-key shaped literals detected:');
+  for (const h of bearerHits) {
+    console.error(`  ${h.file}:${h.line}`);
+    console.error(`    identifier: ${h.identifier}`);
+    console.error(`    kind: ${h.kind}`);
+  }
+  console.error('\nIf a hit is a placeholder, load the real value from the');
+  console.error('environment at runtime instead of hard-coding a literal.');
+  console.error('For real leaks, see docs/security/incident-response.md.');
+  process.exit(1);
+}
+
+console.log('[check-secrets] OK — no bearer/API-key shaped literals assigned to key/token/secret/password identifiers.');
