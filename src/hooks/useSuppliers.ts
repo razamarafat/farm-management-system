@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { rpc } from '@/utils/rpc';
 import { rpcError } from '@/utils/rpcError';
+import { escapePostgrestLike } from '@/utils/postgrestEscape';
 import { toast } from 'sonner';
 import type { Supplier, SupplierInsert, SupplierFilters } from '@/types/supplier.types';
 
@@ -25,7 +26,7 @@ export function useSuppliers(filters: SupplierFilters) {
         .select('*')
         .order('name', { ascending: true });
 
-      if (debouncedSearch) query = query.ilike('name', `%${debouncedSearch}%`);
+      if (debouncedSearch) query = query.ilike('name', `%${escapePostgrestLike(debouncedSearch)}%`);
       if (filters.status === 'active')   query = query.eq('is_active', true);
       if (filters.status === 'inactive') query = query.eq('is_active', false);
 
