@@ -86,6 +86,8 @@ export function rpcError(e: unknown): string | null {
   const msg = raw.trim();
   if (!msg) return null;
 
+  console.error('[rpcError] technical detail:', msg);
+
   // 1. Network-level failures (fetch threw, server unreachable, timeout)
   if (NETWORK_RE.test(msg)) return NETWORK_MESSAGE;
 

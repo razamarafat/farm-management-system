@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
-import { createUser, listUsers, updateUserById, deleteUser as bffDeleteUser, resetPassword as bffClientResetPassword } from '@/lib/bff-client';
+import { createUser as bffCreateUser, listUsers, updateUserById, deleteUser as bffDeleteUser, resetPassword as bffClientResetPassword } from '@/lib/bff-client';
 import { CreateUserInput, ProfileWithFarm, UpdateUserInput, UserFilters } from '@/types/user.types';
 import { generateRandomPassword } from '@/utils/userHelpers';
 import { escapePostgrestOrValue } from '@/utils/postgrestEscape';
@@ -125,7 +125,7 @@ export const useCreateUser = () => {
           });
         } else {
           // Create new auth user via BFF
-          const { id, user } = await createUser({
+          const { id, user } = await bffCreateUser({
             email,
             password: input.password,
             role: input.role,
@@ -146,6 +146,9 @@ export const useCreateUser = () => {
       }
 
       // Step 3: Insert or update profile (JWT-bound)
+      if (!authUserId) {
+        throw new Error('خطا در ایجاد کاربر. لطفا دوباره تلاش کنید');
+      }
       const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
@@ -211,7 +214,7 @@ export const useUpdateUser = () => {
 
       // Update password if requested via BFF
       if (input.changePassword && input.newPassword) {
-        await resetPassword(userId, input.newPassword);
+        await bffClientResetPassword(userId, input.newPassword);
       }
 
       // Update user metadata in auth via BFF
