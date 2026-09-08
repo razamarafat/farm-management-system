@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 import { readFarmItems, readFarmTransactions } from '@/lib/offline/reads';
+import { escapePostgrestOrValue } from '@/utils/postgrestEscape';
 import type {
   InventoryTransaction,
   StockBalance,
@@ -151,7 +152,8 @@ export function useInventoryTransactions(farmId: string | null, filters: Invento
       }
 
       if (filters.search) {
-        query = query.or(`notes.ilike.%${filters.search}%,reference_no.ilike.%${filters.search}%`);
+        const term = `%${escapePostgrestOrValue(filters.search)}%`;
+        query = query.or(`notes.ilike.${term},reference_no.ilike.${term}`);
       }
 
       const { data: txnData, error: fetchError } = await query.limit(500);

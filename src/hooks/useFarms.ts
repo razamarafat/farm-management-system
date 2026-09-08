@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { rpc } from '@/utils/rpc';
 import { rpcError } from '@/utils/rpcError';
+import { escapePostgrestOrValue } from '@/utils/postgrestEscape';
 import { Farm, FarmInsert } from '@/types/farm.types';
 
 export interface FarmFilters {
@@ -42,7 +43,7 @@ export const useFarms = (filters: FarmFilters) => {
         .order('created_at', { ascending: false });
 
       if (debouncedSearch) {
-        const s = `%${debouncedSearch}%`;
+        const s = `%${escapePostgrestOrValue(debouncedSearch)}%`;
         q = q.or(`name.ilike.${s},code.ilike.${s}`);
       }
       if (filters.status === 'active')   q = q.eq('is_active', true);

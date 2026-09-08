@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { CreateUserInput, ProfileWithFarm, UpdateUserInput, UserFilters } from '@/types/user.types';
 import { generateRandomPassword } from '@/utils/userHelpers';
+import { escapePostgrestOrValue } from '@/utils/postgrestEscape';
 
 const logActivity = async (action: string, resourceId?: string) => {
   try {
@@ -52,7 +53,7 @@ export const useUsers = (filters: UserFilters) => {
         .order('created_at', { ascending: false });
 
       if (debouncedSearch) {
-        const search = `%${debouncedSearch}%`;
+        const search = `%${escapePostgrestOrValue(debouncedSearch)}%`;
         query = query.or(`first_name.ilike.${search},last_name.ilike.${search},username.ilike.${search}`);
       }
       if (filters.role !== 'all') query = query.eq('role', filters.role);

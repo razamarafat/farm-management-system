@@ -4,6 +4,7 @@ import { rpc } from '@/utils/rpc';
 import { rpcError } from '@/utils/rpcError';
 import { toast } from 'sonner';
 import { normalizeName } from '@/utils/helpers';
+import { escapePostgrestLike } from '@/utils/postgrestEscape';
 import type { Input, InputInsert, InputFilters } from '@/types/input.types';
 
 export function useInputs(filters: InputFilters) {
@@ -27,7 +28,7 @@ export function useInputs(filters: InputFilters) {
         .order('category', { ascending: true })
         .order('name', { ascending: true });
 
-      if (debouncedSearch) query = query.ilike('name', `%${debouncedSearch}%`);
+      if (debouncedSearch) query = query.ilike('name', `%${escapePostgrestLike(debouncedSearch)}%`);
       if (filters.category !== 'all') query = query.eq('category', filters.category);
       if (filters.status === 'active')   query = query.eq('is_active', true);
       if (filters.status === 'inactive') query = query.eq('is_active', false);
