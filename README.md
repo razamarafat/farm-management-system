@@ -580,8 +580,10 @@ project root:
 |---|---|---|
 | `VITE_SUPABASE_URL` | ✅ | `https://YOUR-PROJECT.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY` | ✅ | anon / publishable key |
-| `VITE_SUPABASE_SERVICE_ROLE_KEY` | ⚠️ required for admin flows | service-role key — bypasses RLS. **Will be bundled into the client JavaScript** (it is not a server-side secret). Treat it as a *trust-for-the-UI-flows* key, not an authentication secret. Rotate if exposed. |
+| `VITE_BFF_URL` | ✅ | SPA auth-admin proxy target (e.g. `http://localhost:10000` in dev) |
 | `VITE_APP_VERSION` | optional | shown in the about pane; defaults to `1.0.2` |
+
+The service-role key lives ONLY on the BFF service, never in the SPA `.env` — enforced by `npm run check:env`.
 
 > **Never** commit real keys. Add `.env*` to `.gitignore`.
 
@@ -621,7 +623,7 @@ npm install
 cat > .env <<EOF
 VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJI...
-VITE_SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJI...
+VITE_BFF_URL=http://localhost:10000
 EOF
 
 # 3) Apply DB migrations in your Supabase SQL editor
@@ -696,7 +698,7 @@ Supabase URL allow-list, redirects/headers, troubleshooting, rollback):
 |---|---|---|
 | Login fails immediately | Missing env vars or wrong project URL | Verify `.env`, restart dev server |
 | "Auth user already exists" | Migration re-run | Idempotent — `002_seed_admin_user.sql` no-ops when an admin profile exists |
-| Service-role key error | `VITE_SUPABASE_SERVICE_ROLE_KEY` not set | Add it to `.env`, restart dev |
+| Service-role key error | `VITE_SUPABASE_SERVICE_ROLE_KEY` present in SPA env | Remove it from the SPA `.env`; set the server key on the BFF service only, restart dev |
 | Stock-negative warning on submit | Item lacks initial stock OR a purchase for today | Register via **موجودی اولیه** tab first |
 | Voucher reverts back to draft | Submitted > 24 h ago for non-admin | Admin can resubmit via **برگشت به پیش‌نویس** + re-submit |
 | PWA install not offered | Browser doesn't support manifest icons | Use Chrome / Edge on desktop or Android |

@@ -3,14 +3,13 @@
 //
 // Mirrors EXACTLY the variables the application reads at build time:
 //   - src/lib/supabase.ts           → VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
-//   - src/lib/supabase-admin.ts     → VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY,
-//                                     VITE_SUPABASE_SERVICE_ROLE_KEY
+//   - BFF proxy target              → VITE_BFF_URL (SPA proxies auth.admin calls
+//                                     to the BFF; see bff/server.mjs)
 //   - src/utils/constants.ts        → VITE_APP_VERSION (optional — falls back to "1.0.2")
 //
-// VITE_SUPABASE_SERVICE_ROLE_KEY is listed as REQUIRED because admin UI flows
-// (voucher write paths, user create/update, hard deletes) call supabaseAdmin.
-// Without it the user-management and inventory tabs will not function even
-// though the build succeeds.
+// VITE_SUPABASE_SERVICE_ROLE_KEY is FORBIDDEN in SPA env (listed in
+// STALE_REJECTED below). It lives ONLY on the BFF service, server-side;
+// the guard rejects it here so it never leaks into the client bundle.
 
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
