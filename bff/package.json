@@ -1,6 +1,6 @@
 {
   "name": "morvarid-farm-bff",
-  "version": "0.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "description": "Render Web Service BFF for Supabase auth.admin operations. Holds the service-role key server-side only; the SPA talks to it from the authenticated admin's browser session.",

@@ -1,6 +1,6 @@
 export const APP_NAME = 'مروارید فارم';
 export const APP_DESC = 'پایش هوشمند دان و اقلام بسته‌بندی';
-export const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.2';
+export const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.1.1';
 
 export const USER_ROLES = {
   ADMIN: 'admin',

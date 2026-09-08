@@ -8,11 +8,6 @@ import { ThemeToggle } from '@/components/layout/ThemeToggle';
 const LoginPage = () => {
   return (
     <div className="relative w-full max-w-[400px]">
-      {/* Theme toggle in top-left corner */}
-      <div className="absolute -top-12 left-0">
-        <ThemeToggle />
-      </div>
-
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -26,6 +21,11 @@ const LoginPage = () => {
           <p className="text-sm text-muted-foreground">
             پایش هوشمند دان و اقلام بسته‌بندی
           </p>
+        </div>
+
+        {/* Theme toggle directly above the login card (user/pass frame) */}
+        <div className="flex justify-end mb-2">
+          <ThemeToggle />
         </div>
 
         <Card className="border-t-4 border-t-primary shadow-lg">
