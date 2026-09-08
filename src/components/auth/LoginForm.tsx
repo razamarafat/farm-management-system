@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useShallow } from 'zustand/react/shallow';
 import { Eye, EyeOff, Lock, User as UserIcon, ArrowLeft, Check } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
 import { getRememberMe, setRememberMe } from '@/lib/auth-storage';
 import { Profile } from '@/types/user.types';
+import { roleHome } from '@/utils/roleHome';
 
 type LoadingStage = 'idle' | 'loading' | 'success';
 
@@ -22,6 +23,7 @@ export const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loadingStage, setLoadingStage] = useState<LoadingStage>('idle');
   const navigate = useNavigate();
+  const location = useLocation();
   const { setUser, setProfile, setSessionStart } = useAuthStore(
     useShallow((state) => ({
       setUser: state.setUser,
@@ -107,18 +109,15 @@ export const LoginForm = () => {
         setLoadingStage('success');
         toast.success(`خوش آمدید، ${profile.first_name || profile.username}`);
 
-        const destination = (() => {
-          switch (profile.role) {
-            case 'admin': return '/admin';
-            case 'supervisor': return '/supervisor';
-            case 'operator': return '/operator';
-            default: return '/';
-          }
-        })();
+        const from = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
+        const home = roleHome(profile.role);
+        const target = from?.pathname?.startsWith(home)
+          ? `${from.pathname}${from.search ?? ''}`
+          : home;
 
         // Brief pause to let the success animation play
         await new Promise(resolve => setTimeout(resolve, 900));
-        navigate(destination);
+        navigate(target, { replace: true });
       }
     } catch (error) {
       console.error('Login error:', error);
