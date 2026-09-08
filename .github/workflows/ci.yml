@@ -9,10 +9,29 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    outputs:
+      db-secrets-present: ${{ steps.db-secrets.outputs.present }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # The `env` context is NOT available in a job-level `if:` (GitHub exposes
+      # only github/needs/vars/inputs there), and neither is `secrets`. So we
+      # probe for the DB test credentials here and publish a yes/no flag the
+      # downstream jobs can gate on via needs.validate.outputs. Never echo the
+      # values themselves.
+      - name: Detect DB test secrets
+        id: db-secrets
+        env:
+          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_JWT: ${{ secrets.SUPABASE_TEST_JWT }}
+        run: |
+          if [ -n "$SUPABASE_TEST_URL" ] && [ -n "$SUPABASE_TEST_JWT" ]; then
+            echo "present=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=no" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -20,7 +39,14 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
+      - name: Install root dependencies
+        run: npm ci
+
+      # export-api has its own package.json (exceljs + @supabase/supabase-js);
+      # the template and contract tests below import it, so root npm ci is not
+      # enough.
+      - name: Install export-api dependencies
+        working-directory: services/export-api
         run: npm ci
 
       - name: Check merge conflict markers
@@ -34,6 +60,10 @@ jobs:
 
       - name: Security & env checks
         run: npm run check:secrets && npm run check:env
+
+      # Advisory only: the admin-client migration is still in progress. check:legacy-admin:strict is expected to fail until that lands, at which point this becomes strict and folds into `npm run check`.
+      - name: Legacy admin-client usage (advisory)
+        run: npm run check:legacy-admin
 
       - name: Build
         run: npm run build
@@ -49,7 +79,9 @@ jobs:
     # Skip when DB secrets aren't configured. The reconciliation-test.mjs
     # script itself also gates exit-code-zero on absent env, but hiding
     # the job from the PR timeline keeps the workflow summary readable.
-    if: ${{ env.SUPABASE_TEST_URL != '' && env.SUPABASE_TEST_JWT != '' }}
+    # NOTE: job-level `if:` cannot see `env` or `secrets`; gate on the
+    # probe flag published by validate instead.
+    if: ${{ needs.validate.outputs.db-secrets-present == 'yes' }}
     needs: validate
 
     steps:
@@ -81,8 +113,9 @@ jobs:
 
   perf-budget:
     runs-on: ubuntu-latest
-    # Same skip semantic as reconciliation.
-    if: ${{ env.SUPABASE_TEST_URL != '' && env.SUPABASE_TEST_JWT != '' }}
+    # Same skip semantic as reconciliation: gate on validate's probe flag
+    # (job-level `if:` cannot see `env` or `secrets`).
+    if: ${{ needs.validate.outputs.db-secrets-present == 'yes' }}
     needs: validate
 
     steps:
