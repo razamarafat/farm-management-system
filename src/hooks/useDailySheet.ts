@@ -437,31 +437,35 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
     [data]
   );
 
-  // Save draft
-  const saveDraft = useCallback(async () => {
-    if (!data || dirtyLinesRef.current.size === 0) return;
+  // Save draft — atomic single-round-trip bulk upsert. All dirty lines go
+  // out in ONE upsert call (same row shape and onConflict as before); a
+  // rejected upsert (RLS/validation — supabase-js resolves { error }, never
+  // throws) throws into the catch below so dirty lines are RETAINED for
+  // retry instead of being silently discarded. Returns true only when a
+  // pending draft was actually persisted.
+  const saveDraft = useCallback(async (): Promise<boolean> => {
+    if (!data || dirtyLinesRef.current.size === 0) return false;
     setSaveStatus('saving');
     setIsSaving(true);
 
     try {
-      const lines = Array.from(dirtyLinesRef.current.values());
+      const rows = Array.from(dirtyLinesRef.current.values()).map((line) => ({
+        voucher_id: data.voucher.id,
+        item_id: line.item_id,
+        formula_no: line.formula_no || null,
+        mixer_count: line.mixer_count || null,
+        hall_numbers: line.hall_numbers || null,
+        consumed_qty: line.consumed_qty,
+        waste_qty: line.waste_qty,
+        notes: line.notes || null,
+        hall_consumed: (line.hall_consumed || {}) as unknown as Json,
+      }));
 
-      for (const line of lines) {
-        await supabase.from('daily_voucher_lines').upsert(
-          {
-            voucher_id: data.voucher.id,
-            item_id: line.item_id,
-            formula_no: line.formula_no || null,
-            mixer_count: line.mixer_count || null,
-            hall_numbers: line.hall_numbers || null,
-            consumed_qty: line.consumed_qty,
-            waste_qty: line.waste_qty,
-            notes: line.notes || null,
-            hall_consumed: (line.hall_consumed || {}) as unknown as Json,
-          },
-          { onConflict: 'voucher_id,item_id' }
-        );
-      }
+      const { error } = await supabase
+        .from('daily_voucher_lines')
+        .upsert(rows, { onConflict: 'voucher_id,item_id' });
+
+      if (error) throw new Error(error.message || 'خطا در ذخیره');
 
       dirtyLinesRef.current.clear();
       setData(prev => {
@@ -470,10 +474,12 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
       });
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
+      return true;
     } catch (err) {
       console.error('Save draft error:', err);
       setSaveStatus('error');
       toast.error('خطا در ذخیره');
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -482,7 +488,13 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
   // Submit
   const submitSheet = useCallback(async (): Promise<boolean> => {
     if (!data) return false;
-    if (dirtyLinesRef.current.size > 0) await saveDraft();
+    if (dirtyLinesRef.current.size > 0) {
+      const flushed = await saveDraft();
+      if (!flushed) {
+        setIsSaving(false);
+        return false;
+      }
+    }
     setIsSaving(true);
 
     try {
