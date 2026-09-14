@@ -31,6 +31,14 @@ const SELF = new Set([
   'bff/README.md',
   'docs/deploy/render.md',
   'docs/security/incident-response.md',
+  // Plan docs quoting redacted/synthetic samples (verified 2026-09-14):
+  // 011 documents the guard's own probe with a synthetic JWT
+  //   ({"alg":"HS256"}.{"sub":"test"}.fakesignature — not a credential);
+  // 017 quotes the old README example with truncated `eyJhbGciOiJI...`;
+  // 018 uses an explicit synthetic canary (`sb_secret_` + A-filler).
+  'plans/011-ignore-local-proxy-tooling.md',
+  'plans/017-env-truth-alignment.md',
+  'plans/018-scanner-bff-coverage.md',
 ]);
 
 const RED = [
