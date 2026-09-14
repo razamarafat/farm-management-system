@@ -13,6 +13,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const ENV_FILES = ['.env', '.env.local', '.env.production', '.env.production.local'];
 const REQUIRED = [
@@ -94,11 +95,19 @@ export function checkEnvVariables(envSource = loadEnvFiles()) {
 }
 
 // Run when invoked directly (not when imported elsewhere).
+// fileURLToPath is the cross-platform way to turn import.meta.url into a
+// filesystem path (new URL(...).pathname yields "/C:/..." on Windows which
+// path.resolve mangles to "C:\C:\...").
 const invokedDirectly =
   process.argv[1] &&
-  resolve(process.argv[1]) === resolve(new URL(import.meta.url).pathname);
+  resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url));
 
 if (invokedDirectly) {
-  const result = checkEnvVariables();
-  if (!result.ok) process.exit(1);
+  const envFilesPresent = ENV_FILES.some((n) => existsSync(resolve(process.cwd(), n)));
+  if (!envFilesPresent) {
+    console.log('[check-env] No .env file present (CI / bare checkout) — skipping local env validation.');
+  } else {
+    const result = checkEnvVariables();
+    if (!result.ok) process.exit(1);
+  }
 }
