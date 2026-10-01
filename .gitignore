@@ -196,4 +196,12 @@ coverage.xml
 *.jsx.map
 *.ts.map
 ehthumbs.db
-Icon?
+# macOS custom folder icon (a file literally named `Icon?`). Anchored to
+# root so it never matches real `icons/` asset directories (e.g.
+# public/icons/ for the PWA manifest) on case-insensitive filesystems.
+/Icon?
+
+# Playwright + Lighthouse CI artefacts
+test-results/
+playwright-report/
+.lighthouseci/

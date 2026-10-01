@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { reportError } from '@/lib/monitoring';
 
 interface Props {
   children: ReactNode;
@@ -23,9 +24,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    // In production, you'd send this to an error reporting service
-    // eslint-disable-next-line no-console
-    console.error('ErrorBoundary caught:', error, info.componentStack);
+    reportError(error, { componentStack: info.componentStack?.slice(0, 2000) });
   }
 
   handleRetry = () => {

@@ -6,6 +6,22 @@ import { CreateUserInput, ProfileWithFarm, UpdateUserInput, UserFilters } from '
 import { generateRandomPassword } from '@/utils/userHelpers';
 import { escapePostgrestOrValue } from '@/utils/postgrestEscape';
 
+// The BFF surfaces machine-readable error codes as Error.message (see
+// bff-client.ts bffFetch). Map the known ones to Persian so the UI never
+// shows a raw code. Anything already Persian passes through untouched.
+const BFF_ERROR_FA: Record<string, string> = {
+  password_too_short: 'رمز عبور باید حداقل ۸ کاراکتر باشد',
+  email_and_password_required: 'ایمیل و رمز عبور الزامی است',
+  invalid_role: 'نقش کاربری نامعتبر است',
+  authentication_required: 'نشست شما منقضی شده؛ لطفاً دوباره وارد شوید',
+  admin_operation_failed: 'خطا در عملیات مدیریتی روی سرور احراز هویت (کاربر یافت نشد یا تکراری است)',
+  bff_request_failed: 'ارتباط با سرویس احراز هویت برقرار نشد',
+};
+const toFaError = (err: unknown, fallback: string): string => {
+  const m = err instanceof Error ? err.message : '';
+  return BFF_ERROR_FA[m] ?? (m || fallback);
+};
+
 const logActivity = async (action: string, resourceId?: string) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -177,7 +193,7 @@ export const useCreateUser = () => {
       await logActivity('user_created', authUserId || '');
       return true;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'خطا در ایجاد کاربر. لطفا دوباره تلاش کنید';
+      const msg = toFaError(err, 'خطا در ایجاد کاربر. لطفا دوباره تلاش کنید');
       setCreateError(msg);
       throw new Error(msg);
     } finally {
@@ -226,7 +242,7 @@ export const useUpdateUser = () => {
       await logActivity('user_updated', userId);
       return true;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'خطا در بروزرسانی اطلاعات کاربر';
+      const msg = toFaError(err, 'خطا در بروزرسانی اطلاعات کاربر');
       setUpdateError(msg);
       throw new Error(msg);
     } finally {
@@ -307,8 +323,8 @@ export const useResetPassword = () => {
       await bffClientResetPassword(userId, newPass);
       await logActivity('password_reset', userId);
       return newPass;
-    } catch {
-      toast.error('خطا در بازنشانی رمز عبور');
+    } catch (err) {
+      toast.error(toFaError(err, 'خطا در بازنشانی رمز عبور'));
       return null;
     } finally {
       setIsResetting(false);

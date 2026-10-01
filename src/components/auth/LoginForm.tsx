@@ -164,6 +164,8 @@ export const LoginForm = () => {
             className="absolute left-3 top-[38px] text-muted-foreground hover:text-foreground transition-colors"
             tabIndex={-1}
             disabled={isBusy}
+            aria-label={showPassword ? 'پنهان کردن رمز عبور' : 'نمایش رمز عبور'}
+            title={showPassword ? 'پنهان کردن رمز عبور' : 'نمایش رمز عبور'}
           >
             {showPassword ? (
               <EyeOff className="h-4 w-4" />

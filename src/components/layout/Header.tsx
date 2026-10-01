@@ -1,16 +1,18 @@
-import { Menu, Home } from 'lucide-react';
+import { Menu, Home, ArrowRight } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useUIStore } from '../../store/uiStore';
 import { useAuthStore } from '../../store/authStore';
 import { ThemeToggle } from './ThemeToggle';
 import { DateTimeDisplay } from './DateTimeDisplay';
 import { ConnectivityIcon } from '@/components/ui/ConnectivityIcon';
+import { useMenuBackNavigation } from '@/hooks/useMenuBack';
 
 export const Header = () => {
   const openSidebar = useUIStore((state) => state.openSidebar);
   const profile = useAuthStore((state) => state.profile);
   const location = useLocation();
   const navigate = useNavigate();
+  const { canGoBackToMenu, backToPreviousMenu } = useMenuBackNavigation();
 
   const getDashboardPath = () => {
     if (!profile) return '/';
@@ -44,6 +46,17 @@ export const Header = () => {
         >
           <Menu size={20} />
         </button>
+
+        {canGoBackToMenu && (
+          <button
+            onClick={backToPreviousMenu}
+            className="flex items-center justify-center gap-1.5 h-9 px-4 rounded-[10px] transition-all duration-200 text-sm font-semibold border border-[var(--c-border)] bg-[var(--c-card)] text-[var(--c-fg)] hover:bg-[var(--c-muted)] active:scale-[0.97]"
+            title="بازگشت به منوی قبلی"
+          >
+            <ArrowRight size={16} />
+            <span className="hidden sm:inline text-xs">منوی قبلی</span>
+          </button>
+        )}
 
         {!isOnDashboard && profile && (
           <button

@@ -19,13 +19,12 @@ const ENV_FILES = ['.env', '.env.local', '.env.production', '.env.production.loc
 const REQUIRED = [
   'VITE_SUPABASE_URL',
   'VITE_SUPABASE_ANON_KEY',
-  // The auth.admin flow now lives in the BFF (bff/server.mjs). The SPA
-  // must NEVER read or expose VITE_SUPABASE_SERVICE_ROLE_KEY at build
-  // time. We still require the BFF URL so reviewers can confirm the
-  // SPA knows where to proxy auth.admin calls.
-  'VITE_BFF_URL',
+  // VITE_BFF_URL is intentionally OPTIONAL: bff-client.ts falls back to
+  // same-origin when empty, so local dev works via the vite proxy
+  // (/api/auth-admin -> :10000) with zero CORS. Prod cross-origin
+  // deploys set it to the BFF origin.
 ];
-const OPTIONAL = ['VITE_APP_VERSION'];
+const OPTIONAL = ['VITE_APP_VERSION', 'VITE_BFF_URL', 'VITE_UPDATE_POLL_MS', 'VITE_UPDATE_COUNTDOWN_MS', 'VITE_RUM_ENDPOINT', 'VITE_ERROR_ENDPOINT'];
 const STALE_REJECTED = [
   'VITE_ADMIN_USERNAME',
   'VITE_ADMIN_PASSWORD',
@@ -80,6 +79,7 @@ export function checkEnvVariables(envSource = loadEnvFiles()) {
       'The service-role key is now held server-side by the BFF Web Service ' +
       '(bff/server.mjs). See docs/deploy/render.md §POST-DEPLOY.',
     );
+    ok = false;
   }
 
   if (missingOptional.length > 0) {

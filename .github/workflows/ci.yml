@@ -72,6 +72,15 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Bundle size budget
+        run: npm run test:size
+
+      - name: Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Production smoke (preview + axe)
+        run: npm run test:e2e
+
       - name: Excel template self-test (pure Node, no DB)
         run: npm --prefix services/export-api run test:template
 

@@ -17,7 +17,21 @@
 // caller has an active admin profile before executing any operation.
 // =====================================================================
 
-const BFF_URL = import.meta.env.VITE_BFF_URL || 'http://localhost:10000';
+// Resolve the BFF origin. When VITE_BFF_URL is set (prod cross-origin
+// deployments), it is used verbatim. When empty/unset, requests stay
+// same-origin so the vite dev proxy (/api/auth-admin → :10000) or the
+// static-host rewrites route them — which also means NO preflight/CORS
+// round-trip at all in local dev.
+function resolveBffBase(): string {
+  const env = (import.meta.env.VITE_BFF_URL as string | undefined)?.trim();
+  if (env) return env.replace(/\/+$/, '');
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+  return '';
+}
+
+const BFF_URL = resolveBffBase();
 
 interface BFFError {
   error: string;

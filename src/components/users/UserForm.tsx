@@ -187,7 +187,8 @@ export const UserForm = ({ mode, user, isOpen, onClose, onSuccess }: UserFormPro
         onSuccess();
       }
     } catch (error) {
-      toast.error(isEdit ? 'خطا در بروزرسانی اطلاعات کاربر' : 'خطا در ایجاد کاربر. لطفا دوباره تلاش کنید');
+      const detail = error instanceof Error && error.message ? error.message : '';
+      toast.error(detail || (isEdit ? 'خطا در بروزرسانی اطلاعات کاربر' : 'خطا در ایجاد کاربر. لطفا دوباره تلاش کنید'));
     }
   };
 

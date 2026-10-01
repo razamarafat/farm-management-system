@@ -1581,3 +1581,11 @@ AS $function$
       AND _deleted = false
   );
 $function$;
+
+-- ============ 9. HOTFIX post-QA drift (2026-09-14, applied to live prod) ============
+-- Pre-008 prod still carried the legacy ledger overload with p_cursor_id uuid;
+-- sections 7/8 above replace the (uuid, uuid, ..., TEXT cursor) variant only,
+-- leaving both overloads callable with zero args -> "function ... is not unique".
+-- Drop the legacy uuid-cursor variant (no client path uses it; the ledger RPC
+-- contract passes a text cursor id).
+DROP FUNCTION IF EXISTS public.reporting_inventory_ledger(uuid, uuid, text, date, date, text, timestamp with time zone, uuid, numeric, integer);

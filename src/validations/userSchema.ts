@@ -12,7 +12,7 @@ export const createUserSchema = z
     password: z
       .string()
       .min(1, 'رمز عبور الزامی است')
-      .min(6, 'رمز عبور باید حداقل ۶ کاراکتر باشد')
+      .min(8, 'رمز عبور باید حداقل ۸ کاراکتر باشد')
       .max(100, 'رمز عبور بیش از حد طولانی است'),
     confirmPassword: z.string().min(1, 'تکرار رمز عبور الزامی است'),
     firstName: z
@@ -98,8 +98,8 @@ export const updateUserSchema = z
     message: 'انتخاب فارم برای این نقش الزامی است',
     path: ['farmId'],
   })
-  .refine((data) => !data.changePassword || (data.newPassword && data.newPassword.length >= 6), {
-    message: 'رمز عبور باید حداقل ۶ کاراکتر باشد',
+  .refine((data) => !data.changePassword || (data.newPassword && data.newPassword.length >= 8), {
+    message: 'رمز عبور باید حداقل ۸ کاراکتر باشد',
     path: ['newPassword'],
   });
 

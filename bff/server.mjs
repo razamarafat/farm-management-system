@@ -21,7 +21,7 @@
 import { createServer } from 'node:http';
 import { createClient } from '@supabase/supabase-js';
 
-const PORT = 10000;
+const PORT = Number(process.env.PORT || '10000');
 const SUPABASE_URL       = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY  = process.env.VITE_SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE   = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
@@ -243,6 +243,17 @@ async function handle(req, res, pathname, ctx) {
 }
 
 const server = createServer(async (req, res) => {
+  // Liveness for Render health checks — never throttled or authenticated.
+  let earlyPath = '';
+  try {
+    earlyPath = new URL(req.url, 'http://bff').pathname;
+  } catch { /* fall through to normal handling */ }
+  if (req.method === 'GET' && (earlyPath === '/health' || earlyPath === '/')) {
+    cors(res, req);
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ ok: true, service: 'morvarid-farm-bff' }));
+    return;
+  }
   // CORS preflight — never throttled or authenticated.
   if (req.method === 'OPTIONS') {
     cors(res, req);
