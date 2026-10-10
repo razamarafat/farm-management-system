@@ -40,6 +40,12 @@ export default defineConfig({
     }),
     {
       name: 'emit-version-json',
+      transformIndexHtml(html) {
+        return html.replace(
+          '</head>',
+          `    <meta name="build-id" content="${buildId}" />\n    <meta name="build-time" content="${builtAt}" />\n  </head>`
+        );
+      },
       writeBundle(options) {
         const outDir = options.dir ?? path.resolve(__dirname, 'dist');
         fs.mkdirSync(outDir, { recursive: true });

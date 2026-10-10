@@ -28,6 +28,9 @@ services:
     staticPublishPath: ./dist
     routes:
       - type: rewrite
+        source: /version.json
+        destination: /version.json
+      - type: rewrite
         source: /*
         destination: /index.html
     headers:
@@ -39,11 +42,13 @@ services:
         value: strict-origin-when-cross-origin
       # The whole app is inlined into a single index.html (vite-plugin-
       # singlefile), so there are no content-hashed assets to cache long-term.
-      # no-cache forces every request to revalidate against the origin, which
-      # is what guarantees a freshly opened session always loads the latest
-      # build without the user ever clearing cache manually.
+      # no-cache, no-store forces every request to load the latest build from origin
+      # without the user ever needing to clear cache manually.
       - path: /*
         name: Cache-Control
+        value: no-cache, no-store, must-revalidate, max-age=0
+      - path: /*
+        name: Pragma
         value: no-cache
       - path: /*
         name: Strict-Transport-Security

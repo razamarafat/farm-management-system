@@ -20,28 +20,22 @@ export interface SystemSettings {
   requireVoucherNotesOnAdjustment: boolean;
   formulaTolerancePercent: number; // درصد تلرانس مجاز مغایرت فرمول دان
 
-  // 3. استاندارد پرورش و گله طیور
-  flockBreed: 'ross308' | 'cobb500' | 'arborAcres' | 'lohmann' | 'other';
-  standardFlockPeriodDays: number; // طول دوره پرورش (روز)
-  targetFcr: number; // ضریب تبدیل خوراک هدف (Target FCR)
-  dailyMortalityAlertThresholdPercent: number; // آستانه هشدار تلفات روزانه (%)
-
-  // 4. ایمنی انبار و حسابداری
+  // 3. ایمنی انبار و حسابداری
   preventNegativeInventory: boolean; // جلوگیری از موجودی منفی
   inventoryCostingMethod: 'fifo' | 'weighted_average';
   allowPurchasesWithoutCost: boolean;
 
-  // 5. امنیت و نشست‌ها
+  // 4. امنیت و نشست‌ها
   sessionTimeoutMinutes: number; // 0 یعنی نامحدود
   requireStrongPassword: boolean;
   detailedActivityAudit: boolean;
 
-  // 6. آفلاین و همگام‌سازی
+  // 5. آفلاین و همگام‌سازی
   autoSyncIntervalSeconds: number;
   cacheReferenceDataOffline: boolean;
   preserveDraftVouchers: boolean;
 
-  // 7. گزارشات، رابط کاربری و خروجی
+  // 6. گزارشات، رابط کاربری و خروجی
   reportPageSize: number;
   reportFooterText: string;
   hideZeroStockItems: boolean;
@@ -68,12 +62,6 @@ export const DEFAULT_SETTINGS: SystemSettings = {
   dailyVoucherAutoLockHour: 23,
   requireVoucherNotesOnAdjustment: true,
   formulaTolerancePercent: 5,
-
-  // استاندارد پرورش و گله طیور
-  flockBreed: 'ross308',
-  standardFlockPeriodDays: 45,
-  targetFcr: 1.65,
-  dailyMortalityAlertThresholdPercent: 0.5,
 
   // ایمنی انبار و حسابداری
   preventNegativeInventory: true,

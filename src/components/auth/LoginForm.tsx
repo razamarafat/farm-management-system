@@ -13,7 +13,7 @@ import { loginSchema, LoginFormData } from '@/validations/authSchema';
 import { rpcError } from '@/utils/rpcError';
 import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
-import { getRememberMe, setRememberMe } from '@/lib/auth-storage';
+import { getRememberMe, setRememberMe, getSavedUsername, setSavedUsername } from '@/lib/auth-storage';
 import { Profile } from '@/types/user.types';
 import { roleHome } from '@/utils/roleHome';
 
@@ -32,6 +32,9 @@ export const LoginForm = () => {
     }))
   );
 
+  const initialRemembered = getRememberMe();
+  const initialUsername = getSavedUsername();
+
   const {
     register,
     handleSubmit,
@@ -41,9 +44,9 @@ export const LoginForm = () => {
     resolver: zodResolver(loginSchema),
     mode: 'onChange',
     defaultValues: {
-      username: '',
+      username: initialRemembered ? initialUsername : '',
       password: '',
-      rememberMe: getRememberMe(),
+      rememberMe: initialRemembered,
     },
   });
 
@@ -54,10 +57,13 @@ export const LoginForm = () => {
   const onSubmit = async (data: LoginFormData) => {
     setLoadingStage('loading');
     try {
-      // Persist the "Remember Me" choice BEFORE sign-in so the Supabase client
-      // writes the resulting session to the correct storage backend
-      // (localStorage when checked, sessionStorage when unchecked).
+      // Persist the "Remember Me" choice & saved username BEFORE sign-in
       setRememberMe(data.rememberMe);
+      if (data.rememberMe) {
+        setSavedUsername(data.username);
+      } else {
+        setSavedUsername(null);
+      }
 
       // Construct email from username
       const email = `${data.username.toLowerCase().trim()}@morvarid.local`;
@@ -177,18 +183,18 @@ export const LoginForm = () => {
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2 space-x-reverse">
+        <label htmlFor="remember" className="flex items-center gap-2 cursor-pointer select-none group py-1">
           <input
             type="checkbox"
             id="remember"
             {...register('rememberMe')}
             disabled={isBusy}
-            className="h-4 w-4 rounded border-[var(--c-border)] text-[var(--c-primary)] focus:ring-[var(--c-ring)]"
+            className="h-4 w-4 rounded border-[var(--c-border)] text-[var(--c-primary)] focus:ring-[var(--c-ring)] cursor-pointer"
           />
-          <label htmlFor="remember" className="text-sm text-muted-foreground">
+          <span className="text-sm text-muted-foreground group-hover:text-[var(--c-fg)] transition-colors">
             مرا به خاطر بسپار
-          </label>
-        </div>
+          </span>
+        </label>
       </div>
 
       {/* Full-screen success overlay */}

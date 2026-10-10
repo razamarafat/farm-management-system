@@ -1,5 +1,5 @@
 // ============================================================================
-// "Remember Me" aware storage.
+// "Remember Me" aware storage & credentials persistence.
 //
 // The Supabase auth session (and the zustand auth cache) are routed through
 // this adapter so their persistence backend is decided by the user's "Remember
@@ -10,13 +10,20 @@
 //   - Remember me unchecked -> sessionStorage (cleared when the tab/browser is
 //                              closed)
 //
-// The choice itself is *always* stored in localStorage under a dedicated key,
-// so the correct backend can be resolved BEFORE the first session read on app
-// startup (auth-js calls getItem lazily, but the flag must already be there).
+// In accordance with standard enterprise software principles:
+//   1. When "Remember Me" is enabled, the user's username/identifier is
+//      remembered and pre-filled on subsequent visits to the login screen.
+//   2. Session tokens survive browser restarts and do not prematurely expire
+//      on short idle timers.
+//   3. When "Remember Me" is unchecked, stored usernames are removed and
+//      sessions are strictly tab/session-scoped.
 // ============================================================================
 
 /** localStorage key holding the user's last "Remember Me" preference. */
 export const REMEMBER_ME_STORAGE_KEY = 'morvarid.auth.remember-me';
+
+/** localStorage key holding the user's remembered login username. */
+export const SAVED_USERNAME_STORAGE_KEY = 'morvarid.auth.saved-username';
 
 /**
  * Minimal storage surface shared by Supabase's `SupportedStorage` and zustand's
@@ -59,12 +66,16 @@ function readSessionStorage(): Storage | null {
   }
 }
 
-/** Reads the persisted "Remember Me" preference (defaults to session-only). */
+/** Reads the persisted "Remember Me" preference (defaults to true if a username was remembered, otherwise false). */
 export function getRememberMe(): boolean {
   const storage = readLocalStorage();
   if (!storage) return false;
   try {
-    return storage.getItem(REMEMBER_ME_STORAGE_KEY) === 'true';
+    const pref = storage.getItem(REMEMBER_ME_STORAGE_KEY);
+    if (pref === 'true') return true;
+    if (pref === 'false') return false;
+    // Default to true if a saved username exists
+    return Boolean(storage.getItem(SAVED_USERNAME_STORAGE_KEY));
   } catch {
     return false;
   }
@@ -79,9 +90,37 @@ export function setRememberMe(remember: boolean): void {
   if (!storage) return;
   try {
     storage.setItem(REMEMBER_ME_STORAGE_KEY, remember ? 'true' : 'false');
+    if (!remember) {
+      storage.removeItem(SAVED_USERNAME_STORAGE_KEY);
+    }
   } catch {
-    // Ignore: storage unavailable (private mode / disabled). The session-only
-    // fallback still applies for the current tab.
+    // Ignore: storage unavailable (private mode / disabled).
+  }
+}
+
+/** Reads the remembered username, if any. */
+export function getSavedUsername(): string {
+  const storage = readLocalStorage();
+  if (!storage) return '';
+  try {
+    return storage.getItem(SAVED_USERNAME_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** Persists or removes the remembered username based on "Remember Me" status. */
+export function setSavedUsername(username: string | null): void {
+  const storage = readLocalStorage();
+  if (!storage) return;
+  try {
+    if (username && username.trim()) {
+      storage.setItem(SAVED_USERNAME_STORAGE_KEY, username.trim());
+    } else {
+      storage.removeItem(SAVED_USERNAME_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage errors.
   }
 }
 
@@ -97,15 +136,22 @@ function inactiveStorage(): AuthStorage | null {
 /**
  * Storage adapter for both the Supabase client and zustand persist.
  *
- * - getItem    reads from the backend selected by the current "Remember Me" flag
+ * - getItem    reads from the active backend, with a fallback to the inactive
+ *              backend if the active one has no value (prevents session drop
+ *              if flags race initialization).
  * - setItem    writes to the active backend and clears any stale copy from the
- *              inactive one (so a token/cache never lingers where it doesn't belong)
- * - removeItem clears BOTH backends (logout must wipe the session wherever it was)
+ *              inactive one.
+ * - removeItem clears BOTH backends (logout must wipe the session wherever it was).
  */
 export const rememberMeStorage: AuthStorage = {
   getItem(key) {
     try {
-      return activeStorage().getItem(key);
+      const active = activeStorage();
+      const val = active.getItem(key);
+      if (val !== null) return val;
+      // Fallback check in case the session exists in the other storage
+      const inactive = inactiveStorage();
+      return inactive?.getItem(key) ?? null;
     } catch {
       return null;
     }

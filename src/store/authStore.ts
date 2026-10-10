@@ -3,10 +3,10 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { AuthState } from '@/types/auth.types';
 import { Profile } from '@/types/user.types';
 import { supabase } from '@/lib/supabase';
-import { rememberMeStorage } from '@/lib/auth-storage';
+import { rememberMeStorage, getRememberMe } from '@/lib/auth-storage';
 import { User } from '@supabase/supabase-js';
 
-const SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour for non-admin users
+const SESSION_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour for non-remembered guest sessions
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -20,7 +20,8 @@ export const useAuthStore = create<AuthState>()(
       setUser: (user: User | null) => set({ user, isAuthenticated: !!user }),
       setProfile: (profile: Profile | null) => set({ profile }),
       setSessionStart: (role: Profile['role']) => {
-        if (role === 'admin') {
+        // Admins and users with "Remember Me" enabled stay persistent without 1-hour force logout
+        if (role === 'admin' || getRememberMe()) {
           set({ sessionStartedAt: null });
         } else {
           set({ sessionStartedAt: Date.now() });
