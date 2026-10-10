@@ -91,9 +91,8 @@ export default function PurchasesPage() {
   const { suppliers: activeSuppliers } = useActiveSuppliers();
 
 
-  // Load farms for admin — uses the JWT-bound `supabase` client.
+  // Load farms — uses the JWT-bound `supabase` client.
   const loadFarms = useCallback(async () => {
-    if (!isAdmin) return;
     setIsLoadingFarms(true);
     setFarmsError(false);
     const { data, error } = await supabase
@@ -110,9 +109,10 @@ export default function PurchasesPage() {
       return;
     }
 
-    setFarms(data || []);
-    setSelectedFarmId((current) => current || data?.[0]?.id || null);
-  }, [isAdmin]);
+    const loadedFarms = data || [];
+    setFarms(loadedFarms);
+    setSelectedFarmId((current) => current || profile?.farm_id || loadedFarms[0]?.id || null);
+  }, [profile?.farm_id]);
 
   useEffect(() => {
     loadFarms();
@@ -404,8 +404,8 @@ export default function PurchasesPage() {
           </p>
         </div>
 
-        {/* Farm selector for admin */}
-        {isAdmin && (
+        {/* Farm selector */}
+        {(isAdmin || !profile?.farm_id || farms.length > 1) && (
           <div>
             <select
               value={selectedFarmId || ''}

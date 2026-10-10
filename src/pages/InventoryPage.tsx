@@ -107,11 +107,10 @@ export default function InventoryPage() {
   const { isSubmitting, addInitialStock, addPurchase, addTransfer, addAdjustment, deleteTransaction } = useInventoryMutations(selectedFarmId);
   const { hasInitialStock, refetch: refetchInitialCheck } = useItemInitialCheck(selectedFarmId);
 
-  // Load farms for admin — uses the user-authenticated `supabase` client
-  // (NOT `supabaseAdmin`) so the request carries the admin's JWT and
+  // Load farms — uses the user-authenticated `supabase` client
+  // (NOT `supabaseAdmin`) so the request carries the user's JWT and
   // satisfies the existing RLS policies.
   const loadFarms = useCallback(async () => {
-    if (!isAdmin) return;
     setIsLoadingFarms(true);
     setFarmsError(false);
     const { data, error } = await supabase
@@ -128,9 +127,10 @@ export default function InventoryPage() {
       return;
     }
 
-    setFarms(data || []);
-    setSelectedFarmId((current) => current || data?.[0]?.id || null);
-  }, [isAdmin]);
+    const loaded = data || [];
+    setFarms(loaded);
+    setSelectedFarmId((current) => current || profile?.farm_id || loaded[0]?.id || null);
+  }, [profile?.farm_id]);
 
   useEffect(() => {
     loadFarms();
@@ -320,8 +320,8 @@ export default function InventoryPage() {
           </p>
         </div>
 
-        {/* Farm selector for admin */}
-        {isAdmin && (
+        {/* Farm selector */}
+        {(isAdmin || !profile?.farm_id || farms.length > 1) && (
           <div>
             <select
               value={selectedFarmId || ''}

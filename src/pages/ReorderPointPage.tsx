@@ -95,6 +95,7 @@ export default function ReorderPointPage() {
   const navigate = useNavigate();
   const { profile } = useAuthStore();
   const isAdmin = profile?.role === 'admin';
+  const canEdit = isAdmin || profile?.role === 'operator';
 
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(
     isAdmin ? null : normalizeFarmId(profile?.farm_id)
@@ -153,37 +154,19 @@ export default function ReorderPointPage() {
   useEffect(() => {
     const loadFarms = async () => {
       try {
-        if (isAdmin) {
-          const { data } = await supabase
-            .from('farms')
-            .select('id, name')
-            .eq('is_active', true)
-            .order('name');
+        const { data } = await supabase
+          .from('farms')
+          .select('id, name')
+          .eq('is_active', true)
+          .order('name');
 
-          if (data) {
-            setFarms(data);
-            if (data.length > 0 && !selectedFarmId) {
-              setSelectedFarmId(data[0].id);
-            }
-          }
-          return;
-        }
-
-        if (profile?.farm_id) {
-          const normalizedFarmId = normalizeFarmId(profile.farm_id);
-          if (!normalizedFarmId) return;
-
-          const farmIdArray = [normalizedFarmId];
-
-          const { data } = await supabase
-            .from('farms')
-            .select('id, name')
-            .in('id', farmIdArray)
-            .eq('is_active', true);
-
-          if (data) {
-            setFarms(data);
-            if (data.length > 0 && !selectedFarmId) {
+        if (data) {
+          setFarms(data);
+          if (data.length > 0 && !selectedFarmId) {
+            const userFarm = profile?.farm_id ? normalizeFarmId(profile.farm_id) : null;
+            if (userFarm && data.some((f) => f.id === userFarm)) {
+              setSelectedFarmId(userFarm);
+            } else {
               setSelectedFarmId(data[0].id);
             }
           }
@@ -194,7 +177,7 @@ export default function ReorderPointPage() {
     };
 
     loadFarms();
-  }, [isAdmin, profile?.farm_id, selectedFarmId]);
+  }, [profile?.farm_id, selectedFarmId]);
 
   // Load 7-day average consumption data
   useEffect(() => {
@@ -472,7 +455,7 @@ export default function ReorderPointPage() {
                             <span className="text-sm font-medium text-[var(--c-fg)]">
                               {item.reorder_point > 0 ? toPersianNumbers(item.reorder_point.toLocaleString()) : '—'}
                             </span>
-                            {isAdmin && (
+                            {canEdit && (
                               <button
                                 onClick={() => handleStartEditReorder(item)}
                                 className="p-1 text-[var(--c-muted-fg)] hover:text-[var(--c-fg)] hover:bg-[var(--c-border)] rounded transition-colors"
@@ -518,7 +501,7 @@ export default function ReorderPointPage() {
                             <span className={`text-sm ${isManualPrice ? 'text-[var(--c-accent)] font-medium' : 'text-[var(--c-info)]'}`}>
                               {effectivePrice > 0 ? formatRial(effectivePrice) : '—'}
                             </span>
-                            {isAdmin && (
+                            {canEdit && (
                               <button
                                 onClick={() => handleStartEditLastPrice(item.item_id)}
                                 className="p-1 text-[var(--c-muted-fg)] hover:text-[var(--c-fg)] hover:bg-[var(--c-border)] rounded transition-colors"
@@ -580,8 +563,8 @@ export default function ReorderPointPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Farm selector for admin */}
-          {isAdmin && (
+          {/* Farm selector */}
+          {(isAdmin || !profile?.farm_id || farms.length > 1) && (
             <select
               value={selectedFarmId || ''}
               onChange={(e) => setSelectedFarmId(e.target.value)}

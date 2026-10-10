@@ -27,6 +27,7 @@ const toPersianNum = (n: number | string): string => {
 const FormulaManagementPage = () => {
   const { profile } = useAuthStore();
   const isAdmin = profile?.role === 'admin';
+  const canManage = profile?.role === 'admin' || profile?.role === 'operator';
 
   const [farms, setFarms] = useState<FarmOption[]>([]);
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null);
@@ -46,7 +47,7 @@ const FormulaManagementPage = () => {
     useFormulaActions(selectedFarmId);
 
   // Fetch farms — uses `supabase` (NOT `supabaseAdmin`) so the request
-  // carries the admin's JWT and RLS policies from migration
+  // carries the user's JWT and RLS policies from migration
   // 012_fix_profiles_recursion.sql can resolve `is_current_user_admin()`.
   // See FIX-farm-selector bug: dropdowns were empty under anon-key reads.
   useEffect(() => {
@@ -56,23 +57,27 @@ const FormulaManagementPage = () => {
         .select('id, name, code')
         .eq('is_active', true)
         .order('name');
-      setFarms(
-        (data || []).map((f) => ({ id: f.id, name: f.name, code: f.code }))
-      );
+      const loaded = (data || []).map((f) => ({ id: f.id, name: f.name, code: f.code }));
+      setFarms(loaded);
+      if (profile?.farm_id) {
+        setSelectedFarmId(profile.farm_id);
+      } else if (loaded.length > 0) {
+        setSelectedFarmId((prev) => prev || loaded[0].id);
+      }
     };
 
-    if (isAdmin) {
-      loadFarms();
-    } else if (profile?.farm_id) {
-      setSelectedFarmId(profile.farm_id);
-    }
-  }, [isAdmin, profile?.farm_id]);
+    loadFarms();
+  }, [profile?.farm_id]);
 
   useEffect(() => {
-    if (farms.length > 0 && !selectedFarmId && isAdmin) {
-      setSelectedFarmId(farms[0].id);
+    if (farms.length > 0 && !selectedFarmId) {
+      if (profile?.farm_id && farms.some((f) => f.id === profile.farm_id)) {
+        setSelectedFarmId(profile.farm_id);
+      } else {
+        setSelectedFarmId(farms[0].id);
+      }
     }
-  }, [farms, selectedFarmId, isAdmin]);
+  }, [farms, selectedFarmId, profile?.farm_id]);
 
   const filtered = formulas.filter((f) => {
     if (searchTerm) {
@@ -87,13 +92,13 @@ const FormulaManagementPage = () => {
   });
 
   const handleCreate = () => {
-    if (!isAdmin) return;
+    if (!canManage) return;
     setEditingFormula(null);
     setShowForm(true);
   };
 
   const handleEdit = (f: Formula) => {
-    if (!isAdmin) return;
+    if (!canManage) return;
     setEditingFormula(f);
     setShowForm(true);
   };
@@ -195,7 +200,7 @@ const FormulaManagementPage = () => {
                 <ArrowRightLeft className="w-4 h-4" />
                 مقایسه
               </button>
-              {isAdmin && (
+              {canManage && (
                 <button
                   onClick={handleCreate}
                   className="px-4 py-2 text-sm rounded-lg bg-[var(--c-success)] text-[var(--c-primary-fg)] hover:brightness-110 flex items-center gap-1"
@@ -209,8 +214,8 @@ const FormulaManagementPage = () => {
         </div>
       </div>
 
-      {/* Farm Selector (Admin) */}
-      {isAdmin && (
+      {/* Farm Selector */}
+      {(isAdmin || !profile?.farm_id || farms.length > 1) && (
         <div className="flex items-center gap-3 flex-wrap">
           <label className="text-sm font-medium text-[var(--c-fg)]">فارم:</label>
           <select
@@ -315,9 +320,9 @@ const FormulaManagementPage = () => {
           <FlaskConical className="w-12 h-12 mx-auto text-[var(--c-muted-fg)] mb-3" />
           <p className="text-[var(--c-fg)] font-medium">فرمولی یافت نشد</p>
           <p className="text-sm text-[var(--c-muted-fg)] mt-1">
-            {searchTerm ? 'فیلترها را تغییر دهید' : (isAdmin ? 'اولین فرمول خوراک را ایجاد کنید' : 'هنوز فرمولی تعریف نشده است')}
+            {searchTerm ? 'فیلترها را تغییر دهید' : (canManage ? 'اولین فرمول خوراک را ایجاد کنید' : 'هنوز فرمولی تعریف نشده است')}
           </p>
-          {!searchTerm && isAdmin && (
+          {!searchTerm && canManage && (
             <button onClick={handleCreate} className="mt-4 px-4 py-2 text-sm rounded-lg bg-[var(--c-success)] text-[var(--c-primary-fg)]">
               <Plus className="w-4 h-4 inline-block ml-1" />
               ایجاد فرمول
@@ -346,7 +351,7 @@ const FormulaManagementPage = () => {
               <FormulaCard
                 key={formula.id}
                 formula={formula}
-                canEdit={isAdmin}
+                canEdit={canManage}
                 isExpanded={expandedId === formula.id}
                 onToggleExpand={() => setExpandedId(expandedId === formula.id ? null : formula.id)}
                 onEdit={() => handleEdit(formula)}
@@ -759,7 +764,7 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
         <div className="flex items-center justify-between p-5 border-b border-[var(--c-border)]">
           <div>
             <h3 className="text-lg font-bold text-[var(--c-fg)]">
-              {isEdit ? `ویرایش فرمول ${toPersianNum(formula!.formula_no)}` : 'ایجاد فرمول جدید'}
+              {isEdit ? `ویرایش فرمول ${toPersianNum(formula!.formula_no)}` : 'ایجاد و ثبت فرمول جدید'}
             </h3>
             <p className="text-xs text-[var(--c-muted-fg)] mt-1">فارم: {farmName}</p>
           </div>
@@ -901,11 +906,11 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isSaving || itemCount === 0}
+            disabled={isSaving}
             className="px-6 py-2 text-sm rounded-lg bg-[var(--c-success)] text-[var(--c-primary-fg)] hover:brightness-110 disabled:opacity-50 flex items-center gap-2"
           >
             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {isEdit ? 'بروزرسانی' : 'ایجاد فرمول'}
+            {isEdit ? 'بروزرسانی و ذخیره فرمول' : 'ثبت و ذخیره فرمول'}
           </button>
         </div>
       </motion.div>
