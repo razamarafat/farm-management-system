@@ -41,7 +41,12 @@ const AdminDashboard = () => {
           icon={Settings}
           label="تنظیمات"
           color="sand"
-          to="/admin/settings"
+          onClick={() => {
+            const el = document.getElementById('settings-card');
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }}
         />
       </div>
 
