@@ -1,0 +1,11 @@
+HTTP/1.1 401 Unauthorized
+vary: Origin
+access-control-allow-methods: GET,POST,PATCH,DELETE,OPTIONS
+access-control-allow-headers: Authorization, Content-Type
+access-control-max-age: 86400
+content-type: application/json; charset=utf-8
+date: Mon, 14 Sep 2026 11:28:24 GMT
+connection: close
+Transfer-Encoding: chunked
+
+{"error":"missing_token"}

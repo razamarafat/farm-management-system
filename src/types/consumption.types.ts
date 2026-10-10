@@ -127,6 +127,9 @@ export interface DailySheetRow {
   has_stock_source?: boolean;
   isDirty?: boolean;
   status?: 'ok' | 'warning' | 'danger';
+  /** True when the row was added manually outside the formula (+ button).
+   *  Informational only — persistence uses the same voucher-line path. */
+  is_adhoc?: boolean;
 }
 
 export interface DailySheetVoucher {

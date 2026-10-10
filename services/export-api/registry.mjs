@@ -111,7 +111,6 @@ export const reportRegistry = {
       p_formula_ids:  Array.isArray(body.formulaIds) ? body.formulaIds : [],
     }),
     columns: [
-      { key: 'group_key',          header: 'کلید',           width: 28 },
       { key: 'group_label',        header: 'گروه',           width: 22 },
       { key: 'item_category',      header: 'دسته',           width: 12 },
       { key: 'hall_name',          header: 'سالن',           width: 18 },

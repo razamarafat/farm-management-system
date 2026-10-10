@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import {
   ArrowRight, Save, CheckCircle, AlertTriangle, Loader2,
-  Beaker, Building2, Calculator, RotateCcw,
+  Beaker, Building2, Calculator, RotateCcw, Plus,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMemo, useState } from 'react';
@@ -34,6 +34,7 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
   const [showMissingDialog, setShowMissingDialog] = useState(false);
   const [pendingSubmit, setPendingSubmit] = useState(false);
   const [mixerCountDrafts, setMixerCountDrafts] = useState<Record<number, string>>({});
+  const [adhocPick, setAdhocPick] = useState('');
 
   const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0];
   const farmParam = searchParams.get('farm');
@@ -46,6 +47,7 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
     data, isLoading, error, isSaving, saveStatus,
     hallConfigs, updateLine, selectFormula, updateHallConfigs,
     autoCalculate, submitSheet, revertSheet, refetch,
+    adhocCandidates, addAdhocItem, removeAdhocItem,
   } = useDailySheet({ farmId, date: dateParam, category, ignoreEditWindow: isAdmin });
 
   const jalaliDate = gregorianToJalali(dateParam);
@@ -391,7 +393,7 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
         </div>
       )}
 
-      {/* Data Table */}
+      {/* Data Table (feed shows formula items only — see useDailySheet) */}
       <Card className="overflow-hidden">
         <DailySheetTable
           items={items}
@@ -399,8 +401,63 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
           canEdit={canEdit}
           selectedHalls={selectedHalls}
           onUpdateLine={updateLine}
+          onRemoveRow={removeAdhocItem}
+          emptyMessage={
+            isFeed && formula
+              ? 'در این فرمول قلمی تعریف نشده است. از بخش مدیریت فارم‌ها اقلام فرمول را تکمیل کنید یا با دکمه + زیر نهاده موردنظر را دستی اضافه کنید.'
+              : undefined
+          }
         />
       </Card>
+
+      {/* Manual "+ add outside-formula item" (feed only).
+          For consumption that is NOT in the formula (e.g. an ad-hoc item
+          used that day): the row persists through the same voucher-line
+          path, it is simply not part of the formula-required check. */}
+      {isFeed && canEdit && formula && (
+        <Card className="p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--c-fg)] whitespace-nowrap">
+              <Plus className="w-4 h-4" />
+              افزودن نهاده خارج از فرمول
+            </div>
+            {adhocCandidates.length > 0 ? (
+              <div className="flex gap-2 flex-1">
+                <select
+                  value={adhocPick}
+                  onChange={(e) => setAdhocPick(e.target.value)}
+                  aria-label="انتخاب نهاده خارج از فرمول"
+                  className="flex-1 h-10 px-3 rounded-md border border-[var(--c-border)] bg-[var(--c-card)] text-[var(--c-fg)] text-sm"
+                >
+                  <option value="">انتخاب نهاده...</option>
+                  {adhocCandidates.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.unit})
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={!adhocPick}
+                  onClick={() => { if (adhocPick && addAdhocItem(adhocPick)) setAdhocPick(''); }}
+                  className="flex items-center gap-1 whitespace-nowrap"
+                >
+                  <Plus className="w-4 h-4" />
+                  افزودن
+                </Button>
+              </div>
+            ) : (
+              <p className="text-xs text-[var(--c-muted-fg)]">
+                همه نهاده‌های این فارم در لیست هستند.
+              </p>
+            )}
+          </div>
+          <p className="text-xs text-[var(--c-muted-fg)] mt-2">
+            اگر آن روز مقداری خارج از فرمول مصرف شده، اینجا دستی اضافه کنید. این ردیف فقط برای همین حواله است و جزو الزامات فرمول حساب نمی‌شود.
+          </p>
+        </Card>
+      )}
 
       {/* Summary Row */}
       {items.length > 0 && (

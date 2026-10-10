@@ -62,7 +62,6 @@ const rptInventoryStock: ColumnDef[] = build([
 
 // ----- RPT_CONSUMPTION_REPORT ---------------------------------------
 const rptConsumptionReport: ColumnDef[] = build([
-  { key: 'group_key',       header: 'کلید' },
   { key: 'group_label',     header: 'گروه' },
   { key: 'item_category',   header: 'دسته', align: 'center' },
   { key: 'hall_name',       header: 'سالن' },

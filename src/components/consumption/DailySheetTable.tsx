@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { AlertCircle, CheckCircle, AlertTriangle } from 'lucide-react';
+import { AlertCircle, CheckCircle, AlertTriangle, X } from 'lucide-react';
 import { type DailySheetRow, type VoucherCategory, type HallConfig, CATEGORY_LABELS, toNumber } from '@/types/consumption.types';
 import { toPersianDigits } from '@/utils/persianNumbers';
 import { Input } from '@/components/ui/Input';
@@ -11,6 +11,11 @@ interface DailySheetTableProps {
   canEdit: boolean;
   selectedHalls: HallConfig[];
   onUpdateLine: (itemId: string, field: keyof DailySheetRow, value: string | number) => void;
+  /** Remove a manually added row (no persisted data). Rendered only for
+   *  outside-formula rows that carry no voucher line and zero quantities. */
+  onRemoveRow?: (itemId: string) => void;
+  /** Overrides the default empty-state text (e.g. formula with no items). */
+  emptyMessage?: string;
 }
 
 const StatusIcon = memo(({ status }: { status: 'ok' | 'warning' | 'danger' }) => {
@@ -65,7 +70,7 @@ const NumericCell = memo(({
 });
 NumericCell.displayName = 'NumericCell';
 
-function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine }: DailySheetTableProps) {
+function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine, onRemoveRow, emptyMessage }: DailySheetTableProps) {
   const isFeed = category === 'feed';
   const hasHalls = isFeed && selectedHalls.length > 0;
 
@@ -73,11 +78,13 @@ function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine
     return (
       <div className="p-8 text-center">
         <p className="text-[var(--c-muted-fg)]">
-          هیچ {CATEGORY_LABELS[category]}ی برای این فارم تعریف نشده است.
+          {emptyMessage || `هیچ ${CATEGORY_LABELS[category]}ی برای این فارم تعریف نشده است.`}
         </p>
-        <p className="text-xs text-[var(--c-muted-fg)] mt-2">
-          ابتدا از بخش مدیریت فارم‌ها، اقلام مورد نیاز را اضافه کنید.
-        </p>
+        {!emptyMessage && (
+          <p className="text-xs text-[var(--c-muted-fg)] mt-2">
+            ابتدا از بخش مدیریت فارم‌ها، اقلام مورد نیاز را اضافه کنید.
+          </p>
+        )}
       </div>
     );
   }
@@ -124,6 +131,11 @@ function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine
               : rowStatus === 'warning'
                 ? 'bg-[color-mix(in_srgb,var(--c-warning)_6%,transparent)]'
                 : '';
+            // Outside the selected formula (manually added, or kept because
+            // it already carries a saved voucher line).
+            const isOutsideFormula = isFeed && item.qty_per_mixer <= 0;
+            const isRemovable = !!onRemoveRow && canEdit && isOutsideFormula
+              && !item.line_id && item.consumed_qty <= 0 && item.waste_qty <= 0;
 
             return (
               <tr
@@ -138,6 +150,22 @@ function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine
                 {/* Item Name */}
                 <td className="px-3 py-2 text-center sticky right-12 bg-[var(--c-card)] z-10">
                   <span className="font-medium text-[var(--c-fg)]">{item.name}</span>
+                  {isOutsideFormula && (
+                    <span className="mr-2 inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-[color-mix(in_srgb,var(--c-accent)_16%,transparent)] text-[var(--c-accent)]">
+                      خارج از فرمول
+                    </span>
+                  )}
+                  {isRemovable && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveRow(item.id)}
+                      aria-label={`حذف ${item.name} از لیست`}
+                      title="حذف از لیست"
+                      className="mr-1 inline-flex items-center justify-center w-5 h-5 rounded-full text-[var(--c-error)] hover:bg-[color-mix(in_srgb,var(--c-destructive)_16%,transparent)]"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </td>
 
                 {/* Unit */}

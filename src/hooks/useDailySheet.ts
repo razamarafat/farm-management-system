@@ -48,9 +48,32 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [selectedFormulaId, setSelectedFormulaId] = useState<string | null>(null);
   const [hallConfigs, setHallConfigs] = useState<HallConfig[]>([]);
+  // Candidates for the manual "+ add outside-formula item" picker (feed only).
+  const [adhocCandidates, setAdhocCandidates] = useState<Array<{ id: string; name: string; unit: string }>>([]);
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirtyLinesRef = useRef<Map<string, SaveDailySheetLinePayload>>(new Map());
+  // Manually added item ids for the CURRENT voucher only. Keyed by
+  // farm+date+category so switching vouchers never leaks rows across them.
+  // Kept across refetches (e.g. formula switch) until the row is saved —
+  // after that the persisted voucher line itself keeps the row visible.
+  const adhocRef = useRef<{ key: string; ids: Set<string> }>({ key: '', ids: new Set() });
+  // Raw fetch results needed to build an ad-hoc row locally WITHOUT a
+  // refetch (a refetch would discard not-yet-saved edits sitting in
+  // dirtyLinesRef — same pre-existing limitation as formula switching).
+  type FarmItemRow = Awaited<ReturnType<typeof readFarmItems>>[number];
+  const rawCacheRef = useRef<{
+    farmItems: FarmItemRow[];
+    balanceMap: Map<string, number>;
+    totalInMap: Map<string, number>;
+    purchaseMap: Map<string, number>;
+    linesMap: Map<string, {
+      id: string; formula_no: string | null; mixer_count: number | null;
+      hall_numbers: string | null; consumed_qty: number; waste_qty: number;
+      notes: string | null; hall_consumed: Record<string, number> | null;
+    }>;
+    formulaNo: string;
+  } | null>(null);
 
   // Fetch formulas for farm — uses `supabase` (NOT `supabaseAdmin`) so the
   // request carries the user's JWT and satisfies helper-based RLS
@@ -253,8 +276,17 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
         }
       }
 
+      // Ad-hoc scope: manual "+ outside formula" picks belong to the
+      // current voucher only — a farm/date/category change resets them so
+      // rows never leak across vouchers.
+      const voucherKey = `${farmId}|${date}|${category}`;
+      if (adhocRef.current.key !== voucherKey) {
+        adhocRef.current = { key: voucherKey, ids: new Set() };
+      }
+      const adhocIds = adhocRef.current.ids;
+
       // 7. Build items
-      const processedItems: DailySheetRow[] = (farmItems || []).map((fi) => {
+      const allRows: DailySheetRow[] = (farmItems || []).map((fi) => {
         const line = linesMap.get(fi.id);
         const balance = balanceMap.get(fi.id) || 0;
         const hasInitial = (totalInMap.get(fi.id) || 0) > 0;
@@ -294,8 +326,42 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
           has_initial: hasInitial,
           has_stock_source: hasInitial || purchaseQty > 0,
           status,
+          is_adhoc: adhocIds.has(fi.id),
         };
       });
+
+      // Feed with a selected formula shows ONLY formula rows — plus any row
+      // that already carries persisted data (saved ad-hoc lines or lines
+      // from a previously selected formula are never hidden, otherwise
+      // saved quantities would silently disappear) and just-added ad-hoc
+      // rows not saved yet. Packaging has no formula concept, and feed
+      // WITHOUT any formula falls back to the full list so the sheet stays
+      // usable until a formula is defined.
+      const hasFormula = category === 'feed' && selectedFormula !== null;
+      const processedItems = allRows.filter((row) => {
+        if (!hasFormula) return true;
+        if (row.qty_per_mixer > 0) return true;
+        if (row.line_id) return true;
+        if (adhocIds.has(row.id)) return true;
+        return false;
+      });
+
+      rawCacheRef.current = {
+        farmItems: (farmItems || []) as FarmItemRow[],
+        balanceMap, totalInMap, purchaseMap,
+        linesMap: linesMap as unknown as NonNullable<typeof rawCacheRef.current>['linesMap'],
+        formulaNo: selectedFormula ? String(selectedFormula.formula_no) : '',
+      };
+      if (hasFormula) {
+        const shownIds = new Set(processedItems.map((r) => r.id));
+        setAdhocCandidates(
+          (farmItems || [])
+            .filter((fi) => !shownIds.has(fi.id))
+            .map((fi) => ({ id: fi.id, name: fi.name, unit: fi.unit }))
+        );
+      } else {
+        setAdhocCandidates([]);
+      }
 
       setData({
         voucher: {
@@ -327,6 +393,86 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
   const selectFormula = useCallback((formulaId: string) => {
     setSelectedFormulaId(formulaId);
   }, []);
+
+  function rowStatusFor(remaining: number, reorderPoint: number): 'ok' | 'warning' | 'danger' {
+    if (remaining < 0) return 'danger';
+    if (remaining < reorderPoint) return 'warning';
+    return 'ok';
+  }
+
+  // Manually add a farm item that is NOT in the selected formula (feed
+  // only) — e.g. something consumed ad-hoc that day. The row is built
+  // locally from the last fetch (no refetch, so unsaved edits elsewhere
+  // are preserved) and persists through the exact same voucher-line
+  // upsert as every other row once edited. Until saved it is tracked in
+  // adhocRef so a refetch (formula switch) keeps it visible.
+  const addAdhocItem = useCallback((itemId: string): boolean => {
+    const cache = rawCacheRef.current;
+    if (!data || !cache || category !== 'feed') return false;
+    if (data.items.some((i) => i.id === itemId)) {
+      toast.info('این نهاده قبلاً در لیست است');
+      return false;
+    }
+    const fi = cache.farmItems.find((f) => f.id === itemId);
+    if (!fi) {
+      toast.error('نهاده یافت نشد');
+      return false;
+    }
+    const balance = cache.balanceMap.get(fi.id) || 0;
+    const hasInitial = (cache.totalInMap.get(fi.id) || 0) > 0;
+    const purchaseQty = cache.purchaseMap.get(fi.id) || 0;
+    const line = cache.linesMap.get(fi.id);
+    const consumed = line ? numVal(line.consumed_qty) : 0;
+    const waste = line ? numVal(line.waste_qty) : 0;
+    const remaining = balance - consumed - waste;
+    const row: DailySheetRow = {
+      id: fi.id,
+      name: fi.name,
+      unit: fi.unit,
+      priority: numVal(fi.priority),
+      reorder_point: numVal(fi.reorder_point),
+      line_id: line ? line.id : null,
+      formula_no: line ? String(line.formula_no || '') : cache.formulaNo,
+      mixer_count: line ? numVal(line.mixer_count) : 0,
+      hall_numbers: line ? String(line.hall_numbers || '') : '',
+      consumed_qty: consumed,
+      waste_qty: waste,
+      notes: line ? String(line.notes || '') : '',
+      current_balance: balance,
+      today_purchase: purchaseQty,
+      remaining_preview: remaining,
+      qty_per_mixer: 0,
+      hall_consumed: (line?.hall_consumed && typeof line.hall_consumed === 'object')
+        ? line.hall_consumed as Record<string, number>
+        : {},
+      total_consumed: consumed,
+      has_initial: hasInitial,
+      has_stock_source: hasInitial || purchaseQty > 0,
+      status: rowStatusFor(remaining, numVal(fi.reorder_point)),
+      is_adhoc: true,
+    };
+    adhocRef.current.ids.add(itemId);
+    setData(prev => prev ? { ...prev, items: [...prev.items, row] } : prev);
+    setAdhocCandidates(prev => prev.filter((c) => c.id !== itemId));
+    toast.success(`«${fi.name}» به لیست اضافه شد`);
+    return true;
+  }, [data, category]);
+
+  // Remove a manually added row — only when it carries NO persisted data
+  // (no voucher line, zero quantities). Rows with saved lines can only be
+  // zeroed, never silently dropped.
+  const removeAdhocItem = useCallback((itemId: string) => {
+    if (!data) return;
+    const row = data.items.find((i) => i.id === itemId);
+    if (!row || row.line_id || toNumber(row.consumed_qty) > 0 || toNumber(row.waste_qty) > 0) {
+      toast.error('این ردیف داده ثبت‌شده دارد و قابل حذف نیست');
+      return;
+    }
+    adhocRef.current.ids.delete(itemId);
+    const fi = rawCacheRef.current?.farmItems.find((f) => f.id === itemId);
+    setData(prev => prev ? { ...prev, items: prev.items.filter((i) => i.id !== itemId) } : prev);
+    if (fi) setAdhocCandidates(prev => [...prev, { id: fi.id, name: fi.name, unit: fi.unit }]);
+  }, [data]);
 
   // Update hall configs
   const updateHallConfigs = useCallback((configs: HallConfig[]) => {
@@ -628,5 +774,8 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
     submitSheet,
     revertSheet,
     refetch: fetchData,
+    adhocCandidates,
+    addAdhocItem,
+    removeAdhocItem,
   };
 }
