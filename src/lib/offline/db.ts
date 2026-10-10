@@ -66,3 +66,21 @@ export async function isOfflineDbReady(): Promise<boolean> {
   const db = await getOfflineDb();
   return !!db;
 }
+
+/**
+ * Remove the local IndexedDB database and reset connection promise.
+ * Used during factory reset / tenant data wipe.
+ */
+export async function purgeOfflineDb(): Promise<void> {
+  try {
+    const db = await getOfflineDb();
+    if (db) {
+      await db.remove();
+    }
+  } catch (err) {
+    console.warn('[offline] error purging offline DB', err);
+  } finally {
+    dbPromise = null;
+  }
+}
+

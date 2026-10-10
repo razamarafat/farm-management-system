@@ -2,6 +2,7 @@ import { Settings, Activity } from 'lucide-react';
 import { Tile } from '@/components/ui/Tile';
 import { getNavLabel, navItemsForRole, roleBase } from '@/navigation/manifest';
 import { useReorderAlertCount } from '@/hooks/useReorderAlertCount';
+import { AdminFactoryResetCard } from '@/components/dashboard/AdminFactoryResetCard';
 
 const AdminDashboard = () => {
   const role = 'admin' as const;
@@ -9,7 +10,7 @@ const AdminDashboard = () => {
   const reorderCount = useReorderAlertCount();
 
   return (
-    <div className="space-y-6 w-full">
+    <div className="space-y-8 w-full pb-8">
       <div className="flex flex-col space-y-2 text-center sm:text-right">
         <h2 className="text-2xl font-bold tracking-tight text-[var(--c-fg)]">داشبورد مدیریت</h2>
         <p className="text-[var(--c-muted-fg)]">
@@ -42,6 +43,11 @@ const AdminDashboard = () => {
           to="/admin/settings"
           disabled
         />
+      </div>
+
+      {/* Factory Reset & Data Management Card */}
+      <div className="pt-2">
+        <AdminFactoryResetCard />
       </div>
     </div>
   );
