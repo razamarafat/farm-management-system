@@ -3,7 +3,6 @@ import { Tile } from '@/components/ui/Tile';
 import { getNavLabel, navItemsForRole, roleBase } from '@/navigation/manifest';
 import { useReorderAlertCount } from '@/hooks/useReorderAlertCount';
 import { AdminFactoryResetCard } from '@/components/dashboard/AdminFactoryResetCard';
-import { AdminQuickSettingsCard } from '@/components/dashboard/AdminQuickSettingsCard';
 
 const AdminDashboard = () => {
   const role = 'admin' as const;
@@ -41,18 +40,8 @@ const AdminDashboard = () => {
           icon={Settings}
           label="تنظیمات"
           color="sand"
-          onClick={() => {
-            const el = document.getElementById('settings-card');
-            if (el) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          }}
+          to="/admin/settings"
         />
-      </div>
-
-      {/* Quick Settings & App Controls Card */}
-      <div className="pt-2">
-        <AdminQuickSettingsCard />
       </div>
 
       {/* Factory Reset & Data Management Card */}

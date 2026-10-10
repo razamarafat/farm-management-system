@@ -12,7 +12,9 @@ export interface SystemSettings {
   supervisorPhone: string;
 
   // 2. عملیات و دان‌سازی
-  defaultMixerWeight: number; // کیلوگرم
+  defaultMixerWeight: number; // کیلوگرم - ظرفیت پیش‌فرض سراسری میکسر
+  farmMixerWeights: Record<string, number>; // تفکیک فارم‌ها: { [farmId]: weightInKg }
+  flockCycleStandardDays: number; // طول دوره استاندارد پرورش (روز، پیش‌فرض ۴۵)
   maxAllowedWastePercent: number; // درصد مجاز پرت
   reorderAlertsEnabled: boolean;
   reorderBufferPercent: number; // درصد حاشیه اطمینان نقطه سفارش
@@ -56,6 +58,8 @@ export const DEFAULT_SETTINGS: SystemSettings = {
 
   // عملیات و دان‌سازی
   defaultMixerWeight: 3000,
+  farmMixerWeights: {},
+  flockCycleStandardDays: 45,
   maxAllowedWastePercent: 2,
   reorderAlertsEnabled: true,
   reorderBufferPercent: 10,
@@ -90,6 +94,8 @@ export const DEFAULT_SETTINGS: SystemSettings = {
 interface SettingsState {
   settings: SystemSettings;
   updateSettings: (newSettings: Partial<SystemSettings>) => void;
+  setFarmMixerWeight: (farmId: string, weight: number) => void;
+  getFarmMixerWeight: (farmId?: string | null) => number;
   resetSettings: () => void;
   exportSettingsJson: () => string;
   importSettingsJson: (jsonString: string) => boolean;
@@ -102,8 +108,34 @@ export const useSettingsStore = create<SettingsState>()(
 
       updateSettings: (newSettings) =>
         set((state) => ({
-          settings: { ...state.settings, ...newSettings },
+          settings: {
+            ...state.settings,
+            ...newSettings,
+            farmMixerWeights: {
+              ...(state.settings.farmMixerWeights || {}),
+              ...(newSettings.farmMixerWeights || {}),
+            },
+          },
         })),
+
+      setFarmMixerWeight: (farmId: string, weight: number) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            farmMixerWeights: {
+              ...(state.settings.farmMixerWeights || {}),
+              [farmId]: Math.max(0, weight),
+            },
+          },
+        })),
+
+      getFarmMixerWeight: (farmId?: string | null) => {
+        const current = get().settings;
+        if (farmId && current.farmMixerWeights?.[farmId] && current.farmMixerWeights[farmId] > 0) {
+          return current.farmMixerWeights[farmId];
+        }
+        return current.defaultMixerWeight || 3000;
+      },
 
       resetSettings: () =>
         set({
@@ -119,7 +151,14 @@ export const useSettingsStore = create<SettingsState>()(
           const parsed = JSON.parse(jsonString);
           if (typeof parsed !== 'object' || parsed === null) return false;
           set((state) => ({
-            settings: { ...state.settings, ...parsed },
+            settings: {
+              ...state.settings,
+              ...parsed,
+              farmMixerWeights: {
+                ...(state.settings.farmMixerWeights || {}),
+                ...(parsed.farmMixerWeights || {}),
+              },
+            },
           }));
           return true;
         } catch {
@@ -129,6 +168,18 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'morvarid_system_settings_v1',
+      merge: (persistedState: any, currentState) => ({
+        ...currentState,
+        ...(persistedState || {}),
+        settings: {
+          ...currentState.settings,
+          ...(persistedState?.settings || {}),
+          farmMixerWeights: {
+            ...(currentState.settings.farmMixerWeights || {}),
+            ...(persistedState?.settings?.farmMixerWeights || {}),
+          },
+        },
+      }),
     }
   )
 );

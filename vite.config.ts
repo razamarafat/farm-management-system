@@ -9,6 +9,9 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf8'));
+const appVersion = pkg.version || '1.1.2';
+
 // Build identity: a fresh, unique value for every build so an open client can
 // detect that a new deploy has landed. It is inlined into the bundle via
 // `define` below AND written to dist/version.json for the client to compare.
@@ -43,7 +46,7 @@ export default defineConfig({
       transformIndexHtml(html) {
         return html.replace(
           '</head>',
-          `    <meta name="build-id" content="${buildId}" />\n    <meta name="build-time" content="${builtAt}" />\n  </head>`
+          `    <meta name="build-id" content="${buildId}" />\n    <meta name="build-time" content="${builtAt}" />\n    <meta name="app-version" content="${appVersion}" />\n  </head>`
         );
       },
       writeBundle(options) {
@@ -51,7 +54,7 @@ export default defineConfig({
         fs.mkdirSync(outDir, { recursive: true });
         fs.writeFileSync(
           path.join(outDir, 'version.json'),
-          JSON.stringify({ buildId, builtAt }, null, 2),
+          JSON.stringify({ buildId, builtAt, version: appVersion }, null, 2),
         );
       },
     },
@@ -65,6 +68,7 @@ export default defineConfig({
   define: {
     'import.meta.env.VITE_BUILD_ID': JSON.stringify(buildId),
     'import.meta.env.VITE_BUILD_TIME': JSON.stringify(builtAt),
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
   },
   build: {
     cssCodeSplit: false,

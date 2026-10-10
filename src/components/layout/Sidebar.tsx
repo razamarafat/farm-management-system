@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { supabase } from '@/lib/supabase';
+import { APP_VERSION } from '@/utils/constants';
 
 export const Sidebar = () => {
   const { sidebarOpen, toggleSidebar } = useUIStore(
@@ -231,8 +232,8 @@ export const Sidebar = () => {
           )}
         </div>
 
-        {/* Logout */}
-        <div className="p-4 border-t border-[var(--c-border)] shrink-0">
+        {/* Logout & Version */}
+        <div className="p-4 border-t border-[var(--c-border)] shrink-0 space-y-2">
           <Button
             variant="destructive"
             className="w-full gap-2 h-11"
@@ -241,6 +242,11 @@ export const Sidebar = () => {
             <LogOut size={18} />
             خروج از حساب
           </Button>
+
+          <div className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-[var(--c-muted-fg)] select-none">
+            <span>نسخه</span>
+            <span className="font-semibold text-[var(--c-fg)] font-mono dir-ltr">v{APP_VERSION}</span>
+          </div>
         </div>
       </aside>
 

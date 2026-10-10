@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Bell,
   Table,
+  Warehouse,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -31,13 +32,16 @@ import { Badge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useSettingsStore, SystemSettings } from '@/store/settingsStore';
 import { purgeOfflineDb, isOfflineDbReady } from '@/lib/offline';
+import { useFarms } from '@/hooks/useFarms';
 import { supabase } from '@/lib/supabase';
 import { toPersianDigits } from '@/utils/persianNumbers';
+import { APP_VERSION } from '@/utils/constants';
 
 type TabKey = 'general' | 'operations' | 'inventory' | 'offline' | 'reports' | 'system';
 
 export const AdminQuickSettingsCard = () => {
   const { settings, updateSettings, resetSettings, exportSettingsJson, importSettingsJson } = useSettingsStore();
+  const { farms, isLoading: isLoadingFarms } = useFarms({ search: '', status: 'active' });
   const [activeTab, setActiveTab] = useState<TabKey>('general');
   const [formState, setFormState] = useState<SystemSettings>({ ...settings });
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
@@ -77,6 +81,28 @@ export const AdminQuickSettingsCard = () => {
 
   const handleFieldChange = <K extends keyof SystemSettings>(field: K, value: SystemSettings[K]) => {
     setFormState((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleFarmMixerWeightChange = (farmId: string, valStr: string) => {
+    const parsed = parseFloat(valStr);
+    setFormState((prev) => ({
+      ...prev,
+      farmMixerWeights: {
+        ...(prev.farmMixerWeights || {}),
+        [farmId]: isNaN(parsed) || parsed <= 0 ? 0 : parsed,
+      },
+    }));
+  };
+
+  const handleResetFarmMixer = (farmId: string) => {
+    setFormState((prev) => {
+      const next = { ...(prev.farmMixerWeights || {}) };
+      delete next[farmId];
+      return {
+        ...prev,
+        farmMixerWeights: next,
+      };
+    });
   };
 
   const handleSave = () => {
@@ -226,9 +252,15 @@ export const AdminQuickSettingsCard = () => {
           </div>
 
           <div className="p-3 rounded-xl border border-[var(--c-border)] bg-[var(--c-card)] flex flex-col justify-between">
-            <span className="text-[11px] text-[var(--c-muted-fg)] font-medium">ظرفیت بچ میکسر</span>
+            <span className="text-[11px] text-[var(--c-muted-fg)] font-medium">ظرفیت پیش‌فرض میکسر</span>
             <span className="text-sm font-bold text-[var(--c-fg)] mt-1">
               {toPersianDigits(formState.defaultMixerWeight.toLocaleString())} کیلوگرم
+            </span>
+            <span className="text-[10px] text-[var(--c-muted-fg)] mt-0.5">
+              {toPersianDigits(
+                Object.values(formState.farmMixerWeights || {}).filter((w) => w > 0).length
+              )}{' '}
+              فارم با ظرفیت اختصاصی
             </span>
           </div>
 
@@ -375,108 +407,228 @@ export const AdminQuickSettingsCard = () => {
 
           {/* ==================== TAB 2: OPERATIONS & FEED ==================== */}
           {activeTab === 'operations' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl border border-[var(--c-border)] bg-[var(--c-card)] space-y-4">
-                <div className="flex items-center gap-2 text-sm font-bold text-[var(--c-fg)]">
-                  <Sliders size={16} className="text-[var(--c-primary)]" />
-                  <span>قوانین میکسر و بچ‌های دان‌سازی</span>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl border border-[var(--c-border)] bg-[var(--c-card)] space-y-4">
+                  <div className="flex items-center gap-2 text-sm font-bold text-[var(--c-fg)]">
+                    <Sliders size={16} className="text-[var(--c-primary)]" />
+                    <span>قوانین میکسر و استانداردهای دان‌سازی</span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[var(--c-fg)]">
+                      ظرفیت پیش‌فرض سراسری هر بچ میکسر (کیلوگرم)
+                    </label>
+                    <Input
+                      type="number"
+                      value={formState.defaultMixerWeight}
+                      onChange={(e) => handleFieldChange('defaultMixerWeight', Number(e.target.value) || 0)}
+                      placeholder="3000"
+                    />
+                    <span className="text-[11px] text-[var(--c-muted-fg)]">
+                      مبنای سراسری فرمول‌ساز در صورت عدم تعیین ظرفیت اختصاصی برای فارم (پیش‌فرض: ۳,۰۰۰ کیلوگرم)
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[var(--c-fg)]">
+                      طول دوره استاندارد پرورش گله (روز)
+                    </label>
+                    <Input
+                      type="number"
+                      value={formState.flockCycleStandardDays}
+                      onChange={(e) => handleFieldChange('flockCycleStandardDays', Number(e.target.value) || 45)}
+                      placeholder="45"
+                    />
+                    <span className="text-[11px] text-[var(--c-muted-fg)]">
+                      مبنای منحنی‌های مصرف جیره استاندارد و پیش‌بینی تخلیه فارم (معمولاً ۴۲ تا ۴۹ روز)
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[var(--c-fg)]">
+                      سقف مجاز افت و پرت طبیعی دان (درصد)
+                    </label>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      value={formState.maxAllowedWastePercent}
+                      onChange={(e) => handleFieldChange('maxAllowedWastePercent', Number(e.target.value) || 0)}
+                      placeholder="2"
+                    />
+                    <span className="text-[11px] text-[var(--c-muted-fg)]">
+                      در صورت ثبت پرت بالاتر از این مقدار، سیستم اپراتور را ملزم به درج یادداشت توجیهی می‌کند.
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[var(--c-fg)]">
+                      حداکثر تلرانس انحراف فرمول دان (درصد)
+                    </label>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      value={formState.formulaTolerancePercent}
+                      onChange={(e) => handleFieldChange('formulaTolerancePercent', Number(e.target.value) || 0)}
+                      placeholder="5"
+                    />
+                    <span className="text-[11px] text-[var(--c-muted-fg)]">
+                      حداکثر اختلاف مجاز در وزن اقلام ریزمغذی و کنسانتره در زمان ثبت بچ تولیدی
+                    </span>
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[var(--c-fg)]">
-                    ظرفیت استاندارد هر بچ میکسر (کیلوگرم)
-                  </label>
-                  <Input
-                    type="number"
-                    value={formState.defaultMixerWeight}
-                    onChange={(e) => handleFieldChange('defaultMixerWeight', Number(e.target.value) || 0)}
-                    placeholder="3000"
-                  />
-                  <span className="text-[11px] text-[var(--c-muted-fg)]">
-                    مبنای محاسبه در فرمول‌ساز و ثبت برگه‌های دان‌ریزی (پیش‌فرض: ۳,۰۰۰ کیلوگرم)
-                  </span>
-                </div>
+                <div className="p-4 rounded-xl border border-[var(--c-border)] bg-[var(--c-card)] space-y-4">
+                  <div className="flex items-center gap-2 text-sm font-bold text-[var(--c-fg)]">
+                    <Clock size={16} className="text-amber-500" />
+                    <span>انضباط زمانی و قفل ثبت مصرف</span>
+                  </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[var(--c-fg)]">
-                    سقف مجاز افت و پرت طبیعی دان (درصد)
-                  </label>
-                  <Input
-                    type="number"
-                    step="0.5"
-                    value={formState.maxAllowedWastePercent}
-                    onChange={(e) => handleFieldChange('maxAllowedWastePercent', Number(e.target.value) || 0)}
-                    placeholder="2"
-                  />
-                  <span className="text-[11px] text-[var(--c-muted-fg)]">
-                    در صورت ثبت پرت بالاتر از این مقدار، سیستم اپراتور را ملزم به درج یادداشت توجیهی می‌کند.
-                  </span>
-                </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[var(--c-fg)]">
+                      ساعت قفل خودکار حواله‌های مصرف روزانه
+                    </label>
+                    <Select
+                      value={
+                        formState.dailyVoucherAutoLockHour !== null ? String(formState.dailyVoucherAutoLockHour) : 'none'
+                      }
+                      onChange={(e) =>
+                        handleFieldChange(
+                          'dailyVoucherAutoLockHour',
+                          e.target.value === 'none' ? null : Number(e.target.value)
+                        )
+                      }
+                    >
+                      <option value="none">غیرفعال (قفل دستی توسط سرپرست)</option>
+                      <option value="21">ساعت ۲۱:۰۰ شب</option>
+                      <option value="22">ساعت ۲۲:۰۰ شب</option>
+                      <option value="23">ساعت ۲۳:۰۰ شب (پایان شیفت کاری)</option>
+                      <option value="24">ساعت ۲۴:۰۰ (بامداد روز بعد)</option>
+                    </Select>
+                    <span className="text-[11px] text-[var(--c-muted-fg)]">
+                      پس از این ساعت، ویرایش حواله مصرف روزانه تنها با دسترسی مدیر ارشد امکان‌پذیر خواهد بود.
+                    </span>
+                  </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[var(--c-fg)]">
-                    حداکثر تلرانس انحراف فرمول دان (درصد)
-                  </label>
-                  <Input
-                    type="number"
-                    step="0.5"
-                    value={formState.formulaTolerancePercent}
-                    onChange={(e) => handleFieldChange('formulaTolerancePercent', Number(e.target.value) || 0)}
-                    placeholder="5"
-                  />
-                  <span className="text-[11px] text-[var(--c-muted-fg)]">
-                    حداکثر اختلاف مجاز در وزن اقلام ریزمغذی و کنسانتره در زمان ثبت بچ تولیدی
-                  </span>
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-[var(--c-border)] mt-2">
+                    <div>
+                      <div className="text-xs font-semibold text-[var(--c-fg)]">
+                        الزام ثبت توضیحات برای تعدیل موجودی
+                      </div>
+                      <div className="text-[11px] text-[var(--c-muted-fg)] mt-0.5">
+                        در زمان اصلاح انبار یا کسر/اضافه فیزیکی، درج علت اجباری باشد.
+                      </div>
+                    </div>
+                    <Toggle
+                      checked={formState.requireVoucherNotesOnAdjustment}
+                      onChange={() =>
+                        handleFieldChange('requireVoucherNotesOnAdjustment', !formState.requireVoucherNotesOnAdjustment)
+                      }
+                    />
+                  </div>
                 </div>
               </div>
 
+              {/* Dedicated Card for Per-Farm Mixer Batch Sizes */}
               <div className="p-4 rounded-xl border border-[var(--c-border)] bg-[var(--c-card)] space-y-4">
-                <div className="flex items-center gap-2 text-sm font-bold text-[var(--c-fg)]">
-                  <Clock size={16} className="text-amber-500" />
-                  <span>انضباط زمانی و قفل ثبت مصرف</span>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[var(--c-fg)]">
-                    ساعت قفل خودکار حواله‌های مصرف روزانه
-                  </label>
-                  <Select
-                    value={
-                      formState.dailyVoucherAutoLockHour !== null ? String(formState.dailyVoucherAutoLockHour) : 'none'
-                    }
-                    onChange={(e) =>
-                      handleFieldChange(
-                        'dailyVoucherAutoLockHour',
-                        e.target.value === 'none' ? null : Number(e.target.value)
-                      )
-                    }
-                  >
-                    <option value="none">غیرفعال (قفل دستی توسط سرپرست)</option>
-                    <option value="21">ساعت ۲۱:۰۰ شب</option>
-                    <option value="22">ساعت ۲۲:۰۰ شب</option>
-                    <option value="23">ساعت ۲۳:۰۰ شب (پایان شیفت کاری)</option>
-                    <option value="24">ساعت ۲۴:۰۰ (بامداد روز بعد)</option>
-                  </Select>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--c-border)] pb-3">
+                  <div className="flex items-center gap-2 text-sm font-bold text-[var(--c-fg)]">
+                    <Warehouse size={16} className="text-[var(--c-primary)]" />
+                    <span>ظرفیت اختصاصی بچ میکسر به تفکیک فارم‌ها</span>
+                  </div>
                   <span className="text-[11px] text-[var(--c-muted-fg)]">
-                    پس از این ساعت، ویرایش حواله مصرف روزانه تنها با دسترسی مدیر ارشد امکان‌پذیر خواهد بود.
+                    دستگاه‌های میکسر در فارم‌های مختلف می‌توانند ظرفیت‌های متفاوتی (مثلاً ۲، ۳ یا ۴ تن) داشته باشند.
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-xl border border-[var(--c-border)] mt-2">
-                  <div>
-                    <div className="text-xs font-semibold text-[var(--c-fg)]">
-                      الزام ثبت توضیحات برای تعدیل موجودی
-                    </div>
-                    <div className="text-[11px] text-[var(--c-muted-fg)] mt-0.5">
-                      در زمان اصلاح انبار یا کسر/اضافه فیزیکی، درج علت اجباری باشد.
-                    </div>
+                {isLoadingFarms ? (
+                  <div className="p-6 text-center text-xs text-[var(--c-muted-fg)]">
+                    در حال دریافت فهرست فارم‌ها از پایگاه داده...
                   </div>
-                  <Toggle
-                    checked={formState.requireVoucherNotesOnAdjustment}
-                    onChange={() =>
-                      handleFieldChange('requireVoucherNotesOnAdjustment', !formState.requireVoucherNotesOnAdjustment)
-                    }
-                  />
+                ) : farms.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-[var(--c-muted-fg)] border border-dashed border-[var(--c-border)] rounded-xl">
+                    هیچ فارم فعالی در سامانه ثبت نشده است
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-right text-xs">
+                      <thead>
+                        <tr className="border-b border-[var(--c-border)] text-[var(--c-muted-fg)]">
+                          <th className="pb-2.5 font-semibold">نام و کد فارم</th>
+                          <th className="pb-2.5 font-semibold">وضعیت تنظیم</th>
+                          <th className="pb-2.5 font-semibold w-56">ظرفیت هر بچ (کیلوگرم)</th>
+                          <th className="pb-2.5 font-semibold w-28 text-center">عملیات</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[var(--c-border)]">
+                        {farms.map((farm) => {
+                          const customWeight = formState.farmMixerWeights?.[farm.id];
+                          const hasCustom = typeof customWeight === 'number' && customWeight > 0;
+                          const effectiveWeight = hasCustom ? customWeight : formState.defaultMixerWeight;
+
+                          return (
+                            <tr key={farm.id} className="hover:bg-[var(--c-muted)]/30 transition-colors">
+                              <td className="py-3 font-medium text-[var(--c-fg)]">
+                                <div className="flex items-center gap-2">
+                                  <Warehouse size={14} className="text-[var(--c-muted-fg)]" />
+                                  <span>{farm.name}</span>
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">
+                                    کد {toPersianDigits(farm.code)}
+                                  </Badge>
+                                </div>
+                              </td>
+
+                              <td className="py-3">
+                                {hasCustom ? (
+                                  <Badge variant="success" className="text-[11px] gap-1">
+                                    <CheckCircle2 size={12} />
+                                    <span>اختصاصی ({toPersianDigits(effectiveWeight.toLocaleString())} کیلوگرم)</span>
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="neutral" className="text-[11px]">
+                                    <span>پیروی از پیش‌فرض ({toPersianDigits(effectiveWeight.toLocaleString())} کیلوگرم)</span>
+                                  </Badge>
+                                )}
+                              </td>
+
+                              <td className="py-3">
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="number"
+                                    value={hasCustom ? customWeight : ''}
+                                    placeholder={`${toPersianDigits(formState.defaultMixerWeight)} (پیش‌فرض)`}
+                                    onChange={(e) => handleFarmMixerWeightChange(farm.id, e.target.value)}
+                                    className="h-8 text-xs font-mono"
+                                  />
+                                  <span className="text-[11px] text-[var(--c-muted-fg)] whitespace-nowrap">کیلوگرم</span>
+                                </div>
+                              </td>
+
+                              <td className="py-3 text-center">
+                                {hasCustom ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleResetFarmMixer(farm.id)}
+                                    className="text-[11px] text-[var(--c-muted-fg)] hover:text-red-500 h-7 px-2"
+                                    title="حذف مقدار اختصاصی و بازگشت به پیش‌فرض سراسری"
+                                  >
+                                    حذف اختصاصی
+                                  </Button>
+                                ) : (
+                                  <span className="text-[11px] text-[var(--c-muted-fg)]">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className="p-3 rounded-xl bg-[var(--c-muted)]/40 border border-[var(--c-border)] text-[11px] text-[var(--c-muted-fg)] leading-relaxed">
+                  نکته: در بخش مدیریت فرمول‌های دان و ثبت مصرف روزانه هر فارم، ظرفیت بچ میکسر اختصاصی آن فارم به صورت خودکار مبنای محاسبه قرار می‌گیرد.
                 </div>
               </div>
             </div>
@@ -827,7 +979,7 @@ export const AdminQuickSettingsCard = () => {
                 <div className="p-3.5 rounded-xl border border-[var(--c-border)] bg-[var(--c-card)] flex flex-col justify-between">
                   <span className="text-[11px] text-[var(--c-muted-fg)] font-medium">نسخه کلاینت سامانه</span>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xs font-bold text-[var(--c-fg)]">v1.2.0 (Singlefile)</span>
+                    <span className="text-xs font-bold text-[var(--c-fg)]">v{APP_VERSION} (Singlefile)</span>
                   </div>
                 </div>
               </div>

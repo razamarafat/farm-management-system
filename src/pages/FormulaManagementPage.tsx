@@ -7,6 +7,7 @@ import {
   ArrowRightLeft, AlertCircle, CheckCircle2
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { useSettingsStore } from '@/store/settingsStore';
 import { supabase } from '@/lib/supabase';
 import { useFormulas, useFormulaActions, useFarmFeedItems, Formula, FormulaInput } from '@/hooks/useFormulas';
 import { toast } from 'sonner';
@@ -698,9 +699,12 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
   const { items: feedItems, isLoading: loadingItems } = useFarmFeedItems(farmId);
   const isEdit = !!formula;
 
+  const getFarmMixerWeight = useSettingsStore((s) => s.getFarmMixerWeight);
   const [formulaNo, setFormulaNo] = useState(formula?.formula_no || Math.max(0, ...existingNumbers) + 1);
   const [name, setName] = useState(formula?.name || '');
-  const [mixerWeight, setMixerWeight] = useState(formula?.mixer_weight || 3000);
+  const [mixerWeight, setMixerWeight] = useState(
+    formula?.mixer_weight ?? getFarmMixerWeight(farmId)
+  );
   const [isActive, setIsActive] = useState(formula?.is_active ?? true);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
 
