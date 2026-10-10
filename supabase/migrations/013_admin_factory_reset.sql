@@ -141,4 +141,5 @@ END;
 $function$;
 
 REVOKE ALL ON FUNCTION public.admin_factory_reset(boolean, boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.admin_factory_reset(boolean, boolean) FROM anon;
 GRANT EXECUTE ON FUNCTION public.admin_factory_reset(boolean, boolean) TO authenticated;
