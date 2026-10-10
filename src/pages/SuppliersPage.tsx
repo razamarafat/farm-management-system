@@ -6,10 +6,9 @@ import {
   Search,
   Edit,
   Trash2,
-  ToggleLeft,
-  ToggleRight,
   Download,
 } from 'lucide-react';
+import { Toggle } from '@/components/ui/Toggle';
 import { useSuppliers, useCreateSupplier, useUpdateSupplier, useDeleteSupplier, useToggleSupplierStatus, useCheckSupplierUsage } from '@/hooks/useSuppliers';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -265,19 +264,15 @@ export default function SuppliersPage() {
                         </Badge>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleToggleStatus(supplier)}
-                            title={supplier.is_active ? 'غیرفعال کردن' : 'فعال کردن'}
-                          >
-                            {supplier.is_active ? (
-                              <ToggleRight className="w-5 h-5 text-[var(--c-success)]" />
-                            ) : (
-                              <ToggleLeft className="w-5 h-5 text-[var(--c-muted-fg)]" />
-                            )}
-                          </Button>
+                        <div className="flex items-center justify-center gap-2">
+                          <div title={supplier.is_active ? 'غیرفعال کردن' : 'فعال کردن'} className="flex items-center">
+                            <Toggle
+                              size="sm"
+                              checked={supplier.is_active}
+                              onChange={() => handleToggleStatus(supplier)}
+                              label={supplier.is_active ? 'غیرفعال کردن' : 'فعال کردن'}
+                            />
+                          </div>
                           <Button
                             variant="ghost"
                             size="sm"

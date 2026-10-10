@@ -7,10 +7,9 @@ import {
   Search,
   Edit2,
   Trash2,
-  ToggleLeft,
-  ToggleRight,
   Save,
 } from 'lucide-react';
+import { Toggle } from '@/components/ui/Toggle';
 import { useInputs, useCreateInput, useUpdateInput, useDeleteInput, useToggleInputStatus } from '@/hooks/useInputs';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -335,19 +334,15 @@ export default function InputsPage() {
                         </Badge>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleToggleStatus(input)}
-                            title={input.is_active ? 'غیرفعال کردن' : 'فعال کردن'}
-                          >
-                            {input.is_active ? (
-                              <ToggleRight className="w-5 h-5 text-[var(--c-success)]" />
-                            ) : (
-                              <ToggleLeft className="w-5 h-5 text-[var(--c-muted-fg)]" />
-                            )}
-                          </Button>
+                        <div className="flex items-center justify-center gap-2">
+                          <div title={input.is_active ? 'غیرفعال کردن' : 'فعال کردن'} className="flex items-center">
+                            <Toggle
+                              size="sm"
+                              checked={input.is_active}
+                              onChange={() => handleToggleStatus(input)}
+                              label={input.is_active ? 'غیرفعال کردن' : 'فعال کردن'}
+                            />
+                          </div>
                           <Button
                             variant="ghost"
                             size="sm"

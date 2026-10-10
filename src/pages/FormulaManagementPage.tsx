@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FlaskConical, Plus, Search, ChevronDown, ChevronUp,
-  Edit3, Trash2, Copy, ToggleLeft, ToggleRight,
+  Edit3, Trash2, Copy,
   Save, X, Loader2, Beaker, Scale, ListChecks,
   ArrowRightLeft, AlertCircle, CheckCircle2
 } from 'lucide-react';
+import { Toggle } from '@/components/ui/Toggle';
 import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { supabase } from '@/lib/supabase';
@@ -520,9 +521,14 @@ const FormulaCard = ({
             <button onClick={(e) => { e.stopPropagation(); onDuplicate(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)] text-[var(--c-accent)]" title="کپی">
               <Copy className="w-4 h-4" />
             </button>
-            <button onClick={(e) => { e.stopPropagation(); onToggleStatus(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)]" title={formula.is_active ? 'غیرفعال‌سازی' : 'فعال‌سازی'}>
-              {formula.is_active ? <ToggleRight className="w-5 h-5 text-[var(--c-success)]" /> : <ToggleLeft className="w-5 h-5 text-[var(--c-muted-fg)]" />}
-            </button>
+            <div onClick={(e) => e.stopPropagation()} className="px-1 py-1 flex items-center" title={formula.is_active ? 'غیرفعال‌سازی' : 'فعال‌سازی'}>
+              <Toggle
+                size="sm"
+                checked={formula.is_active}
+                onChange={onToggleStatus}
+                label={formula.is_active ? 'غیرفعال‌سازی' : 'فعال‌سازی'}
+              />
+            </div>
             <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 rounded-lg hover:bg-[var(--c-muted)] text-[var(--c-error)]" title="حذف">
               <Trash2 className="w-4 h-4" />
             </button>
