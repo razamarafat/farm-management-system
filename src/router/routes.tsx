@@ -237,6 +237,10 @@ export const routes: RouteObject[] = [
             element: <LazyPage><ReorderPointPage /></LazyPage>,
           },
           {
+            path: 'inputs',
+            element: <LazyPage><InputsPage /></LazyPage>,
+          },
+          {
             path: '*',
             element: <UnderDevelopment />,
           },

@@ -29,9 +29,9 @@ const StatusIcon = memo(({ status }: { status: 'ok' | 'warning' | 'danger' }) =>
 StatusIcon.displayName = 'StatusIcon';
 
 const NumericCell = memo(({
-  value, onChange, disabled, highlight,
+  value, onChange, disabled = false, highlight,
 }: {
-  value: number; onChange?: (val: string) => void; disabled: boolean; highlight?: string;
+  value: number; onChange?: (val: string) => void; disabled?: boolean; highlight?: string;
 }) => {
   const displayVal = value || 0;
   const [localValue, setLocalValue] = useState(displayVal ? String(displayVal) : '');
@@ -182,11 +182,10 @@ function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine
 
                 {/* Total consumed */}
                 <td className="px-3 py-2 text-center bg-[color-mix(in_srgb,var(--c-success)_5%,transparent)]">
-                  {!hasHalls && canEdit ? (
+                  {canEdit ? (
                     <NumericCell
                       value={item.consumed_qty}
                       onChange={(val) => onUpdateLine(item.id, 'consumed_qty', toNumber(val))}
-                      disabled={!(item.has_initial || item.today_purchase > 0)}
                       highlight="text-[var(--c-success)]"
                     />
                   ) : (

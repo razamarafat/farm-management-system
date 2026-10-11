@@ -8,6 +8,7 @@ import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { Toggle } from '@/components/ui/Toggle';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { DEFAULT_FARM_INGREDIENTS } from '@/utils/constants';
 import { normalizeName } from '@/utils/helpers';
 import { PACKAGING_UNITS } from '@/types/input.types';
@@ -50,6 +51,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
   const [manualUnit, setManualUnit] = useState(type === 'packaging' ? 'عدد' : 'کیلوگرم');
   const [manualPriority, setManualPriority] = useState('');
   const [manualReorder, setManualReorder] = useState('');
+  const [deletingItem, setDeletingItem] = useState<FarmItemRow | null>(null);
 
   const itemLabel = labels[type];
 
@@ -276,7 +278,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
               </div>
               <div className="flex items-center gap-2">
                 <Toggle checked={item.is_active} onChange={() => handleToggle(item)} />
-                <Button variant="ghost" size="icon" className="text-[var(--c-error)]" onClick={() => handleDelete(item.id)}>
+                <Button variant="ghost" size="icon" className="text-[var(--c-error)]" onClick={() => setDeletingItem(item)}>
                   <Trash2 size={16} />
                 </Button>
               </div>
@@ -314,6 +316,22 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
           ))}
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!deletingItem}
+        onClose={() => setDeletingItem(null)}
+        title="حذف آیتم از فارم"
+        message={deletingItem ? `آیا از حذف "${deletingItem.name}" از این فارم اطمینان دارید؟ این عمل قابل بازگشت نیست.` : ''}
+        confirmLabel="حذف"
+        cancelLabel="انصراف"
+        variant="destructive"
+        onConfirm={async () => {
+          if (deletingItem) {
+            await handleDelete(deletingItem.id);
+            setDeletingItem(null);
+          }
+        }}
+      />
     </Card>
   );
 };

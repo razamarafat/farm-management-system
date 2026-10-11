@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion';
 import {
   ArrowRight, Save, CheckCircle, AlertTriangle, Loader2,
-  Beaker, Building2, Calculator, RotateCcw, Plus,
+  Beaker, Building2, Calculator, RotateCcw, Plus, Download,
 } from 'lucide-react';
+import { exportToXlsx } from '@/lib/xlsxClient';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMemo, useState } from 'react';
 import type { ChangeEvent } from 'react';
@@ -171,6 +172,50 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
     updateHallConfigs(hallConfigs.map(h => ({ ...h, isSelected: false })));
   };
 
+  const handleExportExcel = () => {
+    if (!data || data.items.length === 0) {
+      toast.error('داده‌ای برای خروجی اکسل وجود ندارد');
+      return;
+    }
+    const cols = [
+      { key: 'row_index', header: 'ردیف', width: 8, align: 'center' as const },
+      { key: 'name', header: isFeed ? 'نام نهاده' : 'نام قلم', width: 26, align: 'right' as const },
+      { key: 'unit', header: 'واحد', width: 10, align: 'center' as const },
+      ...(isFeed ? [{ key: 'qty_per_mixer', header: 'سهم هر میکسر', width: 14, align: 'left' as const, numFmt: '#,##0.00' }] : []),
+      { key: 'consumed_qty', header: 'مقدار مصرف', width: 14, align: 'left' as const, numFmt: '#,##0.00' },
+      { key: 'today_purchase', header: 'خرید امروز', width: 14, align: 'left' as const, numFmt: '#,##0.00' },
+      { key: 'waste_qty', header: 'ضایعات', width: 14, align: 'left' as const, numFmt: '#,##0.00' },
+      { key: 'remaining_preview', header: 'مانده انبار', width: 16, align: 'left' as const, numFmt: '#,##0.00' },
+      { key: 'item_type', header: 'نوع قلم', width: 14, align: 'center' as const },
+      { key: 'notes', header: 'توضیحات', width: 24, align: 'right' as const },
+    ];
+
+    const exportRows = data.items.map((item, idx) => ({
+      row_index: idx + 1,
+      name: item.name,
+      unit: item.unit,
+      qty_per_mixer: item.qty_per_mixer > 0 ? Number(item.qty_per_mixer.toFixed(2)) : '—',
+      consumed_qty: Number(item.consumed_qty.toFixed(2)),
+      today_purchase: Number(item.today_purchase.toFixed(2)),
+      waste_qty: Number(item.waste_qty.toFixed(2)),
+      remaining_preview: Number(item.remaining_preview.toFixed(2)),
+      item_type: isFeed && item.qty_per_mixer <= 0 ? 'خارج از فرمول' : 'فرمول',
+      notes: item.notes || '—',
+    }));
+
+    const dateClean = (jalaliDate || dateParam).replace(/\//g, '-');
+    exportToXlsx({
+      sheetName: `حواله ${CATEGORY_LABELS[category]}`,
+      title: `حواله مصرف ${CATEGORY_LABELS[category]} - تاریخ ${toPersianDigits(jalaliDate)}${data.formula ? ` - فرمول ${data.formula.name || data.formula.formula_no}` : ''}`,
+      columns: cols,
+      rows: exportRows,
+      fileName: `حواله_مصرف_${category}_${dateClean}.xlsx`,
+      rightToLeft: true,
+      totalsRow: true,
+    });
+    toast.success('فایل اکسل با موفقیت ایجاد و دانلود شد');
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -230,6 +275,16 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportExcel}
+            disabled={items.length === 0}
+            className="flex items-center gap-1.5"
+          >
+            <Download className="w-4 h-4 text-[var(--c-success)]" />
+            خروجی اکسل
+          </Button>
           <span className={`px-3 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[voucher.status].bg} ${STATUS_COLORS[voucher.status].text}`}>
             {STATUS_LABELS[voucher.status]}
           </span>
@@ -484,35 +539,43 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
       )}
 
       {/* Action Buttons */}
-      {!isReadOnly && (
-        <div className="flex flex-col sm:flex-row gap-3 justify-between">
-          <Button variant="outline" onClick={goBack} className="flex items-center gap-2">
-            <ArrowRight className="w-4 h-4" />
-            بازگشت
+      <div className="flex flex-col sm:flex-row gap-3 justify-between">
+        <Button variant="outline" onClick={goBack} className="flex items-center gap-2">
+          <ArrowRight className="w-4 h-4" />
+          بازگشت
+        </Button>
+
+        <div className="flex gap-3 items-center flex-wrap">
+          <Button
+            variant="outline"
+            onClick={handleExportExcel}
+            disabled={items.length === 0}
+            className="flex items-center gap-2"
+          >
+            <Download className="w-4 h-4 text-[var(--c-success)]" />
+            خروجی اکسل
           </Button>
 
-          <div className="flex gap-3">
-            {isSubmitted && canEdit && (
-              <Button variant="outline" onClick={revertSheet} disabled={isSaving} className="flex items-center gap-2">
-                <RotateCcw className="w-4 h-4" />
-                برگشت به پیش‌نویس
-              </Button>
-            )}
+          {isSubmitted && canEdit && !isReadOnly && (
+            <Button variant="outline" onClick={revertSheet} disabled={isSaving} className="flex items-center gap-2">
+              <RotateCcw className="w-4 h-4" />
+              برگشت به پیش‌نویس
+            </Button>
+          )}
 
-            {(!isLocked || isAdmin) && (
-              <Button
-                variant="primary"
-                onClick={handleSubmit}
-                disabled={isSaving || items.length === 0}
-                className="flex items-center gap-2"
-              >
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                ثبت نهایی
-              </Button>
-            )}
-          </div>
+          {!isReadOnly && (!isLocked || isAdmin) && (
+            <Button
+              variant="primary"
+              onClick={handleSubmit}
+              disabled={isSaving || items.length === 0}
+              className="flex items-center gap-2"
+            >
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              ثبت نهایی
+            </Button>
+          )}
         </div>
-      )}
+      </div>
 
       <ConfirmDialog
         isOpen={showMissingDialog}

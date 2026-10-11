@@ -718,6 +718,7 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
   );
   const [isActive, setIsActive] = useState(formula?.is_active ?? true);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
 
   useEffect(() => {
     if (formula?.items) {
@@ -730,7 +731,7 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
   const totalWeight = Object.values(quantities).reduce((s, v) => s + (v || 0), 0);
   const itemCount = Object.values(quantities).filter((v) => v > 0).length;
 
-  const handleSubmit = () => {
+  const handlePreSubmit = () => {
     if (!isEdit && existingNumbers.includes(formulaNo)) {
       toast.error('این شماره فرمول قبلاً وجود دارد');
       return;
@@ -739,7 +740,11 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
       toast.error('حداقل یک نهاده باید مقداردهی شود');
       return;
     }
+    setShowSaveConfirm(true);
+  };
 
+  const handleSubmit = () => {
+    setShowSaveConfirm(false);
     const items = Object.entries(quantities)
       .filter(([, v]) => v > 0)
       .map(([item_id, qty_per_mixer]) => ({ item_id, qty_per_mixer }));
@@ -905,7 +910,7 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
             انصراف
           </button>
           <button
-            onClick={handleSubmit}
+            onClick={handlePreSubmit}
             disabled={isSaving}
             className="px-6 py-2 text-sm rounded-lg bg-[var(--c-success)] text-[var(--c-primary-fg)] hover:brightness-110 disabled:opacity-50 flex items-center gap-2"
           >
@@ -913,6 +918,21 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
             {isEdit ? 'بروزرسانی و ذخیره فرمول' : 'ثبت و ذخیره فرمول'}
           </button>
         </div>
+
+        <ConfirmDialog
+          isOpen={showSaveConfirm}
+          onClose={() => setShowSaveConfirm(false)}
+          title={isEdit ? 'تایید ذخیره تغییرات فرمول' : 'تایید ایجاد فرمول'}
+          message={
+            isEdit
+              ? `آیا از ذخیره تغییرات فرمول شماره ${toPersianNum(formulaNo)} اطمینان دارید؟`
+              : `آیا از ثبت فرمول شماره ${toPersianNum(formulaNo)} اطمینان دارید؟`
+          }
+          confirmLabel={isEdit ? 'بروزرسانی و ذخیره' : 'ثبت و ایجاد'}
+          cancelLabel="انصراف"
+          onConfirm={handleSubmit}
+          isLoading={isSaving}
+        />
       </motion.div>
     </motion.div>
   );

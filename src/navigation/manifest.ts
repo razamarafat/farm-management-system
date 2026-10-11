@@ -76,7 +76,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   { path: 'users', label: 'مدیریت کاربران', icon: Users,    color: 'terracotta', roles: ['admin'] },
   { path: 'farms', label: 'مدیریت فارم‌ها', icon: Warehouse, color: 'earth', roles: ['admin'] },
-  { path: 'inputs', label: 'تعریف نهاده‌ها', icon: Wheat, color: 'clay', roles: ['admin'] },
+  { path: 'inputs', label: 'تعریف نهاده‌ها', icon: Wheat, color: 'clay', roles: ['admin', 'operator'] },
   { path: 'suppliers', label: 'تامین‌کنندگان', icon: Truck, color: 'sand', roles: ['admin'] },
 ];
 

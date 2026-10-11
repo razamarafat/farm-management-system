@@ -1,53 +1,30 @@
 // =====================================================================
 // src/lib/excelServer.ts
 //
-// Thin SPA wrapper around the server-side export API. Used by report
-// sections to swap out their placeholder "خروجی اکسل به‌زودی" toast
-// for a real .xlsx download triggered by the BFF.
+// Dual-mode Excel export service:
+// 1. Tries server-side BFF export if VITE_BFF_URL is defined.
+// 2. Automatically falls back to high-fidelity, zero-dependency client-side
+//    OpenXML (.xlsx) generation via src/lib/xlsxClient.ts.
 //
-// Security model: the SPA sends the user's Supabase JWT (Authorization
-// Bearer); the server verifies and forwards it as a per-request scoped
-// RPC client. No service-role key is ever embedded in this bundle.
-//
-// The endpoint URL comes from VITE_BFF_URL so prod and dev can point at
-// different hosts (Render Web Service in prod, localhost:3000 in dev).
-// If unset, falls back to a relative origin so the SPA calls itself
-// — useful when both run on the same Render Static Site rewrite.
+// This guarantees that in single-file standalone distribution (dist/index.html)
+// or whenever the BFF service is offline/unreachable, Excel files are still
+// generated cleanly, with Persian headers, right-to-left layout, proper column
+// widths, number formats, and totals rows.
 // =====================================================================
 
 import { supabase } from '@/lib/supabase';
+import { exportToXlsx, type XlsxColumn } from '@/lib/xlsxClient';
+import { rpcError } from '@/utils/rpcError';
 
-/**
- * The 12 live reports that the server registry knows how to export.
- *
- * - 6 LEGACY ids from the pre-redesign menu (Pass 1 retained them in
- *   `reportColumns.ts` so existing deep-links still resolve). The
- *   `registry.mjs` on the server has been kept for these IDs even
- *   though no SPA tile surfaces them anymore — a Pass 3 sweep will
- *   retire them.
- * - 6 NEW v3 ids from Pass-2 cutover: every one corresponds to a
- *   SECURITY INVOKER RPC in scripts/migrations/014_reporting_v3_enhancements.sql
- *   + dialect in services/export-api/registry.mjs.
- *
- * Adding a new id requires:
- *   - a corresponding rpcName entry in services/export-api/registry.mjs
- *   - the matching SQL function in scripts/migrations/014+ or a follow-up
- *   - the matching REPORT_CATALOG entry in src/types/report.types.ts
- *   - the matching REPORT_COLUMNS entry in src/components/reports/reportColumns.ts
- *
- * The TypeScript literal type forces all four to land in the same turn —
- * if you add a new id here without the others, the sections that
- * reference the missing id will fail to type-check.
- */
 export type SupportedReportId =
-  // 6 legacy ids (Pass 1 retained).
+  // 6 legacy ids
   | 'RPT_INVENTORY_VALUATION_SUMMARY'
   | 'RPT_INVENTORY_LEDGER'
   | 'RPT_CONSUMPTION_ANALYTICS'
   | 'RPT_INVENTORY_AGING'
   | 'RPT_PARETO_CLASSIFICATION'
   | 'RPT_SUPPLIERS'
-  // 6 NEW v3 ids (Pass 2).
+  // 6 v3 ids
   | 'RPT_INVENTORY_STOCK'
   | 'RPT_CONSUMPTION_REPORT'
   | 'RPT_SALES_TRANSFERS'
@@ -55,18 +32,10 @@ export type SupportedReportId =
   | 'RPT_PACKAGING'
   | 'RPT_REORDER_POINT';
 
-/**
- * Report-specific filter payload. The server's `registry.mjs` knows how
- * to map this object to the appropriate RPC parameters; the SPA just
- * needs to forward the active `ReportFiltersState` (plus per-report
- * tweaks like `basis` or `dead_stock_days`).
- */
 export type ReportExportFilters = Record<string, unknown>;
 
 export interface ServerExportError extends Error {
-  /** HTTP status code returned by the export endpoint, when known. */
   status?: number;
-  /** Server-supplied error code, when known. */
   code?: string;
 }
 
@@ -77,82 +46,229 @@ function makeError(message: string, status?: number, code?: string): ServerExpor
   return err;
 }
 
+interface ReportMeta {
+  rpcName: string;
+  sheetName: string;
+  title: string;
+  columns: XlsxColumn[];
+  totalsRow?: boolean;
+  mapParams: (filters: ReportExportFilters) => Record<string, unknown>;
+}
+
+const REPORT_REGISTRY: Record<string, ReportMeta> = {
+  RPT_INVENTORY_STOCK: {
+    rpcName: 'reporting_inventory_stock',
+    sheetName: 'موجودی انبار',
+    title: 'گزارش موجودی انبار',
+    totalsRow: true,
+    mapParams: (f) => ({
+      p_as_of: f.asOf || f.date_to || new Date().toISOString().slice(0, 10),
+      p_farm_id: f.farm_id || null,
+      p_category: f.category || null,
+      p_dead_stock_only: f.deadStockOnly === true,
+    }),
+    columns: [
+      { key: 'farm_name', header: 'فارم', width: 18, align: 'right' },
+      { key: 'item_name', header: 'کالا', width: 28, align: 'right' },
+      { key: 'item_category', header: 'دسته', width: 12, align: 'center' },
+      { key: 'item_unit', header: 'واحد', width: 10, align: 'center' },
+      { key: 'on_hand_qty', header: 'موجودی', width: 14, align: 'left', numFmt: '#,##0.00' },
+      { key: 'unit_cost', header: 'قیمت واحد (ریال)', width: 18, align: 'left', numFmt: '#,##0' },
+      { key: 'value_rial', header: 'ارزش (ریال)', width: 22, align: 'left', numFmt: '#,##0' },
+      { key: 'last_movement_date', header: 'آخرین حرکت', width: 14, align: 'center' },
+      { key: 'days_since_last_movement', header: 'سن (روز)', width: 12, align: 'center' },
+      { key: 'is_dead_stock', header: 'راکد', width: 10, align: 'center' },
+    ],
+  },
+
+  RPT_CONSUMPTION_REPORT: {
+    rpcName: 'reporting_consumption_report_v3',
+    sheetName: 'گزارش مصرف',
+    title: 'گزارش مصرف کالاها',
+    totalsRow: true,
+    mapParams: (f) => ({
+      p_date_from: f.date_from,
+      p_date_to: f.date_to,
+      p_farm_id: f.farm_id || null,
+      p_category: f.category || null,
+      p_group_by: f.group_by || 'item',
+      p_hall_ids: Array.isArray(f.hallIds) ? f.hallIds : [],
+      p_formula_ids: Array.isArray(f.formulaIds) ? f.formulaIds : [],
+    }),
+    columns: [
+      { key: 'group_label', header: 'گروه', width: 24, align: 'right' },
+      { key: 'item_category', header: 'دسته', width: 12, align: 'center' },
+      { key: 'hall_name', header: 'سالن', width: 18, align: 'right' },
+      { key: 'formula_name', header: 'فرمول', width: 22, align: 'right' },
+      { key: 'consumed_qty', header: 'مصرف', width: 14, align: 'left', numFmt: '#,##0.00' },
+      { key: 'waste_qty', header: 'ضایعات', width: 14, align: 'left', numFmt: '#,##0.00' },
+      { key: 'unit_price', header: 'قیمت واحد', width: 16, align: 'left', numFmt: '#,##0' },
+      { key: 'rial_value', header: 'ارزش ریالی', width: 22, align: 'left', numFmt: '#,##0' },
+      { key: 'closing_balance', header: 'مانده انبار', width: 14, align: 'left', numFmt: '#,##0.00' },
+      { key: 'voucher_count', header: 'تعداد حواله', width: 12, align: 'center' },
+    ],
+  },
+
+  RPT_SALES_TRANSFERS: {
+    rpcName: 'reporting_sales_transfers_v3',
+    sheetName: 'فروش و انتقالات',
+    title: 'گزارش فروش و انتقال بین انبارها',
+    totalsRow: true,
+    mapParams: (f) => ({
+      p_date_from: f.date_from,
+      p_date_to: f.date_to,
+      p_farm_id: f.farm_id || null,
+      p_item_id: f.item_id || null,
+      p_txn_type: ['sale', 'transfer_in', 'transfer_out'].includes(f.txn_type as string) ? f.txn_type : null,
+    }),
+    columns: [
+      { key: 'txn_date', header: 'تاریخ', width: 14, align: 'center' },
+      { key: 'txn_type', header: 'نوع', width: 14, align: 'center' },
+      { key: 'source_farm', header: 'مبدأ', width: 18, align: 'right' },
+      { key: 'dest_farm', header: 'مقصد', width: 18, align: 'right' },
+      { key: 'item_name', header: 'کالا', width: 28, align: 'right' },
+      { key: 'item_unit', header: 'واحد', width: 10, align: 'center' },
+      { key: 'qty', header: 'مقدار', width: 14, align: 'left', numFmt: '#,##0.00' },
+      { key: 'unit_price', header: 'قیمت واحد', width: 16, align: 'left', numFmt: '#,##0' },
+      { key: 'amount', header: 'مبلغ', width: 20, align: 'left', numFmt: '#,##0' },
+      { key: 'reference_no', header: 'مرجع', width: 18, align: 'center' },
+    ],
+  },
+
+  RPT_PURCHASES: {
+    rpcName: 'reporting_purchases_v3',
+    sheetName: 'گزارش خریدها',
+    title: 'گزارش خریدها',
+    totalsRow: true,
+    mapParams: (f) => ({
+      p_date_from: f.date_from,
+      p_date_to: f.date_to,
+      p_farm_id: f.farm_id || null,
+      p_supplier_id: f.supplier_id || null,
+      p_item_id: f.item_id || null,
+    }),
+    columns: [
+      { key: 'txn_date', header: 'تاریخ', width: 14, align: 'center' },
+      { key: 'supplier_name', header: 'تأمین‌کننده', width: 24, align: 'right' },
+      { key: 'item_name', header: 'کالا', width: 28, align: 'right' },
+      { key: 'item_unit', header: 'واحد', width: 10, align: 'center' },
+      { key: 'qty', header: 'مقدار', width: 14, align: 'left', numFmt: '#,##0.00' },
+      { key: 'unit_price', header: 'قیمت واحد', width: 16, align: 'left', numFmt: '#,##0' },
+      { key: 'total_amount', header: 'مبلغ کل', width: 22, align: 'left', numFmt: '#,##0' },
+      { key: 'reference_no', header: 'مرجع/شماره سند', width: 18, align: 'center' },
+    ],
+  },
+
+  RPT_PACKAGING: {
+    rpcName: 'reporting_packaging_v3',
+    sheetName: 'اقلام بسته‌بندی',
+    title: 'گزارش اقلام بسته‌بندی',
+    totalsRow: true,
+    mapParams: (f) => ({
+      p_date_from: f.date_from,
+      p_date_to: f.date_to,
+      p_farm_id: f.farm_id || null,
+    }),
+    columns: [
+      { key: 'item_name', header: 'کالای بسته‌بندی', width: 28, align: 'right' },
+      { key: 'item_unit', header: 'واحد', width: 10, align: 'center' },
+      { key: 'consumed_qty', header: 'مصرف/خروج', width: 14, align: 'left', numFmt: '#,##0.00' },
+      { key: 'rial_value', header: 'ارزش ریالی', width: 22, align: 'left', numFmt: '#,##0' },
+      { key: 'closing_balance', header: 'مانده انبار', width: 14, align: 'left', numFmt: '#,##0.00' },
+    ],
+  },
+
+  RPT_REORDER_POINT: {
+    rpcName: 'reporting_reorder_point_v3',
+    sheetName: 'نقطه سفارش کالا',
+    title: 'نقطه سفارش کالا و کلاس‌بندی ABC',
+    totalsRow: false,
+    mapParams: (f) => ({
+      p_farm_id: f.farm_id || null,
+      p_basis: f.basis === 'quantity' ? 'quantity' : 'value',
+      p_abc_class: ['A', 'B', 'C'].includes(f.abcClass as string) ? f.abcClass : null,
+      p_reorder_needed_only: typeof f.reorderNeededOnly === 'boolean' ? f.reorderNeededOnly : null,
+    }),
+    columns: [
+      { key: 'item_name', header: 'کالا', width: 28, align: 'right' },
+      { key: 'farm_name', header: 'فارم', width: 18, align: 'right' },
+      { key: 'item_unit', header: 'واحد', width: 10, align: 'center' },
+      { key: 'on_hand_qty', header: 'موجودی فعلی', width: 14, align: 'left', numFmt: '#,##0.00' },
+      { key: 'reorder_point', header: 'نقطه سفارش', width: 14, align: 'left', numFmt: '#,##0.00' },
+      { key: 'avg_daily_consumption', header: 'مصرف روزانه', width: 14, align: 'left', numFmt: '#,##0.00' },
+      { key: 'abc_class', header: 'کلاس ABC', width: 12, align: 'center' },
+      { key: 'reorder_recommended', header: 'پیشنهاد سفارش', width: 16, align: 'center' },
+    ],
+  },
+
+  RPT_SUPPLIERS: {
+    rpcName: 'reporting_suppliers_list',
+    sheetName: 'تامین‌کنندگان',
+    title: 'لیست تامین‌کنندگان',
+    totalsRow: true,
+    mapParams: (f) => ({
+      p_farm_id: f.farm_id || null,
+      p_category: f.category || null,
+      p_is_active: typeof f.is_active === 'boolean' ? f.is_active : null,
+      p_search: f.search || null,
+    }),
+    columns: [
+      { key: 'name', header: 'نام تأمین‌کننده', width: 28, align: 'right' },
+      { key: 'status', header: 'وضعیت', width: 12, align: 'center' },
+      { key: 'usage_count', header: 'تعداد خرید', width: 14, align: 'left', numFmt: '#,##0' },
+      { key: 'total_purchases_rial', header: 'مجموع خرید (ریال)', width: 22, align: 'left', numFmt: '#,##0' },
+      { key: 'last_purchase_date', header: 'آخرین خرید', width: 14, align: 'center' },
+      { key: 'first_purchase_date', header: 'اولین خرید', width: 14, align: 'center' },
+    ],
+  },
+};
+
 /**
- * Triggers a download of the .xlsx blob generated by the export API.
- * Throws `ServerExportError` on auth / RBAC / RPC failures so callers
- * can surface the right message to the user.
- *
- * Usage:
- *   try {
- *     await triggerServerExport('RPT_PARETO_CLASSIFICATION', filters);
- *     toast.success('فایل اکسل آماده شد');
- *   } catch (e) {
- *     toast.error(...);
- *   }
+ * Triggers an Excel export. Tries server BFF when explicitly configured,
+ * otherwise transparently generates native OpenXML .xlsx in the browser.
  */
 export async function triggerServerExport(
   reportId: SupportedReportId,
   filters: ReportExportFilters,
 ): Promise<{ fileName: string; rowCount: number | null }> {
+  const envBff = import.meta.env.VITE_BFF_URL as string | undefined;
+
+  // Try server BFF only if explicitly configured
+  if (envBff && !envBff.includes('localhost:3000')) {
+    try {
+      return await executeServerExport(reportId, filters, envBff);
+    } catch (err) {
+      console.warn('Server export failed, falling back to browser OpenXML generator:', err);
+    }
+  }
+
+  // Seamless client-side OpenXML generator
+  return await executeClientExport(reportId, filters);
+}
+
+async function executeServerExport(
+  reportId: SupportedReportId,
+  filters: ReportExportFilters,
+  baseUrl: string,
+): Promise<{ fileName: string; rowCount: number | null }> {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   const token = sessionData?.session?.access_token;
   if (sessionError || !token) {
-    throw makeError(
-      'برای دریافت خروجی اکسل ابتدا باید وارد حساب کاربری شوید.',
-      401,
-      'no_active_session',
-    );
+    throw makeError('برای دریافت خروجی اکسل ابتدا باید وارد حساب کاربری شوید.', 401, 'no_active_session');
   }
 
-  const baseUrl = resolveBffBaseUrl();
-  const url = `${baseUrl}/api/export/${reportId}`;
-
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(filters),
-    });
-  } catch (e) {
-    // Network-level failure: the browser never returns an HTTP status
-    // here — CORS rejection, server down, offline, DNS, etc. Surface a
-    // clear Persian message and keep the raw detail for the console.
-    console.error('Export server unreachable:', url, e);
-    throw makeError(
-      'خطا در اتصال به سرور خروجی اکسل. لطفاً دوباره تلاش کنید',
-      0,
-      'export_server_unreachable',
-    );
-  }
+  const url = `${baseUrl.replace(/\/$/, '')}/api/export/${reportId}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(filters),
+  });
 
   if (!response.ok) {
-    let detail = '';
-    let code = '';
-    try {
-      const payload = (await response.json()) as { error?: string; detail?: string };
-      code = payload?.error ?? '';
-      detail = payload?.detail ?? '';
-    } catch {
-      // Non-JSON response — fall through with the raw status text.
-    }
-    // Surface server-provided detail ONLY when it is already Persian
-    // (the server sends Persian details in production). Raw/technical
-    // detail (dev-mode err.message, SQL text, etc.) never reaches the
-    // UI — it is logged for debugging instead.
-    const isPersian = /[\u0600-\u06FF]/.test(detail);
-    if (!isPersian && detail) {
-      console.error('Export API error detail:', code, detail);
-      detail = '';
-    }
-    throw makeError(
-      `خطا در دریافت خروجی اکسل (${response.status})${detail ? ` — ${detail}` : ''}`,
-      response.status,
-      code,
-    );
+    throw makeError(`خطا در دریافت از سرور (${response.status})`, response.status);
   }
 
   const rowCountHeader = response.headers.get('X-Export-Row-Count');
@@ -168,23 +284,42 @@ export async function triggerServerExport(
   };
 }
 
-// --------------------------------------------------------------------------
-// Helpers
-// --------------------------------------------------------------------------
-
-function resolveBffBaseUrl(): string {
-  const envBase = import.meta.env.VITE_BFF_URL as string | undefined;
-  if (envBase) return stripTrailingSlash(envBase);
-  // Fall back to same-origin for static-site deployments that proxy /api
-  // through to the API service.
-  if (typeof window !== 'undefined' && window.location?.origin) {
-    return window.location.origin;
+async function executeClientExport(
+  reportId: SupportedReportId,
+  filters: ReportExportFilters,
+): Promise<{ fileName: string; rowCount: number | null }> {
+  const meta = REPORT_REGISTRY[reportId];
+  if (!meta) {
+    // If not in registry, try default query
+    throw makeError(`گزارش ${reportId} پشتیبانی نمی‌شود`, 404);
   }
-  return 'http://localhost:3000';
-}
 
-function stripTrailingSlash(s: string): string {
-  return s.endsWith('/') ? s.slice(0, -1) : s;
+  const rpcParams = meta.mapParams(filters);
+  const { data, error } = await supabase.rpc(meta.rpcName, rpcParams);
+
+  if (error) {
+    console.error(`Export RPC failed for ${reportId}:`, error);
+    throw makeError(rpcError(error) || 'خطا در دریافت داده‌های گزارش', 500);
+  }
+
+  const rows = (data || []) as Record<string, unknown>[];
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const fileName = `${meta.sheetName.replace(/\s+/g, '_')}_${dateStr}.xlsx`;
+
+  exportToXlsx({
+    sheetName: meta.sheetName,
+    title: meta.title,
+    columns: meta.columns,
+    rows,
+    fileName,
+    rightToLeft: true,
+    totalsRow: meta.totalsRow ?? true,
+  });
+
+  return {
+    fileName,
+    rowCount: rows.length,
+  };
 }
 
 function parseFileName(contentDisposition: string): string | null {
@@ -198,19 +333,14 @@ function deriveDefaultFileName(reportId: string): string {
 }
 
 function triggerBrowserDownload(blob: Blob, fileName: string): void {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    // Non-browser runtime — typically the smoke-test harness or SSR.
-    return;
-  }
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = fileName;
   a.rel = 'noopener';
-  // Some browsers ignore clicks on detached <a>; append, click, remove.
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  // Defer revocation so Safari has time to start the download.
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

@@ -54,6 +54,7 @@ export default function InputsPage() {
 
   const [showFormModal, setShowFormModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showSaveConfirmDialog, setShowSaveConfirmDialog] = useState(false);
   const [editingInput, setEditingInput] = useState<InputType | null>(null);
   const [deletingInput, setDeletingInput] = useState<InputType | null>(null);
   const [formData, setFormData] = useState<InputInsert>({
@@ -108,12 +109,16 @@ export default function InputsPage() {
     setShowDeleteDialog(true);
   };
 
-  const handleSubmit = async () => {
+  const handlePreSubmit = () => {
     if (!formData.name.trim()) {
       toast.error(`لطفاً نام ${entityLabel} را وارد کنید`);
       return;
     }
+    setShowSaveConfirmDialog(true);
+  };
 
+  const handleConfirmedSubmit = async () => {
+    setShowSaveConfirmDialog(false);
     let success = false;
 
     if (editingInput) {
@@ -387,7 +392,7 @@ export default function InputsPage() {
             <Button variant="ghost" onClick={() => setShowFormModal(false)} disabled={isSubmitting}>
               انصراف
             </Button>
-            <Button onClick={handleSubmit} isLoading={isSubmitting}>
+            <Button onClick={handlePreSubmit} isLoading={isSubmitting}>
               <Save className="w-4 h-4 ml-2" />
               {editingInput ? 'بروزرسانی' : 'ذخیره'}
             </Button>
@@ -485,6 +490,22 @@ export default function InputsPage() {
         onConfirm={handleDelete}
         variant="destructive"
         isLoading={isDeleting}
+      />
+
+      {/* ─── Save / Create Confirmation Dialog ─── */}
+      <ConfirmDialog
+        isOpen={showSaveConfirmDialog}
+        onClose={() => setShowSaveConfirmDialog(false)}
+        title={editingInput ? `تایید ویرایش ${entityLabel}` : `تایید ایجاد ${entityLabel}`}
+        message={
+          editingInput
+            ? `آیا از ذخیره تغییرات "${formData.name}" اطمینان دارید؟`
+            : `آیا از ایجاد ${entityLabel} جدید "${formData.name}" اطمینان دارید؟`
+        }
+        confirmLabel={editingInput ? 'ذخیره تغییرات' : 'ایجاد و ثبت'}
+        cancelLabel="انصراف"
+        onConfirm={handleConfirmedSubmit}
+        isLoading={isSubmitting}
       />
     </motion.div>
   );
