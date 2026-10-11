@@ -546,16 +546,6 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
         </Button>
 
         <div className="flex gap-3 items-center flex-wrap">
-          <Button
-            variant="outline"
-            onClick={handleExportExcel}
-            disabled={items.length === 0}
-            className="flex items-center gap-2"
-          >
-            <Download className="w-4 h-4 text-[var(--c-success)]" />
-            خروجی اکسل
-          </Button>
-
           {isSubmitted && canEdit && !isReadOnly && (
             <Button variant="outline" onClick={revertSheet} disabled={isSaving} className="flex items-center gap-2">
               <RotateCcw className="w-4 h-4" />

@@ -22,6 +22,8 @@ export interface InventoryTransaction {
   total_price?: number | null;
   source_type?: string | null;
   source_id?: string | null;
+  supplier_id?: string | null;
+  attachment_url?: string | null;
   reference_no?: string | null;
   notes?: string | null;
   created_by?: string | null;

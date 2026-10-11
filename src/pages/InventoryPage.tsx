@@ -11,6 +11,7 @@ import {
   Archive,
   ShoppingCart,
   Trash2,
+  Pencil,
   ArrowDownLeft,
   ArrowUpRight,
   RefreshCw,
@@ -23,9 +24,10 @@ import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
+import { Modal } from '@/components/ui/Modal';
 import { toast } from 'sonner';
 import { toPersianNumbers } from '@/utils/persianNumbers';
-import { getJalaliToday, jalaliToGregorian, formatJalaliDate } from '@/utils/jalaliDate';
+import { getJalaliToday, jalaliToGregorian, gregorianToJalali, formatJalaliDate } from '@/utils/jalaliDate';
 import { JalaliDatePicker } from '@/components/ui/JalaliDatePicker';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { InventoryFilters, TransactionType, StockBalance } from '@/types/inventory.types';
@@ -104,8 +106,18 @@ export default function InventoryPage() {
   }), [filters]);
 
   const { transactions, isLoading: txnLoading, refetch: refetchTransactions } = useInventoryTransactions(selectedFarmId, gregorianFilters);
-  const { isSubmitting, addInitialStock, addPurchase, addTransfer, addAdjustment, deleteTransaction } = useInventoryMutations(selectedFarmId);
+  const { isSubmitting, addInitialStock, addPurchase, addTransfer, addAdjustment, deleteTransaction, updateTransaction } = useInventoryMutations(selectedFarmId);
   const { hasInitialStock, refetch: refetchInitialCheck } = useItemInitialCheck(selectedFarmId);
+
+  // Edit transaction state
+  const [editingTxn, setEditingTxn] = useState<typeof transactions[0] | null>(null);
+  const [editTxnData, setEditTxnData] = useState({
+    quantity: '',
+    unit_price: '',
+    txn_date: getJalaliToday(),
+    reference_no: '',
+    notes: '',
+  });
 
   // Load farms — uses the user-authenticated `supabase` client
   // (NOT `supabaseAdmin`) so the request carries the user's JWT and
@@ -281,6 +293,61 @@ export default function InventoryPage() {
     }
   };
 
+  const handleStartEditTxn = (txn: typeof transactions[0]) => {
+    setEditingTxn(txn);
+    const qty = txn.qty_in > 0 ? txn.qty_in : txn.qty_out;
+    setEditTxnData({
+      quantity: String(qty),
+      unit_price: txn.unit_price ? String(txn.unit_price) : '',
+      txn_date: gregorianToJalali(txn.txn_date),
+      reference_no: txn.reference_no || '',
+      notes: txn.notes || '',
+    });
+  };
+
+  const handleSaveEditTxn = async () => {
+    if (!editingTxn || isSubmitting || isReadOnly) return;
+    const qty = parseFloat(editTxnData.quantity);
+    if (isNaN(qty) || qty <= 0) {
+      toast.error('مقدار باید عدد مثبت باشد');
+      return;
+    }
+
+    const updates: {
+      qty_in?: number;
+      qty_out?: number;
+      txn_date: string;
+      notes: string;
+      reference_no: string;
+      unit_price?: number;
+    } = {
+      txn_date: jalaliToGregorian(editTxnData.txn_date),
+      notes: editTxnData.notes,
+      reference_no: editTxnData.reference_no,
+    };
+
+    if (editingTxn.qty_in > 0) {
+      updates.qty_in = qty;
+    } else {
+      updates.qty_out = qty;
+    }
+
+    if (editTxnData.unit_price) {
+      const price = parseFloat(editTxnData.unit_price);
+      if (!isNaN(price) && price >= 0) {
+        updates.unit_price = price;
+      }
+    }
+
+    const success = await updateTransaction(editingTxn.id, updates);
+    if (success) {
+      setEditingTxn(null);
+      refetchBalances();
+      refetchTransactions();
+      refetchInitialCheck();
+    }
+  };
+
   const getModalTitle = () => {
     switch (modalType) {
       case 'initial': return 'ثبت موجودی اولیه';
@@ -367,6 +434,65 @@ export default function InventoryPage() {
         </Card>
       ) : (
         <>
+          {/* Primary Action Toolbar — Dedicated Mutation Actions */}
+          {!isReadOnly && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-[var(--c-card)] border border-[var(--c-border)] rounded-xl shadow-sm">
+              <div className="flex items-center gap-2 text-sm font-bold text-[var(--c-fg)]">
+                <Plus className="w-4 h-4 text-[var(--c-primary)]" />
+                <span>عملیات ثبت انبار:</span>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openAddModal('purchase')}
+                  className="text-[var(--c-success)] border-[color-mix(in_srgb,var(--c-success)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--c-success)_12%,transparent)]"
+                >
+                  <ShoppingCart className="w-4 h-4 ml-1" />
+                  ثبت خرید
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openAddModal('transfer_in')}
+                  className="text-[#3A7D5C] border-[color-mix(in_srgb,#3A7D5C_30%,transparent)] hover:bg-[color-mix(in_srgb,#3A7D5C_12%,transparent)]"
+                >
+                  <ArrowDownLeft className="w-4 h-4 ml-1" />
+                  ثبت دریافت انتقالی
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openAddModal('transfer_out')}
+                  className="text-[var(--c-warning)] border-[color-mix(in_srgb,var(--c-warning)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--c-warning)_12%,transparent)]"
+                >
+                  <ArrowUpRight className="w-4 h-4 ml-1" />
+                  ثبت ارسال انتقالی
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openAddModal('initial')}
+                  className="text-[var(--c-accent)] border-[color-mix(in_srgb,var(--c-accent)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--c-accent)_12%,transparent)]"
+                >
+                  <Archive className="w-4 h-4 ml-1" />
+                  ثبت موجودی اولیه
+                </Button>
+                {isAdmin && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openAddModal('adjustment')}
+                    className="text-[var(--c-secondary)] border-[color-mix(in_srgb,var(--c-secondary)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--c-secondary)_12%,transparent)]"
+                  >
+                    <RefreshCw className="w-4 h-4 ml-1" />
+                    ثبت تعدیل موجودی
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <motion.div
@@ -450,8 +576,9 @@ export default function InventoryPage() {
             </button>
           </div>
 
-          {/* Category Filter + Actions */}
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+          {/* Category Filter — Pure Query Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[var(--c-muted-fg)] ml-1">دسته‌بندی کالا:</span>
             <div className="flex gap-2">
               <button
                 onClick={() => setCategoryFilter('all')}
@@ -484,58 +611,6 @@ export default function InventoryPage() {
                 بسته‌بندی
               </button>
             </div>
-
-            {!isReadOnly && (
-              <div className="flex gap-2 flex-wrap">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openAddModal('initial')}
-                  className="text-[var(--c-accent)] border-[color-mix(in_srgb,var(--c-accent)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--c-accent)_12%,transparent)]"
-                >
-                  <Archive className="w-4 h-4 ml-1" />
-                  موجودی اولیه
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openAddModal('purchase')}
-                  className="text-[var(--c-success)] border-[color-mix(in_srgb,var(--c-success)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--c-success)_12%,transparent)]"
-                >
-                  <ShoppingCart className="w-4 h-4 ml-1" />
-                  خرید
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openAddModal('transfer_in')}
-                  className="text-[#3A7D5C] border-[color-mix(in_srgb,#3A7D5C_30%,transparent)] hover:bg-[color-mix(in_srgb,#3A7D5C_12%,transparent)]"
-                >
-                  <ArrowDownLeft className="w-4 h-4 ml-1" />
-                  انتقال ورودی
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openAddModal('transfer_out')}
-                  className="text-[var(--c-warning)] border-[color-mix(in_srgb,var(--c-warning)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--c-warning)_12%,transparent)]"
-                >
-                  <ArrowUpRight className="w-4 h-4 ml-1" />
-                  انتقال خروجی
-                </Button>
-                {isAdmin && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openAddModal('adjustment')}
-                    className="text-[var(--c-secondary)] border-[color-mix(in_srgb,var(--c-secondary)_30%,transparent)] hover:bg-[color-mix(in_srgb,var(--c-secondary)_12%,transparent)]"
-                  >
-                    <RefreshCw className="w-4 h-4 ml-1" />
-                    تعدیل
-                  </Button>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Tab Content */}
@@ -809,15 +884,28 @@ export default function InventoryPage() {
                                       </td>
                                       {isAdmin && (
                                         <td className="py-3 px-4 text-center">
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setDeleteTxnId(txn.id)}
-                                            className="text-[var(--c-error)] hover:bg-[color-mix(in_srgb,var(--c-destructive)_10%,transparent)]"
-                                            aria-label="حذف تراکنش"
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </Button>
+                                          <div className="flex items-center justify-center gap-1">
+                                            {txn.source_type !== 'daily_voucher' && (
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleStartEditTxn(txn)}
+                                                className="text-primary hover:bg-[color-mix(in_srgb,var(--c-primary)_10%,transparent)]"
+                                                aria-label="ویرایش تراکنش"
+                                              >
+                                                <Pencil className="w-4 h-4" />
+                                              </Button>
+                                            )}
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => setDeleteTxnId(txn.id)}
+                                              className="text-[var(--c-error)] hover:bg-[color-mix(in_srgb,var(--c-destructive)_10%,transparent)]"
+                                              aria-label="حذف تراکنش"
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                          </div>
                                         </td>
                                       )}
                                     </tr>
@@ -1051,6 +1139,109 @@ export default function InventoryPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Edit Transaction Modal */}
+      <Modal
+        isOpen={editingTxn !== null}
+        onClose={() => setEditingTxn(null)}
+        title="ویرایش تراکنش انبار"
+      >
+        {editingTxn && (
+          <div className="space-y-4">
+            <div className="p-3 rounded-lg bg-[var(--c-muted)] text-sm space-y-1">
+              <div className="flex justify-between">
+                <span className="text-[var(--c-muted-fg)]">نوع تراکنش:</span>
+                <span className="font-medium">
+                  {TXN_TYPE_LABELS[editingTxn.txn_type as TransactionType] || editingTxn.txn_type}
+                </span>
+              </div>
+              {editingTxn.item?.name && (
+                <div className="flex justify-between">
+                  <span className="text-[var(--c-muted-fg)]">کالا:</span>
+                  <span className="font-medium">{editingTxn.item.name}</span>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-[var(--c-fg)] mb-1 block">مقدار *</label>
+              <Input
+                type="number"
+                value={editTxnData.quantity}
+                onChange={(e) => setEditTxnData({ ...editTxnData, quantity: e.target.value })}
+                placeholder="مقدار را وارد کنید"
+                step="any"
+              />
+            </div>
+
+            {editingTxn.txn_type === 'purchase' && (
+              <div>
+                <label className="text-sm font-medium text-[var(--c-fg)] mb-1 block">قیمت واحد (ریال)</label>
+                <Input
+                  type="number"
+                  value={editTxnData.unit_price}
+                  onChange={(e) => setEditTxnData({ ...editTxnData, unit_price: e.target.value })}
+                  placeholder="قیمت واحد به ریال"
+                  step="any"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="text-sm font-medium text-[var(--c-fg)] mb-1 block">شماره مرجع / فاکتور</label>
+              <Input
+                type="text"
+                value={editTxnData.reference_no}
+                onChange={(e) => setEditTxnData({ ...editTxnData, reference_no: e.target.value })}
+                placeholder="شماره فاکتور یا حواله"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-[var(--c-fg)] mb-1 block">تاریخ (شمسی)</label>
+              <JalaliDatePicker
+                value={editTxnData.txn_date}
+                onChange={(val) => setEditTxnData({ ...editTxnData, txn_date: val })}
+                placeholder="انتخاب تاریخ"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-[var(--c-fg)] mb-1 block">توضیحات</label>
+              <textarea
+                value={editTxnData.notes}
+                onChange={(e) => setEditTxnData({ ...editTxnData, notes: e.target.value })}
+                placeholder="توضیحات تکمیلی"
+                rows={3}
+                className="w-full px-3 py-2 rounded-md border border-[var(--c-border)] bg-[var(--c-bg)] text-[var(--c-fg)] resize-none"
+              />
+            </div>
+
+            <div className="pt-4 border-t border-[var(--c-border)] flex gap-3 justify-end">
+              <Button
+                variant="ghost"
+                onClick={() => setEditingTxn(null)}
+                disabled={isSubmitting}
+              >
+                انصراف
+              </Button>
+              <Button
+                onClick={handleSaveEditTxn}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Spinner className="w-4 h-4 ml-2" />
+                    در حال ذخیره...
+                  </>
+                ) : (
+                  'ذخیره تغییرات'
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <ConfirmDialog
         isOpen={deleteTxnId !== null}

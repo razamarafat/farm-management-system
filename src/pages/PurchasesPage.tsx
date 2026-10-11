@@ -7,6 +7,10 @@ import {
   Truck,
   ChevronLeft,
   Save,
+  Pencil,
+  Trash2,
+  Search,
+  RefreshCw,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useModuleReset } from '@/hooks/useModuleReset';
@@ -17,10 +21,14 @@ import { Input } from '@/components/ui/Input';
 import { FileUpload } from '@/components/ui/FileUpload';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Spinner } from '@/components/ui/Spinner';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
 import { toPersianNumbers, formatNumberWithSeparator } from '@/utils/persianNumbers';
-import { getJalaliToday, jalaliToGregorian } from '@/utils/jalaliDate';
+import { getJalaliToday, jalaliToGregorian, gregorianToJalali, formatJalaliDate } from '@/utils/jalaliDate';
 import { JalaliDatePicker } from '@/components/ui/JalaliDatePicker';
+import type { InventoryTransaction } from '@/types/inventory.types';
 
 interface Farm {
   id: string;
@@ -89,6 +97,15 @@ export default function PurchasesPage() {
   
   // Suppliers
   const { suppliers: activeSuppliers } = useActiveSuppliers();
+
+  // Transactions ledger state
+  const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
+  const [isLoadingTxns, setIsLoadingTxns] = useState(false);
+  const [editingTxnId, setEditingTxnId] = useState<string | null>(null);
+  const [deleteTxnId, setDeleteTxnId] = useState<string | null>(null);
+  const [isDeletingTxn, setIsDeletingTxn] = useState(false);
+  const [ledgerSearch, setLedgerSearch] = useState('');
+  const [ledgerTypeFilter, setLedgerTypeFilter] = useState<'all' | 'purchase' | 'transfer_in' | 'transfer_out'>('all');
 
 
   // Load farms — uses the JWT-bound `supabase` client.
@@ -181,16 +198,93 @@ export default function PurchasesPage() {
     loadFarmItems();
   }, [loadFarmItems]);
 
+  // Load transactions ledger
+  const loadTransactions = useCallback(async () => {
+    if (!selectedFarmId) {
+      setTransactions([]);
+      return;
+    }
+    setIsLoadingTxns(true);
+    try {
+      const { data, error } = await supabase
+        .from('inventory_transactions')
+        .select('*')
+        .eq('farm_id', selectedFarmId)
+        .in('txn_type', ['purchase', 'transfer_in', 'transfer_out'])
+        .order('txn_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      setTransactions(data || []);
+    } catch (err) {
+      console.error('Error loading purchase transactions:', err);
+      toast.error('خطا در دریافت لیست تراکنش‌ها');
+    } finally {
+      setIsLoadingTxns(false);
+    }
+  }, [selectedFarmId]);
+
+  useEffect(() => {
+    loadTransactions();
+  }, [loadTransactions]);
+
+  const handleEdit = (txn: InventoryTransaction) => {
+    if (isReadOnly) return;
+    setEditingTxnId(txn.id);
+    const qty = txn.qty_in > 0 ? txn.qty_in : txn.qty_out;
+    setFormData({
+      item_id: txn.item_id || '',
+      quantity: String(qty || ''),
+      deficit: '',
+      unit_price: txn.unit_price ? String(txn.unit_price) : '',
+      total_price: txn.total_price ? txn.total_price.toLocaleString() : '',
+      supplier_id: txn.supplier_id || (txn.source_type === 'supplier' ? txn.source_id : '') || '',
+      truck_number: '',
+      driver_name: '',
+      shipping_cost: '',
+      attachment_url: txn.attachment_url || '',
+      from_farm_id: (txn.source_type === 'farm' && txn.txn_type === 'transfer_in') ? txn.source_id || '' : '',
+      to_farm_id: (txn.source_type === 'farm' && txn.txn_type === 'transfer_out') ? txn.source_id || '' : '',
+      txn_date: gregorianToJalali(txn.txn_date),
+      notes: txn.notes || '',
+      items: [{ item_id: '', quantity: '', unit_price: '', notes: '' }],
+    });
+    setActiveTab(txn.txn_type as TransactionType);
+  };
+
+  const handleDeleteTxn = async () => {
+    if (!deleteTxnId || isReadOnly) return;
+    setIsDeletingTxn(true);
+    try {
+      const { error } = await supabase
+        .from('inventory_transactions')
+        .delete()
+        .eq('id', deleteTxnId);
+
+      if (error) throw error;
+      toast.success('تراکنش با موفقیت حذف شد');
+      setDeleteTxnId(null);
+      loadTransactions();
+    } catch (err) {
+      console.error('Error deleting transaction:', err);
+      toast.error('خطا در حذف تراکنش');
+    } finally {
+      setIsDeletingTxn(false);
+    }
+  };
 
   // Navigate to specific form
   const navigateToForm = (type: TransactionType) => {
     if (isReadOnly) return;
+    setEditingTxnId(null);
     resetForm();
     setActiveTab(type);
   };
 
   // Go back to cards
   const goBackToCards = () => {
+    setEditingTxnId(null);
     setActiveTab('cards');
     resetForm();
   };
@@ -263,26 +357,47 @@ export default function PurchasesPage() {
         const shippingCost = formData.shipping_cost ? parseFloat(formData.shipping_cost) : 0;
         const costPrice = totalPrice !== null ? totalPrice + Math.round(shippingCost) : null;
         
-        const { error } = await supabase
-          .from('inventory_transactions')
-          .insert({
-            farm_id: selectedFarmId,
-            item_id: formData.item_id,
-            txn_date: jalaliToGregorian(formData.txn_date),
-            txn_type: 'purchase' as TransactionType,
-            qty_in: actualQty,
-            qty_out: 0,
-            unit_price: formData.unit_price ? parseFloat(formData.unit_price) : null,
-            total_price: costPrice,
-            notes: formData.notes || null,
-            created_by: profile?.id,
-            attachment_url: formData.attachment_url || null,
-            supplier_id: formData.supplier_id || null,
-          });
+        if (editingTxnId) {
+          const { error } = await supabase
+            .from('inventory_transactions')
+            .update({
+              item_id: formData.item_id,
+              txn_date: jalaliToGregorian(formData.txn_date),
+              qty_in: actualQty,
+              qty_out: 0,
+              unit_price: unitPrice,
+              total_price: costPrice,
+              notes: formData.notes || null,
+              attachment_url: formData.attachment_url || null,
+              supplier_id: formData.supplier_id || null,
+            })
+            .eq('id', editingTxnId);
 
-        if (error) throw error;
-        success = true;
-        toast.success('خرید با موفقیت ثبت شد');
+          if (error) throw error;
+          success = true;
+          toast.success('خرید با موفقیت ویرایش شد');
+        } else {
+          const { error } = await supabase
+            .from('inventory_transactions')
+            .insert({
+              farm_id: selectedFarmId,
+              item_id: formData.item_id,
+              txn_date: jalaliToGregorian(formData.txn_date),
+              txn_type: 'purchase' as TransactionType,
+              qty_in: actualQty,
+              qty_out: 0,
+              unit_price: unitPrice,
+              total_price: costPrice,
+              notes: formData.notes || null,
+              created_by: profile?.id,
+              attachment_url: formData.attachment_url || null,
+              supplier_id: formData.supplier_id || null,
+            });
+
+          if (error) throw error;
+          success = true;
+          toast.success('خرید با موفقیت ثبت شد');
+        }
       } 
       else if (activeType === 'transfer_in') {
         if (!formData.from_farm_id) {
@@ -291,25 +406,45 @@ export default function PurchasesPage() {
           return;
         }
 
-        const { error } = await supabase
-          .from('inventory_transactions')
-          .insert({
-            farm_id: selectedFarmId,
-            item_id: formData.item_id,
-            txn_date: jalaliToGregorian(formData.txn_date),
-            txn_type: 'transfer_in' as TransactionType,
-            qty_in: qty,
-            qty_out: 0,
-            source_type: 'farm',
-            source_id: formData.from_farm_id,
-            notes: formData.notes || null,
-            created_by: profile?.id,
-            attachment_url: formData.attachment_url || null,
-          });
+        if (editingTxnId) {
+          const { error } = await supabase
+            .from('inventory_transactions')
+            .update({
+              item_id: formData.item_id,
+              txn_date: jalaliToGregorian(formData.txn_date),
+              qty_in: qty,
+              qty_out: 0,
+              source_type: 'farm',
+              source_id: formData.from_farm_id,
+              notes: formData.notes || null,
+              attachment_url: formData.attachment_url || null,
+            })
+            .eq('id', editingTxnId);
 
-        if (error) throw error;
-        success = true;
-        toast.success('دریافت از واحدها با موفقیت ثبت شد');
+          if (error) throw error;
+          success = true;
+          toast.success('دریافت از واحدها با موفقیت ویرایش شد');
+        } else {
+          const { error } = await supabase
+            .from('inventory_transactions')
+            .insert({
+              farm_id: selectedFarmId,
+              item_id: formData.item_id,
+              txn_date: jalaliToGregorian(formData.txn_date),
+              txn_type: 'transfer_in' as TransactionType,
+              qty_in: qty,
+              qty_out: 0,
+              source_type: 'farm',
+              source_id: formData.from_farm_id,
+              notes: formData.notes || null,
+              created_by: profile?.id,
+              attachment_url: formData.attachment_url || null,
+            });
+
+          if (error) throw error;
+          success = true;
+          toast.success('دریافت از واحدها با موفقیت ثبت شد');
+        }
       }
       else if (activeType === 'transfer_out') {
         if (!formData.to_farm_id) {
@@ -318,29 +453,50 @@ export default function PurchasesPage() {
           return;
         }
 
-        const { error } = await supabase
-          .from('inventory_transactions')
-          .insert({
-            farm_id: selectedFarmId,
-            item_id: formData.item_id,
-            txn_date: jalaliToGregorian(formData.txn_date),
-            txn_type: 'transfer_out' as TransactionType,
-            qty_in: 0,
-            qty_out: qty,
-            source_type: 'farm',
-            source_id: formData.to_farm_id,
-            notes: formData.notes || null,
-            created_by: profile?.id,
-            attachment_url: formData.attachment_url || null,
-          });
+        if (editingTxnId) {
+          const { error } = await supabase
+            .from('inventory_transactions')
+            .update({
+              item_id: formData.item_id,
+              txn_date: jalaliToGregorian(formData.txn_date),
+              qty_in: 0,
+              qty_out: qty,
+              source_type: 'farm',
+              source_id: formData.to_farm_id,
+              notes: formData.notes || null,
+              attachment_url: formData.attachment_url || null,
+            })
+            .eq('id', editingTxnId);
 
-        if (error) throw error;
-        success = true;
-        toast.success('ارسال به واحدها با موفقیت ثبت شد');
+          if (error) throw error;
+          success = true;
+          toast.success('ارسال به واحدها با موفقیت ویرایش شد');
+        } else {
+          const { error } = await supabase
+            .from('inventory_transactions')
+            .insert({
+              farm_id: selectedFarmId,
+              item_id: formData.item_id,
+              txn_date: jalaliToGregorian(formData.txn_date),
+              txn_type: 'transfer_out' as TransactionType,
+              qty_in: 0,
+              qty_out: qty,
+              source_type: 'farm',
+              source_id: formData.to_farm_id,
+              notes: formData.notes || null,
+              created_by: profile?.id,
+              attachment_url: formData.attachment_url || null,
+            });
+
+          if (error) throw error;
+          success = true;
+          toast.success('ارسال به واحدها با موفقیت ثبت شد');
+        }
       }
 
       if (success) {
         goBackToCards();
+        loadTransactions();
       }
     } catch (err) {
       console.error('Error submitting:', err);
@@ -352,10 +508,11 @@ export default function PurchasesPage() {
 
   // Get form title based on active tab
   const getFormTitle = () => {
+    const isEdit = !!editingTxnId;
     switch (activeTab) {
-      case 'purchase': return 'ثبت خرید جدید';
-      case 'transfer_in': return 'ثبت دریافت از سایر واحدها';
-      case 'transfer_out': return 'ثبت ارسال به سایر واحدها';
+      case 'purchase': return isEdit ? 'ویرایش خرید' : 'ثبت خرید جدید';
+      case 'transfer_in': return isEdit ? 'ویرایش دریافت از سایر واحدها' : 'ثبت دریافت از سایر واحدها';
+      case 'transfer_out': return isEdit ? 'ویرایش ارسال به سایر واحدها' : 'ثبت ارسال به سایر واحدها';
       default: return '';
     }
   };
@@ -377,20 +534,23 @@ export default function PurchasesPage() {
   // Supplier options
   const supplierOptions = activeSuppliers.map(s => ({ value: s.id, label: s.name }));
 
-
-  if (isReadOnly) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6 text-center">
-            <div className="w-12 h-12 text-[var(--c-warning)] mx-auto mb-4">⚠️</div>
-            <h3 className="text-lg font-bold mb-2">دسترسی محدود</h3>
-            <p className="text-[var(--c-muted-fg)]">شما مجوز ثبت خرید و انتقال را ندارید.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Filtered ledger transactions
+  const filteredTransactions = transactions.filter((t) => {
+    if (ledgerTypeFilter !== 'all' && t.txn_type !== ledgerTypeFilter) {
+      return false;
+    }
+    if (ledgerSearch.trim()) {
+      const q = ledgerSearch.trim().toLowerCase();
+      const item = farmItems.find((i) => i.id === t.item_id);
+      const itemName = (item?.name || '').toLowerCase();
+      const notes = (t.notes || '').toLowerCase();
+      const ref = (t.reference_no || '').toLowerCase();
+      if (!itemName.includes(q) && !notes.includes(q) && !ref.includes(q)) {
+        return false;
+      }
+    }
+    return true;
+  });
 
   return (
     <motion.div
@@ -470,8 +630,8 @@ export default function PurchasesPage() {
                     transition={{ duration: 0.15 }}
                   >
                     <Card 
-                      className="cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-[var(--c-success)]/30 h-full"
-                      onClick={() => navigateToForm('purchase')}
+                      className={`cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-[var(--c-success)]/30 h-full ${isReadOnly ? 'opacity-80' : ''}`}
+                      onClick={() => !isReadOnly && navigateToForm('purchase')}
                     >
                       <CardHeader className="pb-2">
                         <div className="w-14 h-14 rounded-xl bg-[color-mix(in_srgb,var(--c-success)_16%,transparent)] flex items-center justify-center mb-3">
@@ -481,7 +641,7 @@ export default function PurchasesPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="flex items-center text-[var(--c-success)] text-sm font-medium mt-4">
-                          <span>ورود به فرم ثبت</span>
+                          <span>{isReadOnly ? 'فقط مشاهده (ردیف‌های دفتر)' : 'ورود به فرم ثبت'}</span>
                           <ChevronLeft className="w-4 h-4 mr-1" />
                         </div>
                       </CardContent>
@@ -495,8 +655,8 @@ export default function PurchasesPage() {
                     transition={{ duration: 0.15 }}
                   >
                     <Card 
-                      className="cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-[#3A7D5C]/30 h-full"
-                      onClick={() => navigateToForm('transfer_in')}
+                      className={`cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-[#3A7D5C]/30 h-full ${isReadOnly ? 'opacity-80' : ''}`}
+                      onClick={() => !isReadOnly && navigateToForm('transfer_in')}
                     >
                       <CardHeader className="pb-2">
                         <div className="w-14 h-14 rounded-xl bg-[color-mix(in_srgb,#3A7D5C_16%,transparent)] flex items-center justify-center mb-3">
@@ -506,7 +666,7 @@ export default function PurchasesPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="flex items-center text-[#3A7D5C] text-sm font-medium mt-4">
-                          <span>ورود به فرم ثبت</span>
+                          <span>{isReadOnly ? 'فقط مشاهده (ردیف‌های دفتر)' : 'ورود به فرم ثبت'}</span>
                           <ChevronLeft className="w-4 h-4 mr-1" />
                         </div>
                       </CardContent>
@@ -520,8 +680,8 @@ export default function PurchasesPage() {
                     transition={{ duration: 0.15 }}
                   >
                     <Card 
-                      className="cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-[var(--c-accent)]/30 h-full"
-                      onClick={() => navigateToForm('transfer_out')}
+                      className={`cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-transparent hover:border-[var(--c-accent)]/30 h-full ${isReadOnly ? 'opacity-80' : ''}`}
+                      onClick={() => !isReadOnly && navigateToForm('transfer_out')}
                     >
                       <CardHeader className="pb-2">
                         <div className="w-14 h-14 rounded-xl bg-[color-mix(in_srgb,var(--c-accent)_16%,transparent)] flex items-center justify-center mb-3">
@@ -531,7 +691,7 @@ export default function PurchasesPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="flex items-center text-[var(--c-accent)] text-sm font-medium mt-4">
-                          <span>ورود به فرم ثبت</span>
+                          <span>{isReadOnly ? 'فقط مشاهده (ردیف‌های دفتر)' : 'ورود به فرم ثبت'}</span>
                           <ChevronLeft className="w-4 h-4 mr-1" />
                         </div>
                       </CardContent>
@@ -554,6 +714,204 @@ export default function PurchasesPage() {
                         </p>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Purchases & Transfers Ledger */}
+                <Card className="border border-[var(--c-border)] shadow-sm">
+                  <CardHeader className="pb-3 border-b border-[var(--c-border)]">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <ShoppingCart className="w-5 h-5 text-primary" />
+                          دفتر ثبت و تاریخچه خریدها و انتقالات
+                        </CardTitle>
+                        <p className="text-xs text-[var(--c-muted-fg)] mt-1">
+                          مشاهده، ویرایش و مدیریت تمامی تراکنش‌های خرید و انتقال فارم جاری
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={loadTransactions}
+                          disabled={isLoadingTxns}
+                          title="بروزرسانی داده‌ها"
+                        >
+                          <RefreshCw className={`w-4 h-4 ml-1 ${isLoadingTxns ? 'animate-spin' : ''}`} />
+                          بروزرسانی
+                        </Button>
+                        <Badge variant="secondary">
+                          {toPersianNumbers(filteredTransactions.length)} تراکنش
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Query Filters Bar */}
+                    <div className="flex flex-col sm:flex-row gap-3 pt-3 items-stretch sm:items-center">
+                      <div className="relative flex-1">
+                        <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-[var(--c-muted-fg)]" />
+                        <Input
+                          placeholder="جستجو در کالا، شماره فاکتور یا توضیحات..."
+                          value={ledgerSearch}
+                          onChange={(e) => setLedgerSearch(e.target.value)}
+                          className="pr-9"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                        <span className="text-xs text-[var(--c-muted-fg)] whitespace-nowrap ml-1">فیلتر نوع:</span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={ledgerTypeFilter === 'all' ? 'primary' : 'outline'}
+                          onClick={() => setLedgerTypeFilter('all')}
+                        >
+                          همه
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={ledgerTypeFilter === 'purchase' ? 'primary' : 'outline'}
+                          onClick={() => setLedgerTypeFilter('purchase')}
+                        >
+                          خریدها
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={ledgerTypeFilter === 'transfer_in' ? 'primary' : 'outline'}
+                          onClick={() => setLedgerTypeFilter('transfer_in')}
+                        >
+                          دریافت انتقالی
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={ledgerTypeFilter === 'transfer_out' ? 'primary' : 'outline'}
+                          onClick={() => setLedgerTypeFilter('transfer_out')}
+                        >
+                          ارسال انتقالی
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {isLoadingTxns ? (
+                      <div className="py-12 flex items-center justify-center">
+                        <Spinner className="w-8 h-8" />
+                      </div>
+                    ) : filteredTransactions.length === 0 ? (
+                      <div className="py-12 text-center text-[var(--c-muted-fg)] text-sm">
+                        {transactions.length === 0
+                          ? 'هنوز هیچ تراکنش خرید یا انتقالی برای این فارم ثبت نشده است.'
+                          : 'تراکنشی با مشخصات جستجو شده یافت نشد.'}
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-right text-sm">
+                          <thead className="bg-[var(--c-muted)] text-[var(--c-muted-fg)] text-xs border-b border-[var(--c-border)]">
+                            <tr>
+                              <th className="py-3 px-3 text-center">ردیف</th>
+                              <th className="py-3 px-3 text-center">تاریخ</th>
+                              <th className="py-3 px-3 text-center">نوع</th>
+                              <th className="py-3 px-3">کالا</th>
+                              <th className="py-3 px-3 text-center">مقدار</th>
+                              <th className="py-3 px-3 text-center">قیمت واحد</th>
+                              <th className="py-3 px-3 text-center">مبلغ کل</th>
+                              <th className="py-3 px-3">طرف معامله / واحد</th>
+                              <th className="py-3 px-3 text-center">شماره مرجع</th>
+                              <th className="py-3 px-3">توضیحات</th>
+                              {!isReadOnly && <th className="py-3 px-3 text-center">عملیات</th>}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[var(--c-border)]">
+                            {filteredTransactions.map((txn, idx) => {
+                              const item = farmItems.find((i) => i.id === txn.item_id);
+                              const supplier = activeSuppliers.find((s) => s.id === (txn.supplier_id || txn.source_id));
+                              const otherFarm = farms.find((f) => f.id === txn.source_id);
+                              const qty = txn.qty_in > 0 ? txn.qty_in : txn.qty_out;
+                              const isPurchase = txn.txn_type === 'purchase';
+                              const isTransferIn = txn.txn_type === 'transfer_in';
+
+                              return (
+                                <tr key={txn.id} className="hover:bg-[var(--c-muted)]/50 transition-colors">
+                                  <td className="py-3 px-3 text-center text-xs text-[var(--c-muted-fg)]">
+                                    {toPersianNumbers(idx + 1)}
+                                  </td>
+                                  <td className="py-3 px-3 text-center whitespace-nowrap text-xs">
+                                    {formatJalaliDate(txn.txn_date)}
+                                  </td>
+                                  <td className="py-3 px-3 text-center whitespace-nowrap">
+                                    {isPurchase ? (
+                                      <Badge className="bg-[color-mix(in_srgb,var(--c-success)_15%,transparent)] text-[var(--c-success)]">
+                                        خرید
+                                      </Badge>
+                                    ) : isTransferIn ? (
+                                      <Badge className="bg-[color-mix(in_srgb,var(--c-primary)_15%,transparent)] text-primary">
+                                        دریافت
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="bg-[color-mix(in_srgb,var(--c-accent)_15%,transparent)] text-[var(--c-accent)]">
+                                        ارسال
+                                      </Badge>
+                                    )}
+                                  </td>
+                                  <td className="py-3 px-3 font-medium">
+                                    {item ? `${item.name} (${item.unit})` : '—'}
+                                  </td>
+                                  <td className="py-3 px-3 text-center font-mono font-medium">
+                                    {toPersianNumbers(qty.toLocaleString())}
+                                  </td>
+                                  <td className="py-3 px-3 text-center text-xs text-[var(--c-muted-fg)]">
+                                    {txn.unit_price ? `${toPersianNumbers(txn.unit_price.toLocaleString())} ریال` : '—'}
+                                  </td>
+                                  <td className="py-3 px-3 text-center text-xs font-semibold">
+                                    {txn.total_price ? `${toPersianNumbers(txn.total_price.toLocaleString())} ریال` : '—'}
+                                  </td>
+                                  <td className="py-3 px-3 text-xs text-[var(--c-muted-fg)]">
+                                    {isPurchase ? (supplier ? supplier.name : '—') : (otherFarm ? otherFarm.name : '—')}
+                                  </td>
+                                  <td className="py-3 px-3 text-center text-xs text-[var(--c-muted-fg)]">
+                                    {txn.reference_no || '—'}
+                                  </td>
+                                  <td className="py-3 px-3 text-xs text-[var(--c-muted-fg)] max-w-[150px] truncate">
+                                    {txn.notes || '—'}
+                                  </td>
+                                  {!isReadOnly && (
+                                    <td className="py-3 px-3 text-center">
+                                      <div className="flex items-center justify-center gap-1">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleEdit(txn)}
+                                          title="ویرایش رکورد"
+                                          aria-label="ویرایش رکورد"
+                                          className="text-primary hover:bg-[color-mix(in_srgb,var(--c-primary)_10%,transparent)] p-1.5 h-auto"
+                                        >
+                                          <Pencil className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setDeleteTxnId(txn.id)}
+                                          title="حذف رکورد"
+                                          aria-label="حذف رکورد"
+                                          className="text-[var(--c-error)] hover:bg-[color-mix(in_srgb,var(--c-destructive)_10%,transparent)] p-1.5 h-auto"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                    </td>
+                                  )}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
@@ -734,7 +1092,7 @@ export default function PurchasesPage() {
                       </Button>
                       <Button onClick={handleSubmit} isLoading={isSubmitting}>
                         <Save className="w-4 h-4 ml-2" />
-                        ثبت خرید
+                        {editingTxnId ? 'ذخیره تغییرات' : 'ثبت خرید'}
                       </Button>
                     </div>
                   </CardContent>
@@ -877,7 +1235,7 @@ export default function PurchasesPage() {
                       </Button>
                       <Button onClick={handleSubmit} isLoading={isSubmitting}>
                         <Save className="w-4 h-4 ml-2" />
-                        ثبت دریافت
+                        {editingTxnId ? 'ذخیره تغییرات' : 'ثبت دریافت'}
                       </Button>
                     </div>
                   </CardContent>
@@ -1002,7 +1360,7 @@ export default function PurchasesPage() {
                       </Button>
                       <Button onClick={handleSubmit} isLoading={isSubmitting}>
                         <Save className="w-4 h-4 ml-2" />
-                        ثبت ارسال
+                        {editingTxnId ? 'ذخیره تغییرات' : 'ثبت ارسال'}
                       </Button>
                     </div>
                   </CardContent>
@@ -1012,6 +1370,19 @@ export default function PurchasesPage() {
           </AnimatePresence>
         </>
       )}
+
+      {/* Delete Transaction Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={deleteTxnId !== null}
+        onClose={() => setDeleteTxnId(null)}
+        title="حذف تراکنش"
+        message="آیا از حذف این رکورد خرید/انتقال اطمینان دارید؟ این عمل قابل بازگشت نیست."
+        confirmLabel="حذف"
+        cancelLabel="انصراف"
+        variant="destructive"
+        isLoading={isDeletingTxn}
+        onConfirm={handleDeleteTxn}
+      />
     </motion.div>
   );
 }

@@ -1,5 +1,5 @@
 import { memo, useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Hash, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Pencil, Hash, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { Farm } from '@/types/farm.types';
@@ -7,6 +7,8 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { Modal } from '@/components/ui/Modal';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { toPersianDigits } from '@/utils/persianNumbers';
 
 interface FarmHall {
@@ -30,6 +32,11 @@ const FarmHallsPanelInner = ({ farm }: FarmHallsPanelProps) => {
   const [newHallName, setNewHallName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingHall, setEditingHall] = useState<FarmHall | null>(null);
+  const [editHallNumber, setEditHallNumber] = useState('');
+  const [editHallName, setEditHallName] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [deletingHall, setDeletingHall] = useState<FarmHall | null>(null);
 
   const fetchHalls = useCallback(async () => {
     setIsLoading(true);
@@ -126,15 +133,56 @@ const FarmHallsPanelInner = ({ farm }: FarmHallsPanelProps) => {
     }
   };
 
-  const handleDeleteHall = async (hall: FarmHall) => {
+  const handleStartEdit = (hall: FarmHall) => {
+    setEditingHall(hall);
+    setEditHallNumber(String(hall.hall_number));
+    setEditHallName(hall.name || '');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingHall) return;
+    const num = parseInt(editHallNumber);
+    if (!editHallNumber || isNaN(num) || num < 1) {
+      toast.error('شماره سالن معتبر وارد کنید');
+      return;
+    }
+    const exists = halls.some((h) => h.id !== editingHall.id && h.hall_number === num);
+    if (exists) {
+      toast.error(`سالن شماره ${toPersianDigits(num)} قبلاً ثبت شده`);
+      return;
+    }
+    setIsEditing(true);
+    try {
+      const { error: err } = await supabase
+        .from('farm_halls')
+        .update({
+          hall_number: num,
+          name: editHallName.trim() || null,
+        })
+        .eq('id', editingHall.id);
+
+      if (err) throw err;
+      toast.success(`سالن شماره ${toPersianDigits(num)} ویرایش شد`);
+      setEditingHall(null);
+      fetchHalls();
+    } catch {
+      toast.error('خطا در ویرایش سالن');
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingHall) return;
     try {
       const { error: err } = await supabase
         .from('farm_halls')
         .delete()
-        .eq('id', hall.id);
+        .eq('id', deletingHall.id);
 
       if (err) throw err;
-      toast.success(`سالمن شماره ${toPersianDigits(hall.hall_number)} حذف شد`);
+      toast.success(`سالن شماره ${toPersianDigits(deletingHall.hall_number)} حذف شد`);
+      setDeletingHall(null);
       fetchHalls();
     } catch {
       toast.error('خطا در حذف سالن');
@@ -290,16 +338,26 @@ const FarmHallsPanelInner = ({ farm }: FarmHallsPanelProps) => {
               {/* Actions on hover */}
               <div className="absolute inset-0 rounded-lg bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                 <button
+                  type="button"
                   onClick={() => handleToggleHall(hall)}
                   title={hall.is_active ? 'غیرفعال' : 'فعال'}
-                  className={`text-xs px-1 py-0.5 rounded ${hall.is_active ? 'bg-[var(--c-warning)] text-[var(--c-primary-fg)]' : 'bg-[var(--c-success)] text-[var(--c-primary-fg)]'}`}
+                  className={`text-xs px-1.5 py-0.5 rounded ${hall.is_active ? 'bg-[var(--c-warning)] text-[var(--c-primary-fg)]' : 'bg-[var(--c-success)] text-[var(--c-primary-fg)]'}`}
                 >
                   {hall.is_active ? 'غیرفعال' : 'فعال'}
                 </button>
                 <button
-                  onClick={() => handleDeleteHall(hall)}
-                  title="حذف"
-                  className="text-[var(--c-destructive-fg)] bg-[var(--c-destructive)] rounded p-0.5"
+                  type="button"
+                  onClick={() => handleStartEdit(hall)}
+                  title="ویرایش سالن"
+                  className="text-white bg-[var(--c-primary)] hover:bg-[var(--c-primary)]/80 rounded p-1"
+                >
+                  <Pencil size={12} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeletingHall(hall)}
+                  title="حذف سالن"
+                  className="text-[var(--c-destructive-fg)] bg-[var(--c-destructive)] hover:bg-[var(--c-destructive)]/80 rounded p-1"
                 >
                   <Trash2 size={12} />
                 </button>
@@ -316,6 +374,53 @@ const FarmHallsPanelInner = ({ farm }: FarmHallsPanelProps) => {
           <span>مجموع: <span className="font-medium">{toPersianDigits(halls.length)}</span></span>
         </div>
       )}
+
+      {/* Edit Hall Modal */}
+      <Modal
+        isOpen={!!editingHall}
+        onClose={() => setEditingHall(null)}
+        title={editingHall ? `ویرایش سالن شماره ${toPersianDigits(editingHall.hall_number)}` : 'ویرایش سالن'}
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="ghost" onClick={() => setEditingHall(null)}>انصراف</Button>
+            <Button onClick={handleSaveEdit} isLoading={isEditing}>ذخیره تغییرات</Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">شماره سالن *</label>
+            <Input
+              type="number"
+              value={editHallNumber}
+              onChange={(e) => setEditHallNumber(e.target.value)}
+              placeholder="مثال: ۱"
+              min={1}
+              dir="ltr"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">نام سالن (اختیاری)</label>
+            <Input
+              value={editHallName}
+              onChange={(e) => setEditHallName(e.target.value)}
+              placeholder="مثال: سالن شماره ۱"
+            />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Hall Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={!!deletingHall}
+        onClose={() => setDeletingHall(null)}
+        title="حذف سالن"
+        message={deletingHall ? `آیا از حذف سالن شماره ${toPersianDigits(deletingHall.hall_number)} (${deletingHall.name || 'بدون نام'}) اطمینان دارید؟ این عمل قابل بازگشت نیست.` : ''}
+        confirmLabel="حذف"
+        cancelLabel="انصراف"
+        variant="destructive"
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 };

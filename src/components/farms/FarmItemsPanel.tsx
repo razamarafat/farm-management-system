@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useState, useCallback } from 'react';
-import { Box, Plus, Trash2, ListChecks } from 'lucide-react';
+import { Box, Plus, Trash2, Pencil, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import { Farm } from '@/types/farm.types';
 import { Card } from '@/components/ui/Card';
@@ -52,6 +52,12 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
   const [manualPriority, setManualPriority] = useState('');
   const [manualReorder, setManualReorder] = useState('');
   const [deletingItem, setDeletingItem] = useState<FarmItemRow | null>(null);
+  const [editingItem, setEditingItem] = useState<FarmItemRow | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editUnit, setEditUnit] = useState('');
+  const [editPriority, setEditPriority] = useState('');
+  const [editReorder, setEditReorder] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
 
   const itemLabel = labels[type];
 
@@ -216,6 +222,46 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
     loadItems();
   };
 
+  const handleStartEdit = (item: FarmItemRow) => {
+    setEditingItem(item);
+    setEditName(item.name);
+    setEditUnit(item.unit);
+    setEditPriority(String(item.priority));
+    setEditReorder(String(item.reorder_point));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    if (!editName.trim()) {
+      toast.error('نام آیتم الزامی است');
+      return;
+    }
+
+    setIsEditing(true);
+    const name = normalizeName(editName);
+    const { error } = await supabase
+      .from('farm_items')
+      .update({
+        name,
+        unit: editUnit,
+        priority: editPriority ? Number(editPriority) : 100,
+        reorder_point: editReorder ? Number(editReorder) : 0,
+      })
+      .eq('id', editingItem.id);
+
+    if (error) {
+      toast.error('خطا در ویرایش آیتم');
+      setIsEditing(false);
+      return;
+    }
+
+    await ensureInputCatalogueEntry(name, editUnit);
+    toast.success('آیتم با موفقیت ویرایش شد');
+    setEditingItem(null);
+    setIsEditing(false);
+    loadItems();
+  };
+
   return (
     <Card className="p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -278,7 +324,10 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
               </div>
               <div className="flex items-center gap-2">
                 <Toggle checked={item.is_active} onChange={() => handleToggle(item)} />
-                <Button variant="ghost" size="icon" className="text-[var(--c-error)]" onClick={() => setDeletingItem(item)}>
+                <Button variant="ghost" size="icon" className="text-[var(--c-primary)]" onClick={() => handleStartEdit(item)} title="ویرایش آیتم">
+                  <Pencil size={16} />
+                </Button>
+                <Button variant="ghost" size="icon" className="text-[var(--c-error)]" onClick={() => setDeletingItem(item)} title="حذف آیتم">
                   <Trash2 size={16} />
                 </Button>
               </div>
@@ -314,6 +363,47 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
               <span>{item.name} <span className="text-xs text-muted-foreground">({item.unit})</span></span>
             </label>
           ))}
+        </div>
+      </Modal>
+
+      {/* Edit Item Modal */}
+      <Modal
+        isOpen={!!editingItem}
+        onClose={() => setEditingItem(null)}
+        title={editingItem ? `ویرایش ${editingItem.name}` : 'ویرایش آیتم'}
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="ghost" onClick={() => setEditingItem(null)}>انصراف</Button>
+            <Button onClick={handleSaveEdit} isLoading={isEditing}>ذخیره تغییرات</Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <Input
+            label="نام آیتم *"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            placeholder="نام نهاده یا قلم"
+          />
+          <Select label="واحد *" value={editUnit} onChange={(e) => setEditUnit(e.target.value)}>
+            {(type === 'packaging' ? PACKAGING_UNITS : FEED_UNIT_OPTIONS).map((unit) => (
+              <option key={unit} value={unit}>{unit}</option>
+            ))}
+          </Select>
+          <Input
+            label="اولویت"
+            value={editPriority}
+            onChange={(e) => setEditPriority(e.target.value)}
+            placeholder="مثال: ۱۰"
+            dir="ltr"
+          />
+          <Input
+            label="نقطه سفارش"
+            value={editReorder}
+            onChange={(e) => setEditReorder(e.target.value)}
+            placeholder="مثال: ۲۰۰"
+            dir="ltr"
+          />
         </div>
       </Modal>
 
