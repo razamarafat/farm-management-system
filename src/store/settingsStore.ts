@@ -168,18 +168,21 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'morvarid_system_settings_v1',
-      merge: (persistedState: any, currentState) => ({
-        ...currentState,
-        ...(persistedState || {}),
-        settings: {
-          ...currentState.settings,
-          ...(persistedState?.settings || {}),
-          farmMixerWeights: {
-            ...(currentState.settings.farmMixerWeights || {}),
-            ...(persistedState?.settings?.farmMixerWeights || {}),
+      merge: (persistedState: unknown, currentState) => {
+        const persisted = persistedState as Partial<SettingsState> | undefined;
+        return {
+          ...currentState,
+          ...(persisted || {}),
+          settings: {
+            ...currentState.settings,
+            ...(persisted?.settings || {}),
+            farmMixerWeights: {
+              ...(currentState.settings.farmMixerWeights || {}),
+              ...(persisted?.settings?.farmMixerWeights || {}),
+            },
           },
-        },
-      }),
+        };
+      },
     }
   )
 );

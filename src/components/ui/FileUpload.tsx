@@ -49,34 +49,7 @@ export function FileUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const processFile = useCallback(async (file: File) => {
-    setError(null);
-    
-    const validation = validateFile(file);
-    if (!validation.valid) {
-      setError(validation.error || 'فایل نامعتبر است');
-      return;
-    }
-
-    setIsCompressing(true);
-    try {
-      const compressed: CompressedFile = await compressImage(file, {
-        maxSizeMB,
-        maxWidthOrHeight: 2048,
-        initialQuality: 0.85,
-      });
-
-      setPreviewUrl(compressed.dataUrl);
-      
-      await uploadFile(compressed.file);
-    } catch (err) {
-      setError('خطا در فشرده‌سازی تصویر');
-    } finally {
-      setIsCompressing(false);
-    }
-  }, [maxSizeMB, onChange]);
-
-  const uploadFile = async (file: File) => {
+  const uploadFile = useCallback(async (file: File) => {
     setIsUploading(true);
     setUploadProgress(0);
 
@@ -100,14 +73,41 @@ export function FileUpload({
 
       onChange(publicUrl);
       toast.success('تصویر با موفقیت آپلود شد');
-    } catch (err) {
+    } catch {
       setError('خطا در آپلود تصویر');
       toast.error('خطا در آپلود تصویر');
     } finally {
       setIsUploading(false);
       setUploadProgress(100);
     }
-  };
+  }, [bucketName, folderName, onChange]);
+
+  const processFile = useCallback(async (file: File) => {
+    setError(null);
+    
+    const validation = validateFile(file);
+    if (!validation.valid) {
+      setError(validation.error || 'فایل نامعتبر است');
+      return;
+    }
+
+    setIsCompressing(true);
+    try {
+      const compressed: CompressedFile = await compressImage(file, {
+        maxSizeMB,
+        maxWidthOrHeight: 2048,
+        initialQuality: 0.85,
+      });
+
+      setPreviewUrl(compressed.dataUrl);
+      
+      await uploadFile(compressed.file);
+    } catch {
+      setError('خطا در فشرده‌سازی تصویر');
+    } finally {
+      setIsCompressing(false);
+    }
+  }, [maxSizeMB, uploadFile]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();

@@ -3,10 +3,10 @@ import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Toaster } from '@/components/ui/Toast';
 import { OfflineBanner } from '@/components/ui/OfflineBanner';
-import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
 
 export const AppLayout = () => {
-  const isOnline = useOnlineStatus();
+  const { isOnline, pendingCount, isSyncing, triggerSync } = useOfflineSync();
 
   return (
     <div className="min-h-screen bg-[var(--c-bg)] text-[var(--c-fg)] transition-colors duration-300">
@@ -21,9 +21,9 @@ export const AppLayout = () => {
       <Toaster />
       <OfflineBanner
         isOnline={isOnline}
-        pendingCount={0}
-        isSyncing={false}
-        onSync={() => {}}
+        pendingCount={pendingCount}
+        isSyncing={isSyncing}
+        onSync={triggerSync}
       />
     </div>
   );

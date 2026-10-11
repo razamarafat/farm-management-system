@@ -104,6 +104,7 @@ const FormulaManagementPage = () => {
   };
 
   const handleDelete = async (id: string) => {
+    if (!canManage || isSaving) return;
     const ok = await deleteFormula(id);
     if (ok) {
       setDeleteConfirm(null);
@@ -112,6 +113,7 @@ const FormulaManagementPage = () => {
   };
 
   const handleToggle = async (f: Formula) => {
+    if (!canManage || isSaving) return;
     // useFormulaActions().toggleFormulaStatus returns the new is_active
     // flag from the RPC so the page no longer needs to pass the prior
     // value.
@@ -120,7 +122,7 @@ const FormulaManagementPage = () => {
   };
 
   const handleDuplicate = async () => {
-    if (!duplicateTarget || !dupNo) return;
+    if (!canManage || isSaving || !duplicateTarget || !dupNo) return;
     const no = parseInt(dupNo);
     if (isNaN(no) || no <= 0) {
       toast.error('شماره فرمول معتبر نیست');
@@ -135,6 +137,7 @@ const FormulaManagementPage = () => {
   };
 
   const handleFormSave = async (input: FormulaInput) => {
+    if (!canManage || isSaving) return;
     let ok: boolean;
     if (editingFormula) {
       ok = await updateFormula(editingFormula.id, input);

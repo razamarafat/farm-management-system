@@ -81,7 +81,8 @@ export function useReportSection<T extends Record<string, unknown>>(
       // NOTE: `supabase.rpc` does not natively wire AbortSignal, but
       // we mark the in-flight ctrl as aborted on cleanup so unmount
       // drops the response instead of calling setRows on a dead tree.
-      const result = await (supabase.rpc as unknown as SupabaseRpcFn).bind(supabase)(rpcName, params);
+      const currentParams = JSON.parse(paramsKey) as Record<string, unknown>;
+      const result = await (supabase.rpc as unknown as SupabaseRpcFn).bind(supabase)(rpcName, currentParams);
       if (ctrl.signal.aborted) return;
       const { data, error: rpcError } = result;
       if (rpcError) {

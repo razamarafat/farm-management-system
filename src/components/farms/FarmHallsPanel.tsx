@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Hash, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
@@ -31,7 +31,7 @@ const FarmHallsPanelInner = ({ farm }: FarmHallsPanelProps) => {
   const [isAdding, setIsAdding] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const fetchHalls = async () => {
+  const fetchHalls = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -48,11 +48,11 @@ const FarmHallsPanelInner = ({ farm }: FarmHallsPanelProps) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [farm.id]);
 
   useEffect(() => {
     fetchHalls();
-  }, [farm.id]);
+  }, [fetchHalls]);
 
   const handleAddHall = async () => {
     const num = parseInt(newHallNumber);

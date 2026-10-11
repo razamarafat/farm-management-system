@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import type { Json } from '@/types/database.types';
 import {
   initOfflineDB,
   addPendingChange,
@@ -34,47 +35,11 @@ export function useOfflineSync() {
   const syncInProgressRef = useRef(false);
   const dbInitializedRef = useRef(false);
 
-  // Initialize IndexedDB
-  useEffect(() => {
-    if (!dbInitializedRef.current) {
-      initOfflineDB().then(() => {
-        dbInitializedRef.current = true;
-        updatePendingCount();
-      });
-    }
-  }, []);
-
-  // Listen for connectivity changes
-  useEffect(() => {
-    const unsubscribe = onConnectivityChange((online) => {
-      setSyncState((prev) => ({ ...prev, isOnline: online }));
-      
-      if (online) {
-        toast.info('اتصال برقرار شد. در حال همگام‌سازی...');
-        syncPendingChanges();
-      } else {
-        toast.warning('اتصال قطع شد. تغییرات به صورت آفلاین ذخیره می‌شوند.');
-      }
-    });
-
-    return unsubscribe;
-  }, []);
-
   // Update pending count
   const updatePendingCount = useCallback(async () => {
     const changes = await getPendingChanges();
     setSyncState((prev) => ({ ...prev, pendingCount: changes.length }));
   }, []);
-
-  // Add change to offline queue
-  const queueChange = useCallback(async (
-    voucherId: string,
-    lines: unknown[],
-    type: 'save' | 'submit'
-  ) => {
-    await addPendingChange(voucherId, lines, type);
-    await updatePendingCount();
-  }, [updatePendingCount]);
 
   // Sync pending changes to server
   const syncPendingChanges = useCallback(async () => {
@@ -94,8 +59,8 @@ export function useOfflineSync() {
             const { data: result, error } = await supabase
               .rpc('save_daily_sheet', {
                 p_voucher_id: change.voucherId,
-                p_lines: change.lines,
-              } as unknown as undefined);
+                p_lines: change.lines as unknown as Json,
+              });
 
             if (error) {
               // Check if voucher is locked
@@ -117,9 +82,8 @@ export function useOfflineSync() {
             toast.warning('ثبت نهایی حواله نیاز به اتصال اینترنت دارد.');
             await deleteSyncedChange(change.id);
           }
-        } catch (err) {
+        } catch {
           // Failed to sync change - will be retried later
-          // Don't delete failed changes, they'll be retried
         }
       }
 
@@ -133,12 +97,48 @@ export function useOfflineSync() {
       if (remaining.length === 0) {
         toast.success('همگام‌سازی با موفقیت انجام شد');
       }
-    } catch (err) {
+    } catch {
       toast.error('خطا در همگام‌سازی');
     } finally {
       syncInProgressRef.current = false;
       setSyncState((prev) => ({ ...prev, isSyncing: false }));
     }
+  }, [updatePendingCount]);
+
+  // Initialize IndexedDB
+  useEffect(() => {
+    if (!dbInitializedRef.current) {
+      initOfflineDB().then(() => {
+        dbInitializedRef.current = true;
+        updatePendingCount();
+      });
+    }
+  }, [updatePendingCount]);
+
+  // Listen for connectivity changes
+  useEffect(() => {
+    const unsubscribe = onConnectivityChange((online) => {
+      setSyncState((prev) => ({ ...prev, isOnline: online }));
+      
+      if (online) {
+        toast.info('اتصال برقرار شد. در حال همگام‌سازی...');
+        syncPendingChanges();
+      } else {
+        toast.warning('اتصال قطع شد. تغییرات به صورت آفلاین ذخیره می‌شوند.');
+      }
+    });
+
+    return unsubscribe;
+  }, [syncPendingChanges]);
+
+  // Add change to offline queue
+  const queueChange = useCallback(async (
+    voucherId: string,
+    lines: unknown[],
+    type: 'save' | 'submit'
+  ) => {
+    await addPendingChange(voucherId, lines, type);
+    await updatePendingCount();
   }, [updatePendingCount]);
 
   // Manual sync trigger

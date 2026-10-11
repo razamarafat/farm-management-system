@@ -79,7 +79,6 @@ const REPORT_IDS = {
 // `unknownReport()` with a console.warn.
 for (const entry of REPORT_CATALOG) {
   if (!Object.values(REPORT_IDS).includes(entry.id as typeof REPORT_IDS[keyof typeof REPORT_IDS])) {
-    // eslint-disable-next-line no-console
     console.warn(
       `[ReportBody] REPORT_CATALOG has id "${entry.id}" which is not in the dispatch switch. ` +
       'Add a case for it before shipping.',

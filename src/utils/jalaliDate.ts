@@ -94,9 +94,19 @@ export function jalaliToGregorian(jalaliDate: string): string {
 
 // Convert Gregorian ISO date to Jalali
 export function gregorianToJalali(isoDate: string): string {
-  if (!isValidIsoDate(isoDate)) return getJalaliToday();
+  if (!isValidIsoDate(isoDate)) {
+    if (typeof isoDate === 'string' && isoDate.length >= 10) {
+      const datePart = isoDate.slice(0, 10);
+      if (isValidIsoDate(datePart)) {
+        const [year, month, day] = datePart.split('-').map((part) => Number(part));
+        const date = new Date(year, month - 1, day, 12, 0, 0);
+        return format(date, 'yyyy/MM/dd');
+      }
+    }
+    return getJalaliToday();
+  }
   const [year, month, day] = isoDate.split('-').map((part) => Number(part));
-  const date = new Date(year, month - 1, day);
+  const date = new Date(year, month - 1, day, 12, 0, 0);
   return format(date, 'yyyy/MM/dd');
 }
 

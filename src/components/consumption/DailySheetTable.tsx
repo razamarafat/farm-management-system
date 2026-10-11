@@ -70,9 +70,8 @@ const NumericCell = memo(({
 });
 NumericCell.displayName = 'NumericCell';
 
-function DailySheetTable({ items, category, canEdit, selectedHalls, onUpdateLine, onRemoveRow, emptyMessage }: DailySheetTableProps) {
+function DailySheetTable({ items, category, canEdit, onUpdateLine, onRemoveRow, emptyMessage }: DailySheetTableProps) {
   const isFeed = category === 'feed';
-  const hasHalls = isFeed && selectedHalls.length > 0;
 
   if (items.length === 0) {
     return (

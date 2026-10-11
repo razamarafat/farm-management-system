@@ -118,6 +118,7 @@ export default function InputsPage() {
   };
 
   const handleConfirmedSubmit = async () => {
+    if (isSubmitting) return;
     setShowSaveConfirmDialog(false);
     let success = false;
 
@@ -134,7 +135,7 @@ export default function InputsPage() {
   };
 
   const handleDelete = async () => {
-    if (!deletingInput) return;
+    if (isDeleting || !deletingInput) return;
 
     const success = await deleteInput(deletingInput.id);
     if (success) {

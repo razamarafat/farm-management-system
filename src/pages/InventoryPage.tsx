@@ -101,7 +101,7 @@ export default function InventoryPage() {
     ...filters,
     date_from: filters.date_from ? jalaliToGregorian(filters.date_from) : '',
     date_to: filters.date_to ? jalaliToGregorian(filters.date_to) : '',
-  }), [filters.date_from, filters.date_to, filters.item_id, filters.txn_type, filters.search, filters.category]);
+  }), [filters]);
 
   const { transactions, isLoading: txnLoading, refetch: refetchTransactions } = useInventoryTransactions(selectedFarmId, gregorianFilters);
   const { isSubmitting, addInitialStock, addPurchase, addTransfer, addAdjustment, deleteTransaction } = useInventoryMutations(selectedFarmId);
@@ -175,14 +175,26 @@ export default function InventoryPage() {
 
   // Handle form submit
   const handleSubmit = async () => {
+    if (isSubmitting || isReadOnly) return;
+
     if (!formData.item_id || !formData.quantity) {
       toast.error('لطفاً کالا و مقدار را وارد کنید');
       return;
     }
 
     const qty = parseFloat(formData.quantity);
-    if (isNaN(qty) || qty <= 0) {
+    if (isNaN(qty)) {
+      toast.error('مقدار نامعتبر است');
+      return;
+    }
+
+    if (modalType !== 'adjustment' && qty <= 0) {
       toast.error('مقدار باید عدد مثبت باشد');
+      return;
+    }
+
+    if (modalType === 'adjustment' && qty === 0) {
+      toast.error('مقدار تعدیل نمی‌تواند صفر باشد');
       return;
     }
 
@@ -250,15 +262,15 @@ export default function InventoryPage() {
     });
   };
 
-  
   const openAddModal = (type: typeof modalType) => {
+    if (isReadOnly) return;
     setModalType(type);
     resetForm();
     setShowAddModal(true);
   };
 
   const confirmDeleteTransaction = async () => {
-    if (!deleteTxnId) return;
+    if (isSubmitting || isReadOnly || !deleteTxnId) return;
 
     const success = await deleteTransaction(deleteTxnId);
     setDeleteTxnId(null);
@@ -951,13 +963,15 @@ export default function InventoryPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-[var(--c-fg)] mb-1 block">مقدار *</label>
+                  <label className="text-sm font-medium text-[var(--c-fg)] mb-1 block">
+                    مقدار * {modalType === 'adjustment' && '(برای کسری یا کاهش، عدد منفی وارد کنید)'}
+                  </label>
                   <Input
                     type="number"
                     value={formData.quantity}
                     onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                     placeholder="۰"
-                    min="0"
+                    min={modalType === 'adjustment' ? undefined : "0"}
                     step="0.001"
                     dir="ltr"
                   />
@@ -1021,7 +1035,7 @@ export default function InventoryPage() {
                 </Button>
                 <Button
                   onClick={handleSubmit}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isReadOnly}
                 >
                   {isSubmitting ? (
                     <>

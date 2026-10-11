@@ -385,7 +385,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
     } finally {
       setIsLoading(false);
     }
-  }, [farmId, date, category, selectedFormulaId, fetchFormulas, fetchFormulaItems, fetchHalls]);
+  }, [farmId, date, category, selectedFormulaId, fetchFormulas, fetchFormulaItems, fetchHalls, ignoreEditWindow]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -479,106 +479,6 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
     setHallConfigs(configs);
   }, []);
 
-  // Auto-calculate consumption based on formula and halls
-  const autoCalculate = useCallback(() => {
-    if (!data || category !== 'feed') return;
-    const selectedHalls = hallConfigs.filter(h => h.isSelected);
-    if (selectedHalls.length === 0) return;
-
-    setData(prev => {
-      if (!prev) return prev;
-      const updatedItems = prev.items.map(item => {
-        if (item.qty_per_mixer <= 0) return item;
-
-        const newHallConsumed: Record<string, number> = {};
-        let totalConsumed = 0;
-
-        for (const hall of selectedHalls) {
-          const hallQty = item.qty_per_mixer * hall.mixerCount;
-          newHallConsumed[String(hall.hallNumber)] = hallQty;
-          totalConsumed += hallQty;
-        }
-
-        const remaining = item.current_balance - totalConsumed - item.waste_qty;
-        let status: 'ok' | 'warning' | 'danger' = 'ok';
-        if (remaining < 0) status = 'danger';
-        else if (remaining < item.reorder_point) status = 'warning';
-
-        const updated: DailySheetRow = {
-          ...item,
-          hall_consumed: newHallConsumed,
-          consumed_qty: totalConsumed,
-          total_consumed: totalConsumed,
-          remaining_preview: remaining,
-          hall_numbers: selectedHalls.map(h => h.hallNumber).join(','),
-          mixer_count: selectedHalls.reduce((s, h) => s + h.mixerCount, 0),
-          status,
-          isDirty: true,
-        };
-
-        dirtyLinesRef.current.set(item.id, {
-          item_id: item.id,
-          formula_no: item.formula_no,
-          mixer_count: updated.mixer_count,
-          hall_numbers: updated.hall_numbers,
-          consumed_qty: updated.consumed_qty,
-          waste_qty: updated.waste_qty,
-          notes: updated.notes,
-          hall_consumed: updated.hall_consumed,
-        });
-
-        return updated;
-      });
-      return { ...prev, items: updatedItems };
-    });
-
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => { saveDraft(); }, 800);
-  }, [data, hallConfigs, category]);
-
-  // Update a single line
-  const updateLine = useCallback(
-    (itemId: string, field: keyof DailySheetRow, value: string | number) => {
-      if (!data) return;
-
-      setData(prev => {
-        if (!prev) return prev;
-        const updatedItems = prev.items.map(item => {
-          if (item.id !== itemId) return item;
-          const updated = { ...item, [field]: value, isDirty: true };
-          const consumed = field === 'consumed_qty' ? toNumber(value) : toNumber(updated.consumed_qty);
-          const waste = field === 'waste_qty' ? toNumber(value) : toNumber(updated.waste_qty);
-          const remaining = toNumber(updated.current_balance) - consumed - waste;
-          let status: 'ok' | 'warning' | 'danger' = 'ok';
-          if (remaining < 0) status = 'danger';
-          else if (remaining < toNumber(updated.reorder_point)) status = 'warning';
-          return { ...updated, consumed_qty: consumed, waste_qty: waste, remaining_preview: remaining, total_consumed: consumed, status };
-        });
-        return { ...prev, items: updatedItems };
-      });
-
-      const currentItem = data.items.find(i => i.id === itemId);
-      if (currentItem) {
-        const updatedItem = { ...currentItem, [field]: value };
-        dirtyLinesRef.current.set(itemId, {
-          item_id: itemId,
-          formula_no: String(updatedItem.formula_no || ''),
-          mixer_count: toNumber(updatedItem.mixer_count),
-          hall_numbers: String(updatedItem.hall_numbers || ''),
-          consumed_qty: toNumber(field === 'consumed_qty' ? value : updatedItem.consumed_qty),
-          waste_qty: toNumber(field === 'waste_qty' ? value : updatedItem.waste_qty),
-          notes: String(updatedItem.notes || ''),
-          hall_consumed: updatedItem.hall_consumed,
-        });
-      }
-
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      setSaveStatus('idle');
-      saveTimeoutRef.current = setTimeout(() => { saveDraft(); }, 800);
-    },
-    [data]
-  );
-
   // Save draft — atomic single-round-trip bulk upsert. All dirty lines go
   // out in ONE upsert call (same row shape and onConflict as before); a
   // rejected upsert (RLS/validation — supabase-js resolves { error }, never
@@ -617,7 +517,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus('idle'), 2000);
       return true;
-    } catch (err) {
+    } catch {
       setSaveStatus('error');
       toast.error('خطا در ذخیره');
       return false;
@@ -625,6 +525,106 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
       setIsSaving(false);
     }
   }, [data]);
+
+  // Auto-calculate consumption based on formula and halls
+  const autoCalculate = useCallback(() => {
+    if (!data || category !== 'feed') return;
+    const selectedHalls = hallConfigs.filter(h => h.isSelected);
+    if (selectedHalls.length === 0) return;
+
+    setData(prev => {
+      if (!prev) return prev;
+      const updatedItems = prev.items.map(item => {
+        if (item.qty_per_mixer <= 0) return item;
+
+        const newHallConsumed: Record<string, number> = {};
+        let totalConsumed = 0;
+
+        for (const hall of selectedHalls) {
+          const hallQty = Math.round(item.qty_per_mixer * hall.mixerCount * 1000) / 1000;
+          newHallConsumed[String(hall.hallNumber)] = hallQty;
+          totalConsumed = Math.round((totalConsumed + hallQty) * 1000) / 1000;
+        }
+
+        const remaining = Math.round((item.current_balance - totalConsumed - item.waste_qty) * 1000) / 1000;
+        let status: 'ok' | 'warning' | 'danger' = 'ok';
+        if (remaining < 0) status = 'danger';
+        else if (remaining < item.reorder_point) status = 'warning';
+
+        const updated: DailySheetRow = {
+          ...item,
+          hall_consumed: newHallConsumed,
+          consumed_qty: totalConsumed,
+          total_consumed: totalConsumed,
+          remaining_preview: remaining,
+          hall_numbers: selectedHalls.map(h => h.hallNumber).join(','),
+          mixer_count: selectedHalls.reduce((s, h) => s + h.mixerCount, 0),
+          status,
+          isDirty: true,
+        };
+
+        dirtyLinesRef.current.set(item.id, {
+          item_id: item.id,
+          formula_no: item.formula_no,
+          mixer_count: updated.mixer_count,
+          hall_numbers: updated.hall_numbers,
+          consumed_qty: updated.consumed_qty,
+          waste_qty: updated.waste_qty,
+          notes: updated.notes,
+          hall_consumed: updated.hall_consumed,
+        });
+
+        return updated;
+      });
+      return { ...prev, items: updatedItems };
+    });
+
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => { saveDraft(); }, 800);
+  }, [data, hallConfigs, category, saveDraft]);
+
+  // Update a single line
+  const updateLine = useCallback(
+    (itemId: string, field: keyof DailySheetRow, value: string | number) => {
+      if (!data) return;
+
+      setData(prev => {
+        if (!prev) return prev;
+        const updatedItems = prev.items.map(item => {
+          if (item.id !== itemId) return item;
+          const updated = { ...item, [field]: value, isDirty: true };
+          const consumed = field === 'consumed_qty' ? toNumber(value) : toNumber(updated.consumed_qty);
+          const waste = field === 'waste_qty' ? toNumber(value) : toNumber(updated.waste_qty);
+          const remaining = Math.round((toNumber(updated.current_balance) - consumed - waste) * 1000) / 1000;
+          let status: 'ok' | 'warning' | 'danger' = 'ok';
+          if (remaining < 0) status = 'danger';
+          else if (remaining < toNumber(updated.reorder_point)) status = 'warning';
+          return { ...updated, consumed_qty: consumed, waste_qty: waste, remaining_preview: remaining, total_consumed: consumed, status };
+        });
+        return { ...prev, items: updatedItems };
+      });
+
+      const currentItem = data.items.find(i => i.id === itemId);
+      if (currentItem) {
+        const updatedItem = { ...currentItem, [field]: value };
+        dirtyLinesRef.current.set(itemId, {
+          item_id: itemId,
+          formula_no: String(updatedItem.formula_no || ''),
+          mixer_count: toNumber(updatedItem.mixer_count),
+          hall_numbers: String(updatedItem.hall_numbers || ''),
+          consumed_qty: toNumber(field === 'consumed_qty' ? value : updatedItem.consumed_qty),
+          waste_qty: toNumber(field === 'waste_qty' ? value : updatedItem.waste_qty),
+          notes: String(updatedItem.notes || ''),
+          hall_consumed: updatedItem.hall_consumed,
+        });
+      }
+
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      setSaveStatus('idle');
+      saveTimeoutRef.current = setTimeout(() => { saveDraft(); }, 800);
+    },
+    [data, saveDraft]
+  );
 
   // Submit
   const submitSheet = useCallback(async (): Promise<boolean> => {
@@ -754,7 +754,7 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
     } finally {
       setIsSaving(false);
     }
-  }, [data, fetchData, ignoreEditWindow]);
+  }, [data, fetchData]);
 
   useEffect(() => {
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };

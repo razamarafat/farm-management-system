@@ -4,6 +4,7 @@ import "./index.css";
 import { App } from "./App";
 import { installChunkErrorGuard } from "@/lib/chunkErrorGuard";
 import { initWebVitals } from "@/lib/monitoring";
+import { registerServiceWorker } from "@/lib/registerServiceWorker";
 
 // Install before render so a stale lazy chunk failing during the initial
 // route mount is caught too.
@@ -12,6 +13,9 @@ installChunkErrorGuard();
 // Field Core Web Vitals (LCP/INP/CLS). No-op without VITE_RUM_ENDPOINT,
 // console-only in dev. See src/lib/monitoring.ts + docs/ops/monitoring.md.
 initWebVitals();
+
+// Register Service Worker for offline app shell caching and F5 navigation recovery
+registerServiceWorker();
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {

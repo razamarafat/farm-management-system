@@ -36,8 +36,8 @@ export default function ConsumptionPage() {
         .order('name');
       const farms = (data || []) as { id: string; name: string; code: string }[];
       setAdminFarms(farms);
-      if (!adminFarmId && farms.length > 0) {
-        setAdminFarmId(farms[0].id);
+      if (farms.length > 0) {
+        setAdminFarmId((prev) => prev || farms[0].id);
       }
       setIsLoadingFarms(false);
     };

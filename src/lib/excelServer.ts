@@ -295,7 +295,7 @@ async function executeClientExport(
   }
 
   const rpcParams = meta.mapParams(filters);
-  const { data, error } = await supabase.rpc(meta.rpcName, rpcParams);
+  const { data, error } = await (supabase.rpc as unknown as (fn: string, params?: unknown) => Promise<{ data: unknown; error: unknown }>)(meta.rpcName, rpcParams);
 
   if (error) {
     console.error(`Export RPC failed for ${reportId}:`, error);

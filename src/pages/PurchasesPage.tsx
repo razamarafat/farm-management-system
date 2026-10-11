@@ -184,6 +184,7 @@ export default function PurchasesPage() {
 
   // Navigate to specific form
   const navigateToForm = (type: TransactionType) => {
+    if (isReadOnly) return;
     resetForm();
     setActiveTab(type);
   };
@@ -219,15 +220,17 @@ export default function PurchasesPage() {
   useEffect(() => {
     if (formData.quantity && formData.unit_price) {
       const deficitAmount = parseFloat(formData.deficit || '0') || 0;
-      const actualQty = Math.max(0, parseFloat(formData.quantity) - deficitAmount);
+      const actualQty = Math.max(0, Math.round((parseFloat(formData.quantity) - deficitAmount) * 1000) / 1000);
       const shippingCost = parseFloat(formData.shipping_cost || '0') || 0;
-      const total = actualQty * parseFloat(formData.unit_price) + shippingCost;
+      const unitPrice = parseFloat(formData.unit_price) || 0;
+      const total = Math.round(actualQty * unitPrice + shippingCost);
       setFormData(prev => ({ ...prev, total_price: total.toLocaleString() }));
     }
   }, [formData.quantity, formData.unit_price, formData.deficit, formData.shipping_cost]);
 
   // Submit form
   const handleSubmit = async () => {
+    if (isSubmitting || isReadOnly) return;
     if (!selectedFarmId) {
       toast.error('لطفاً یک فارم را انتخاب کنید');
       return;
@@ -254,10 +257,11 @@ export default function PurchasesPage() {
 
       if (activeType === 'purchase') {
         const deficitAmount = parseFloat(formData.deficit || '0') || 0;
-        const actualQty = Math.max(0, qty - deficitAmount);
-        const totalPrice = formData.unit_price ? actualQty * parseFloat(formData.unit_price) : null;
+        const actualQty = Math.max(0, Math.round((qty - deficitAmount) * 1000) / 1000);
+        const unitPrice = formData.unit_price ? parseFloat(formData.unit_price) : null;
+        const totalPrice = unitPrice ? Math.round(actualQty * unitPrice) : null;
         const shippingCost = formData.shipping_cost ? parseFloat(formData.shipping_cost) : 0;
-        const costPrice = totalPrice ? totalPrice + shippingCost : null;
+        const costPrice = totalPrice !== null ? totalPrice + Math.round(shippingCost) : null;
         
         const { error } = await supabase
           .from('inventory_transactions')

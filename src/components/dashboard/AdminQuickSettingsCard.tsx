@@ -11,7 +11,6 @@ import {
   Download,
   Upload,
   CheckCircle2,
-  AlertTriangle,
   RefreshCw,
   Clock,
   Layers,
@@ -585,7 +584,7 @@ export const AdminQuickSettingsCard = () => {
                                     <span>اختصاصی ({toPersianDigits(effectiveWeight.toLocaleString())} کیلوگرم)</span>
                                   </Badge>
                                 ) : (
-                                  <Badge variant="neutral" className="text-[11px]">
+                                  <Badge variant="muted" className="text-[11px]">
                                     <span>پیروی از پیش‌فرض ({toPersianDigits(effectiveWeight.toLocaleString())} کیلوگرم)</span>
                                   </Badge>
                                 )}

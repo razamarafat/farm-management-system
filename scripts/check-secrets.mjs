@@ -19,7 +19,17 @@ import { execSync } from 'node:child_process';
 
 const ROOT = process.cwd();
 const INCLUDE_EXT = /\.(ts|tsx|js|mjs|cjs|jsx|html|json|css|md|sql|env|yml|yaml|xml|txt)$/i;
-const SKIP_DIRS = new Set(['.git', 'node_modules', 'dist', '.vite', 'coverage', '.cache']);
+const SKIP_DIRS = new Set([
+  '.git',
+  'node_modules',
+  'dist',
+  '.vite',
+  'coverage',
+  '.cache',
+  '.claude',
+  '.qa-supabase',
+  '.agents',
+]);
 
 // Files this scan ignores. All entries are paths relative to repo root
 // in POSIX form. Add docs here ONLY when they intentionally paste a
@@ -65,8 +75,8 @@ function* walk(dir) {
       continue;
     }
     const base = entry.name;
-    // Skip env files — they are intended to hold secrets and are gitignored.
-    if (base === '.env' || base.startsWith('.env.')) continue;
+    // Skip env files and gitignored local dump files.
+    if (base === '.env' || base.startsWith('.env.') || base === 'repomix-output.xml' || base === 'allcode.txt') continue;
     if (!INCLUDE_EXT.test(base)) continue;
     yield full;
   }

@@ -60,7 +60,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
   // 012_fix_profiles_recursion.sql. Without this swap, the admin
   // "افزودن نهاده" / "افزودن قلم بسته‌بندی" flow silently fails to
   // load the current list and fails every insert/update/delete.
-  const loadItems = async () => {
+  const loadItems = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('farm_items')
@@ -78,11 +78,11 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
 
     setItems((data || []) as FarmItemRow[]);
     setIsLoading(false);
-  };
+  }, [farm.id, type]);
 
   useEffect(() => {
     loadItems();
-  }, [farm.id, type]);
+  }, [loadItems]);
 
   // Reset manual unit when type changes (packaging → count-based only)
   useEffect(() => {

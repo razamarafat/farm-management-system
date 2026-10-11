@@ -120,6 +120,7 @@ export default function SuppliersPage() {
   };
 
   const handleSubmit = async () => {
+    if (isCreating || isUpdating) return;
     if (!formData.name.trim()) {
       toast.error('لطفاً نام تأمین‌کننده را وارد کنید');
       return;
@@ -140,7 +141,7 @@ export default function SuppliersPage() {
   };
 
   const handleDelete = async () => {
-    if (!deletingSupplier) return;
+    if (isDeleting || !deletingSupplier) return;
 
     const success = await deleteSupplier(deletingSupplier.id, isHardDelete);
     if (success) {

@@ -45,11 +45,19 @@ const KNOWN_MESSAGES: Record<string, string> = {
   'user already registered': 'این کاربر قبلاً ثبت شده است',
   'password should be at least 6 characters': 'رمز عبور باید حداقل ۶ کاراکتر باشد',
   'user not found': 'کاربر یافت نشد',
+  // Supabase JWT / Session expiry
+  'jwt expired': 'نشست کاربری شما منقضی شده است. لطفاً مجدداً وارد شوید',
+  'token is expired': 'نشست کاربری شما منقضی شده است. لطفاً مجدداً وارد شوید',
+  'invalid jwt': 'اعتبار نشست کاربری به پایان رسیده است',
+  'unauthorized': 'دسترسی غیرمجاز — لطفاً مجدداً وارد شوید',
 };
 
 /** English prefixes whose detail varies (counts, values) — mapped to a
  *  static Persian message. */
 const KNOWN_PREFIXES: Array<[RegExp, string]> = [
+  [/^jwt expired/i, 'نشست کاربری شما منقضی شده است. لطفاً مجدداً وارد شوید'],
+  [/^token is expired/i, 'نشست کاربری شما منقضی شده است. لطفاً مجدداً وارد شوید'],
+  [/^invalid jwt/i, 'اعتبار نشست کاربری به پایان رسیده است'],
   [/^p_group_by must be one of/, 'مقدار گروه‌بندی نامعتبر است'],
   [/^p_basis must be one of/, 'مبنای محاسبه نامعتبر است'],
   [/^p_date_to \(/, 'تاریخ پایان باید بعد از تاریخ شروع باشد'],
@@ -109,6 +117,7 @@ export function rpcError(e: unknown): string | null {
 
   // 6. Known Postgres error codes
   const code = (e as { code?: string } | null)?.code;
+  if (code === 'PGRST301') return 'نشست کاربری شما منقضی شده است. لطفاً مجدداً وارد شوید';
   if (code === '42501') return 'شما به این عملیات دسترسی ندارید';
   if (code === '23505') return 'این رکورد قبلاً ثبت شده است';
   if (code === '22P02' || code === '22007' || code === '22008') {

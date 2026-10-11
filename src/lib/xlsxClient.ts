@@ -18,16 +18,22 @@ export interface XlsxColumn {
   header: string;
   width?: number;
   isNumeric?: boolean;
+  align?: 'left' | 'center' | 'right';
+  numFmt?: string;
 }
 
 export interface XlsxExportOptions {
-  filename: string;
+  filename?: string;
+  fileName?: string;
   sheetName?: string;
   title?: string;
   subtitle?: string;
   columns: XlsxColumn[];
-  data: Record<string, unknown>[];
+  data?: Record<string, unknown>[];
+  rows?: Record<string, unknown>[];
   totals?: Record<string, string | number>;
+  rightToLeft?: boolean;
+  totalsRow?: boolean;
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -157,14 +163,14 @@ function createZip(files: { name: string; data: string }[]): Uint8Array {
 // Generate OpenXML XML parts
 // ────────────────────────────────────────────────────────────────────
 export function generateXlsxBlob(options: XlsxExportOptions): Blob {
-  const { sheetName = 'گزارش', title, subtitle, columns, data, totals } = options;
+  const { sheetName = 'گزارش', title, subtitle, columns, totals } = options;
+  const data = options.data ?? options.rows ?? [];
 
   let rowNum = 1;
   let rowsXml = '';
 
   // Optional Title row
   if (title) {
-    const endCol = colLetter(Math.max(0, columns.length - 1));
     rowsXml += `<row r="${rowNum}" ht="28" customHeight="1">` +
       `<c r="A${rowNum}" s="1" t="inlineStr"><is><t>${escapeXml(title)}</t></is></c>` +
       `</row>`;
@@ -365,7 +371,7 @@ export function generateXlsxBlob(options: XlsxExportOptions): Blob {
   ];
 
   const zipBytes = createZip(files);
-  return new Blob([zipBytes], {
+  return new Blob([zipBytes.buffer as ArrayBuffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
 }
@@ -375,7 +381,8 @@ export function generateXlsxBlob(options: XlsxExportOptions): Blob {
  */
 export function exportToXlsx(options: XlsxExportOptions): void {
   const blob = generateXlsxBlob(options);
-  const fileName = options.filename.endsWith('.xlsx') ? options.filename : `${options.filename}.xlsx`;
+  const rawName = options.fileName || options.filename || 'export.xlsx';
+  const fileName = rawName.endsWith('.xlsx') ? rawName : `${rawName}.xlsx`;
 
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
