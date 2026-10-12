@@ -26,6 +26,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { toast } from 'sonner';
 import { toPersianNumbers, toEnglishDigits, formatRial } from '@/utils/persianNumbers';
 import { assertMutationAffected } from '@/utils/mutationGuard';
+import { bumpCatalog } from '@/lib/catalogBus';
 import type { StockBalance } from '@/types/inventory.types';
 
 
@@ -264,6 +265,7 @@ export default function ReorderPointPage() {
       assertMutationAffected(data, error);
 
       toast.success('نقطه سفارش بروزرسانی شد');
+      bumpCatalog('farm-items');
       setEditingItemId(null);
       setEditValue('');
       refetch();

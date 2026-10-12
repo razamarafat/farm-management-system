@@ -28,6 +28,7 @@ import { rpcError } from '@/utils/rpcError';
 import { REPORT_EMPTY_MESSAGE } from '@/types/report.types';
 import type { ColumnDef, SortState } from '@/types/report.types';
 import { supabase } from '@/lib/supabase';
+import { useCatalogVersion } from '@/lib/catalogBus';
 
 interface InventoryStockSectionProps {
   asOf: string;
@@ -145,6 +146,9 @@ export function InventoryStockSection({
   );
   const [isExporting, setIsExporting] = useState(false);
   const [reorderPoints, setReorderPoints] = useState<Record<string, number>>({});
+  // Reactive catalog sync: reorder-point overlay re-pulls when farm items
+  // change anywhere — see src/lib/catalogBus.ts.
+  const catalogVersion = useCatalogVersion('farm-items');
 
   useEffect(() => {
     setPage(1);
@@ -179,7 +183,7 @@ export function InventoryStockSection({
     return () => {
       cancelled = true;
     };
-  }, [farm_id]);
+  }, [farm_id, catalogVersion]);
 
   const mergedRows = useMemo(() => {
     let list = rows.map((row) => ({

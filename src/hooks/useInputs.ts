@@ -5,6 +5,7 @@ import { rpcError } from '@/utils/rpcError';
 import { toast } from 'sonner';
 import { normalizeName } from '@/utils/helpers';
 import { escapePostgrestLike } from '@/utils/postgrestEscape';
+import { bumpCatalog, useCatalogVersion } from '@/lib/catalogBus';
 import type { Input, InputInsert, InputFilters } from '@/types/input.types';
 
 export function useInputs(filters: InputFilters) {
@@ -12,6 +13,9 @@ export function useInputs(filters: InputFilters) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState(filters.search.trim());
+  // Reactive catalog sync: re-fetch whenever the inputs catalogue changes
+  // anywhere in the app (or in another tab) — see src/lib/catalogBus.ts.
+  const catalogVersion = useCatalogVersion('inputs');
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(filters.search.trim()), 300);
@@ -41,7 +45,10 @@ export function useInputs(filters: InputFilters) {
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, filters.category, filters.status]);
+    // `catalogVersion` re-pulls the list whenever the catalogue changes
+    // anywhere (including cross-tab) — no page reload required.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, filters.category, filters.status, catalogVersion]);
 
   useEffect(() => { fetchInputs(); }, [fetchInputs]);
 
@@ -92,6 +99,7 @@ export function useCreateInput() {
       });
       if (error) throw error;
       toast.success('نهاده جدید با موفقیت ثبت شد');
+      bumpCatalog('inputs');
       return true;
     } catch (err) {
       toast.error(rpcError(err) || 'خطا در ثبت نهاده جدید');
@@ -129,6 +137,7 @@ export function useUpdateInput() {
       });
       if (error) throw error;
       toast.success('اطلاعات نهاده بروزرسانی شد');
+      bumpCatalog('inputs');
       return true;
     } catch (err) {
       toast.error(rpcError(err) || 'خطا در بروزرسانی نهاده');
@@ -150,6 +159,7 @@ export function useDeleteInput() {
       const { error } = await rpc('rpc_admin_delete_input', { p_id: id, p_hard: hard });
       if (error) throw error;
       toast.success(hard ? 'نهاده با موفقیت حذف شد' : 'نهاده غیرفعال شد');
+      bumpCatalog('inputs');
       return true;
     } catch (err) {
       toast.error(rpcError(err) || 'خطا در حذف نهاده');
@@ -169,6 +179,7 @@ export function useToggleInputStatus() {
       if (error) throw error;
       const next = (data && (data as { is_active?: boolean }).is_active) ?? null;
       toast.success(next === false ? 'نهاده غیرفعال شد' : 'نهاده فعال شد');
+      bumpCatalog('inputs');
       return true;
     } catch (err) {
       toast.error(rpcError(err) || 'خطا در تغییر وضعیت نهاده');

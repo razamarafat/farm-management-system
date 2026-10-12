@@ -57,6 +57,7 @@ import type {
   SortState,
 } from '@/types/report.types';
 import { useReportViewsStore, buildSavedView } from '@/store/reportViewsStore';
+import { useCatalogVersion } from '@/lib/catalogBus';
 import { getJalaliToday, jalaliToGregorian } from '@/utils/jalaliDate';
 import { toPersianDigits } from '@/utils/persianNumbers';
 
@@ -134,6 +135,9 @@ const EMPTY_OPTIONS: ReportFilterOptions = {
 function useReportFilterOptions(selectedFarmIds: string[]): ReportFilterOptions {
   const [options, setOptions] = useState<ReportFilterOptions>(EMPTY_OPTIONS);
   const selectedFarmKey = selectedFarmIds.join('|');
+  // Reactive catalog sync: filter dropdowns (items/halls/formulas) re-pull
+  // whenever the catalog changes anywhere — see src/lib/catalogBus.ts.
+  const catalogVersion = useCatalogVersion('farm-items', 'inputs');
 
   useEffect(() => {
     let cancelled = false;
@@ -230,7 +234,7 @@ function useReportFilterOptions(selectedFarmIds: string[]): ReportFilterOptions 
     return () => {
       cancelled = true;
     };
-  }, [selectedFarmKey]);
+  }, [selectedFarmKey, catalogVersion]);
 
   return options;
 }

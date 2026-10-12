@@ -30,6 +30,7 @@ import { toPersianNumbers } from '@/utils/persianNumbers';
 import { getJalaliToday, jalaliToGregorian, gregorianToJalali, formatJalaliDate } from '@/utils/jalaliDate';
 import { JalaliDatePicker } from '@/components/ui/JalaliDatePicker';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { useCatalogVersion } from '@/lib/catalogBus';
 import type { InventoryFilters, TransactionType, StockBalance } from '@/types/inventory.types';
 import { TXN_TYPE_LABELS, TXN_TYPE_COLORS } from '@/types/inventory.types';
 
@@ -148,6 +149,10 @@ export default function InventoryPage() {
     loadFarms();
   }, [loadFarms]);
 
+  // Reactive catalog sync: adjustment/purchase item selectors re-pull
+  // whenever farm items change anywhere — see src/lib/catalogBus.ts.
+  const catalogVersion = useCatalogVersion('farm-items');
+
   // Load farm items for the «ثبت موجودی اولیه/خرید/انتقال» modal.
   const loadFarmItems = useCallback(async () => {
     if (!selectedFarmId) {
@@ -173,7 +178,7 @@ export default function InventoryPage() {
     }
 
     setFarmItems(data || []);
-  }, [selectedFarmId]);
+  }, [selectedFarmId, catalogVersion]);
 
   useEffect(() => {
     loadFarmItems();

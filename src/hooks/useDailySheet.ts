@@ -14,6 +14,7 @@ import {
 } from '@/lib/offline/reads';
 import { rpcError } from '@/utils/rpcError';
 import { assertMutationAffected } from '@/utils/mutationGuard';
+import { useCatalogVersion } from '@/lib/catalogBus';
 import {
   type VoucherCategory,
   type DailySheetData,
@@ -541,6 +542,83 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
   const updateHallConfigs = useCallback((configs: HallConfig[]) => {
     setHallConfigs(configs);
   }, []);
+
+  // Reactive catalog sync (Task 1): merge newly created farm items into the
+  // OPEN sheet WITHOUT a full refetch — refetching would discard unsaved
+  // draft edits sitting in dirtyLinesRef (the pre-existing autosave
+  // limitation). Brand-new items have no transactions yet, so zero-balance
+  // rows are exact, not estimates. Feed-with-formula sheets keep showing
+  // formula rows only; newcomers land in the manual-add candidates.
+  const catalogVersion = useCatalogVersion('farm-items');
+  const lastCatalogSyncRef = useRef(0);
+  useEffect(() => {
+    if (catalogVersion === 0 || catalogVersion === lastCatalogSyncRef.current) return;
+    if (!data || !rawCacheRef.current) {
+      lastCatalogSyncRef.current = catalogVersion;
+      return;
+    }
+    lastCatalogSyncRef.current = catalogVersion;
+    const snapshot = data;
+    let cancelled = false;
+    (async () => {
+      try {
+        const fresh = await readFarmItems(farmId, category);
+        if (cancelled) return;
+        if (rawCacheRef.current) {
+          rawCacheRef.current = { ...rawCacheRef.current, farmItems: fresh };
+        }
+        const existingIds = new Set(snapshot.items.map((i) => i.id));
+        const freshOnes = (fresh || []).filter((f) => !existingIds.has(f.id));
+        const hasFormula = category === 'feed' && snapshot.formula !== null;
+        if (!hasFormula && freshOnes.length > 0) {
+          const newRows: DailySheetRow[] = freshOnes.map((fi) => ({
+            id: fi.id,
+            name: fi.name,
+            unit: fi.unit,
+            priority: numVal(fi.priority),
+            reorder_point: numVal(fi.reorder_point),
+            line_id: null,
+            formula_no: snapshot.formula ? String(snapshot.formula.formula_no) : '',
+            mixer_count: 0,
+            hall_numbers: '',
+            consumed_qty: 0,
+            waste_qty: 0,
+            notes: '',
+            current_balance: 0,
+            today_purchase: 0,
+            remaining_preview: 0,
+            qty_per_mixer: 0,
+            hall_consumed: {},
+            total_consumed: 0,
+            has_initial: false,
+            has_stock_source: false,
+            status: rowStatusFor(0, numVal(fi.reorder_point)),
+            is_adhoc: false,
+          }));
+          setData((prev) => {
+            if (!prev) return prev;
+            const prevIds = new Set(prev.items.map((i) => i.id));
+            const toAdd = newRows.filter((r) => !prevIds.has(r.id));
+            if (toAdd.length === 0) return prev;
+            return { ...prev, items: [...prev.items, ...toAdd] };
+          });
+        }
+        // Recompute the manual "+ add outside-formula item" candidates
+        // from the fresh catalogue (feed-with-formula sheets only).
+        if (hasFormula) {
+          const shownIds = new Set(snapshot.items.map((i) => i.id));
+          setAdhocCandidates(
+            (fresh || [])
+              .filter((fi) => !shownIds.has(fi.id))
+              .map((fi) => ({ id: fi.id, name: fi.name, unit: fi.unit }))
+          );
+        }
+      } catch {
+        // Offline/RLS hiccup — keep the existing list; the next bump retries.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [catalogVersion, data, farmId, category]);
 
   // Save draft — atomic single-round-trip bulk upsert. All dirty lines go
   // out in ONE upsert call (same row shape and onConflict as before); a

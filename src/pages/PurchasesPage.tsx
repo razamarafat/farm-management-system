@@ -32,6 +32,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
 import { toPersianNumbers, formatNumberWithSeparator } from '@/utils/persianNumbers';
 import { assertMutationAffected } from '@/utils/mutationGuard';
+import { useCatalogVersion } from '@/lib/catalogBus';
 import { getJalaliToday, jalaliToGregorian, gregorianToJalali, formatJalaliDate } from '@/utils/jalaliDate';
 import { JalaliDatePicker } from '@/components/ui/JalaliDatePicker';
 import type { InventoryTransaction } from '@/types/inventory.types';
@@ -179,6 +180,10 @@ export default function PurchasesPage() {
     loadOtherFarms();
   }, [loadOtherFarms]);
 
+  // Reactive catalog sync: purchase/transfer item selectors re-pull
+  // whenever farm items change anywhere — see src/lib/catalogBus.ts.
+  const catalogVersion = useCatalogVersion('farm-items');
+
   // Load farm items.
   const loadFarmItems = useCallback(async () => {
     if (!selectedFarmId) {
@@ -205,7 +210,7 @@ export default function PurchasesPage() {
     }
 
     setFarmItems(data || []);
-  }, [selectedFarmId]);
+  }, [selectedFarmId, catalogVersion]);
 
   useEffect(() => {
     loadFarmItems();

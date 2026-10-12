@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { rpc } from '@/utils/rpc';
 import { rpcError } from '@/utils/rpcError';
 import { toast } from 'sonner';
+import { useCatalogVersion } from '@/lib/catalogBus';
 
 export interface FormulaItem {
   id: string;
@@ -110,9 +111,15 @@ export function useFormulas(farmId: string | null) {
 export function useFarmFeedItems(farmId: string | null) {
   const [items, setItems] = useState<FarmItemBasic[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  // Reactive sync: the formula builder/editor re-pulls its ingredient
+  // options whenever farm items change anywhere (Task 1 — catalog bus).
+  // In-modal quantity edits are keyed by item id in the modal's own state,
+  // so this refetch only refreshes the options, never user input.
+  const catalogVersion = useCatalogVersion('farm-items');
 
   useEffect(() => {
     if (!farmId) return;
+    let cancelled = false;
     const load = async () => {
       setIsLoading(true);
       try {
@@ -124,19 +131,22 @@ export function useFarmFeedItems(farmId: string | null) {
           .eq('is_active', true)
           .order('priority', { ascending: true });
 
-        setItems(
-          (data || []).map((i) => ({
-            id: i.id, name: i.name, unit: i.unit, priority: i.priority,
-          })),
-        );
+        if (!cancelled) {
+          setItems(
+            (data || []).map((i) => ({
+              id: i.id, name: i.name, unit: i.unit, priority: i.priority,
+            })),
+          );
+        }
       } catch (err) {
         // Error fetching farm items - silently fail
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
     load();
-  }, [farmId]);
+    return () => { cancelled = true; };
+  }, [farmId, catalogVersion]);
 
   return { items, isLoading };
 }

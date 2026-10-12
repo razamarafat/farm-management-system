@@ -15,6 +15,7 @@ import { PACKAGING_UNITS } from '@/types/input.types';
 import { supabase } from '@/lib/supabase';
 import { rpcError } from '@/utils/rpcError';
 import { assertMutationAffected } from '@/utils/mutationGuard';
+import { bumpCatalog, useCatalogVersion } from '@/lib/catalogBus';
 
 interface FarmItemsPanelProps {
   farm: Farm;
@@ -62,6 +63,11 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
 
   const itemLabel = labels[type];
 
+  // Reactive sync: re-pull this panel whenever farm items change anywhere
+  // (own mutations bump explicitly below; other tabs/views bump via the
+  // same bus) — see src/lib/catalogBus.ts.
+  const catalogVersion = useCatalogVersion('farm-items');
+
   // Items CRUD uses JWT-bound `supabase` (NOT `supabaseAdmin`) so the
   // request satisfies helper-based RLS policies introduced by migration
   // 012_fix_profiles_recursion.sql. Without this swap, the admin
@@ -85,7 +91,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
 
     setItems((data || []) as FarmItemRow[]);
     setIsLoading(false);
-  }, [farm.id, type]);
+  }, [farm.id, type, catalogVersion]);
 
   useEffect(() => {
     loadItems();
@@ -124,6 +130,9 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
     if (error) {
       // Log but don't block — farm_items insert already succeeded
       console.warn(`Sync to inputs catalogue failed for "${normalized}":`, rpcError(error));
+    } else {
+      // The global catalogue gained an entry — notify its consumers.
+      bumpCatalog('inputs');
     }
   }, [type]);
 
@@ -161,6 +170,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
     ));
 
     toast.success('نهاده‌های انتخاب شده اضافه شدند');
+    bumpCatalog('farm-items');
     setSelectedDefaults({});
     setDefaultOpen(false);
     loadItems();
@@ -193,6 +203,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
     await ensureInputCatalogueEntry(name, manualUnit);
 
     toast.success('آیتم جدید اضافه شد');
+    bumpCatalog('farm-items');
     setManualName('');
     setManualPriority('');
     setManualReorder('');
@@ -216,6 +227,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
       return;
     }
 
+    bumpCatalog('farm-items');
     loadItems();
   };
 
@@ -232,6 +244,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
       return;
     }
     toast.success('آیتم حذف شد');
+    bumpCatalog('farm-items');
     loadItems();
   };
 
@@ -273,6 +286,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
 
     await ensureInputCatalogueEntry(name, editUnit);
     toast.success('آیتم با موفقیت ویرایش شد');
+    bumpCatalog('farm-items');
     setEditingItem(null);
     setIsEditing(false);
     loadItems();
