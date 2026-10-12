@@ -58,23 +58,28 @@ export function useInputs(filters: InputFilters) {
 export function useActiveInputs(category?: 'feed' | 'packaging') {
   const [inputs, setInputs] = useState<Input[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Reactive sync: pickers backed by this hook re-pull when the catalogue
+  // changes anywhere — see src/lib/catalogBus.ts.
+  const catalogVersion = useCatalogVersion('inputs');
 
   useEffect(() => {
+    let cancelled = false;
     const fetchInputs = async () => {
       setIsLoading(true);
       try {
         let query = supabase.from('inputs').select('*').eq('is_active', true).order('name');
         if (category) query = query.eq('category', category);
         const { data } = await query;
-        setInputs((data || []) as Input[]);
+        if (!cancelled) setInputs((data || []) as Input[]);
       } catch (err) {
         // Error silently handled - UI will show empty state
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
     fetchInputs();
-  }, [category]);
+    return () => { cancelled = true; };
+  }, [category, catalogVersion]);
 
   return { inputs, isLoading };
 }

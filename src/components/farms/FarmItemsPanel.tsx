@@ -4,18 +4,18 @@ import { toast } from 'sonner';
 import { Farm } from '@/types/farm.types';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { Toggle } from '@/components/ui/Toggle';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { DEFAULT_FARM_INGREDIENTS } from '@/utils/constants';
 import { normalizeName } from '@/utils/helpers';
-import { PACKAGING_UNITS } from '@/types/input.types';
 import { supabase } from '@/lib/supabase';
 import { rpcError } from '@/utils/rpcError';
 import { assertMutationAffected } from '@/utils/mutationGuard';
 import { bumpCatalog, useCatalogVersion } from '@/lib/catalogBus';
+import { useActiveInputs } from '@/hooks/useInputs';
+import { missingCatalogueItems } from '@/utils/catalogueSync';
 
 interface FarmItemsPanelProps {
   farm: Farm;
@@ -30,8 +30,6 @@ interface FarmItemRow {
   reorder_point: number;
   is_active: boolean;
 }
-
-const FEED_UNIT_OPTIONS = ['کیلوگرم', 'لیتر', 'گرم', 'تن', 'عدد', 'بسته', 'متر'];
 
 const labels = {
   feed: {
@@ -49,14 +47,14 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [defaultOpen, setDefaultOpen] = useState(false);
   const [selectedDefaults, setSelectedDefaults] = useState<Record<string, boolean>>({});
-  const [manualName, setManualName] = useState('');
-  const [manualUnit, setManualUnit] = useState(type === 'packaging' ? 'عدد' : 'کیلوگرم');
+  // Catalogue-driven assignment (relational integrity — no free-text item
+  // identity): the picked catalogue entry supplies the EXACT name and the
+  // LOCKED unit. Priority/reorder are numeric metadata and stay editable.
+  const [assignPick, setAssignPick] = useState('');
   const [manualPriority, setManualPriority] = useState('');
   const [manualReorder, setManualReorder] = useState('');
   const [deletingItem, setDeletingItem] = useState<FarmItemRow | null>(null);
   const [editingItem, setEditingItem] = useState<FarmItemRow | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editUnit, setEditUnit] = useState('');
   const [editPriority, setEditPriority] = useState('');
   const [editReorder, setEditReorder] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -97,10 +95,18 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
     loadItems();
   }, [loadItems]);
 
-  // Reset manual unit when type changes (packaging → count-based only)
-  useEffect(() => {
-    setManualUnit(type === 'packaging' ? 'عدد' : 'کیلوگرم');
-  }, [type]);
+  // Global catalogue options for assignment, minus what's already on this
+  // farm. Reactive via the catalog bus (a catalogue entry created in
+  // InputsPage — even in another tab — appears here without reload).
+  const { inputs: catalogueInputs, isLoading: isCatalogueLoading } = useActiveInputs(type);
+  const missingOptions = useMemo(
+    () => missingCatalogueItems(
+      catalogueInputs.map((c) => ({ id: c.id, name: c.name, default_unit: c.default_unit })),
+      items.map((i) => i.name),
+    ),
+    [catalogueInputs, items],
+  );
+  const pickedOption = missingOptions.find((o) => o.id === assignPick) ?? null;
 
   const existingNames = useMemo(() => new Set(items.map((i) => i.name)), [items]);
 
@@ -176,35 +182,36 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
     loadItems();
   };
 
-  const handleAddManual = async () => {
-    if (!manualName.trim()) {
-      toast.error('نام نهاده الزامی است');
+  const handleAssignFromCatalogue = async () => {
+    if (!pickedOption) {
+      toast.error('یک قلم از کاتالوگ انتخاب کنید');
       return;
     }
 
-    const name = normalizeName(manualName);
-    const { error } = await supabase.from('farm_items').insert({
+    // Name AND unit come straight from the catalogue row — exact match, so
+    // the name-based catalogue coupling can never drift via typos. The
+    // catalogue entry already exists, so no catalogue write is needed.
+    const { data, error } = await supabase.from('farm_items').insert({
       farm_id: farm.id,
       category: type,
-      name,
-      unit: manualUnit,
+      name: pickedOption.name,
+      unit: pickedOption.default_unit,
       priority: manualPriority ? Number(manualPriority) : 100,
       reorder_point: manualReorder ? Number(manualReorder) : 0,
       is_active: true,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    } as any).select('id');
 
-    if (error) {
+    try {
+      assertMutationAffected(data, error);
+    } catch {
       toast.error('خطا در افزودن آیتم جدید');
       return;
     }
 
-    // Sync to global inputs catalogue
-    await ensureInputCatalogueEntry(name, manualUnit);
-
-    toast.success('آیتم جدید اضافه شد');
+    toast.success(`«${pickedOption.name}» به این فارم اختصاص یافت`);
     bumpCatalog('farm-items');
-    setManualName('');
+    setAssignPick('');
     setManualPriority('');
     setManualReorder('');
     loadItems();
@@ -250,26 +257,22 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
 
   const handleStartEdit = (item: FarmItemRow) => {
     setEditingItem(item);
-    setEditName(item.name);
-    setEditUnit(item.unit);
     setEditPriority(String(item.priority));
     setEditReorder(String(item.reorder_point));
   };
 
   const handleSaveEdit = async () => {
     if (!editingItem) return;
-    if (!editName.trim()) {
-      toast.error('نام آیتم الزامی است');
-      return;
-    }
 
+    // Identity is LOCKED in edit mode: name/unit always trace back to the
+    // catalogue assignment. Renaming would silently break the name-based
+    // catalogue coupling (and any formula/voucher references), so only
+    // numeric metadata is editable here. To fix a wrong name, delete the
+    // row and re-assign it from the catalogue.
     setIsEditing(true);
-    const name = normalizeName(editName);
     const { data, error } = await supabase
       .from('farm_items')
       .update({
-        name,
-        unit: editUnit,
         priority: editPriority ? Number(editPriority) : 100,
         reorder_point: editReorder ? Number(editReorder) : 0,
       })
@@ -284,7 +287,6 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
       return;
     }
 
-    await ensureInputCatalogueEntry(name, editUnit);
     toast.success('آیتم با موفقیت ویرایش شد');
     bumpCatalog('farm-items');
     setEditingItem(null);
@@ -305,37 +307,70 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <Input
-          label="نام آیتم"
-          value={manualName}
-          onChange={(e) => setManualName(e.target.value)}
-          placeholder="نام نهاده یا قلم"
-        />
-        <Select label="واحد" value={manualUnit} onChange={(e) => setManualUnit(e.target.value)}>
-          {(type === 'packaging' ? PACKAGING_UNITS : FEED_UNIT_OPTIONS).map((unit) => (
-            <option key={unit} value={unit}>{unit}</option>
-          ))}
-        </Select>
-        <Input
-          label="اولویت"
-          value={manualPriority}
-          onChange={(e) => setManualPriority(e.target.value)}
-          placeholder="مثال: ۱۰"
-          dir="ltr"
-        />
-        <Input
-          label="نقطه سفارش"
-          value={manualReorder}
-          onChange={(e) => setManualReorder(e.target.value)}
-          placeholder="مثال: ۲۰۰"
-          dir="ltr"
-        />
-      </div>
+      {/* Catalogue-driven assignment — the ONLY way to attach an item to
+          this farm. The dropdown lists global catalogue entries missing on
+          this farm; the unit is locked from the catalogue definition, so no
+          hand-typed name or unit can ever drift. Truly new items are defined
+          once in «تعریف نهاده‌ها» and appear here instantly via the bus. */}
+      <div className="rounded-lg border border-dashed border-[var(--c-primary)]/40 bg-[color-mix(in_srgb,var(--c-primary)_5%,transparent)] p-3 space-y-3">
+        <p className="text-xs font-semibold text-[var(--c-fg)]">
+          اختصاص قلم از کاتالوگ سراسری به این فارم
+        </p>
+        {isCatalogueLoading ? (
+          <div className="text-xs text-muted-foreground">در حال دریافت کاتالوگ...</div>
+        ) : missingOptions.length === 0 ? (
+          <div className="text-xs text-muted-foreground">
+            همه اقلام کاتالوگ به این فارم اختصاص یافته‌اند. قلم جدید را ابتدا در بخش «تعریف نهاده‌ها» ثبت کنید تا اینجا نمایش داده شود.
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="md:col-span-2">
+                <label className="text-xs text-muted-foreground mb-1 block">قلم کاتالوگ *</label>
+                <select
+                  value={assignPick}
+                  onChange={(e) => setAssignPick(e.target.value)}
+                  aria-label="انتخاب قلم از کاتالوگ"
+                  className="w-full h-10 rounded-md border border-[var(--c-border)] bg-[var(--c-card)] px-3 text-sm text-[var(--c-fg)]"
+                >
+                  <option value="">انتخاب کنید...</option>
+                  {missingOptions.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name} ({o.default_unit})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground mb-1 block">واحد (از کاتالوگ، قفل)</span>
+                <div className="h-10 px-3 flex items-center rounded-md border border-[var(--c-border)] bg-[var(--c-muted)] text-sm text-[var(--c-muted-fg)]">
+                  {pickedOption ? pickedOption.default_unit : '—'}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 md:col-span-2">
+                <Input
+                  label="اولویت"
+                  value={manualPriority}
+                  onChange={(e) => setManualPriority(e.target.value)}
+                  placeholder="مثال: ۱۰"
+                  dir="ltr"
+                />
+                <Input
+                  label="نقطه سفارش"
+                  value={manualReorder}
+                  onChange={(e) => setManualReorder(e.target.value)}
+                  placeholder="مثال: ۲۰۰"
+                  dir="ltr"
+                />
+              </div>
+            </div>
 
-      <Button onClick={handleAddManual} className="gap-2">
-        <Plus size={16} /> افزودن دستی
-      </Button>
+            <Button onClick={handleAssignFromCatalogue} disabled={!assignPick} className="gap-2">
+              <Plus size={16} /> اختصاص به فارم
+            </Button>
+          </>
+        )}
+      </div>
 
       {isLoading && <div className="text-sm text-muted-foreground">در حال دریافت اطلاعات...</div>}
 
@@ -409,17 +444,14 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
         }
       >
         <div className="space-y-3">
-          <Input
-            label="نام آیتم *"
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            placeholder="نام نهاده یا قلم"
-          />
-          <Select label="واحد *" value={editUnit} onChange={(e) => setEditUnit(e.target.value)}>
-            {(type === 'packaging' ? PACKAGING_UNITS : FEED_UNIT_OPTIONS).map((unit) => (
-              <option key={unit} value={unit}>{unit}</option>
-            ))}
-          </Select>
+          {/* Identity locked: name/unit trace back to the catalogue
+              assignment — renaming here would silently break the
+              name-based coupling (and formula/voucher references). */}
+          <div className="rounded-md border border-[var(--c-border)] bg-[var(--c-muted)] px-3 py-2 text-sm">
+            <span className="text-[var(--c-muted-fg)]">قلم: </span>
+            <span className="font-semibold text-[var(--c-fg)]">{editingItem?.name}</span>
+            <span className="text-[var(--c-muted-fg)]"> ({editingItem?.unit})</span>
+          </div>
           <Input
             label="اولویت"
             value={editPriority}

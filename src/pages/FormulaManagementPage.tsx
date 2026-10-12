@@ -11,9 +11,10 @@ import { useAuthStore } from '@/store/authStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { supabase } from '@/lib/supabase';
 import { useFormulas, useFormulaActions, useFarmFeedItems, Formula, FormulaInput, FarmItemBasic } from '@/hooks/useFormulas';
+import { useActiveInputs } from '@/hooks/useInputs';
+import { missingCatalogueItems } from '@/utils/catalogueSync';
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { normalizeName } from '@/utils/helpers';
 import { assertMutationAffected } from '@/utils/mutationGuard';
 import { bumpCatalog } from '@/lib/catalogBus';
 
@@ -26,9 +27,6 @@ interface FarmOption {
 const toPersianNum = (n: number | string): string => {
   return String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[parseInt(d)]);
 };
-
-// Unit options for the inline new-ingredient creator (same set as farm setup).
-const FORMULA_FEED_UNITS = ['کیلوگرم', 'لیتر', 'گرم', 'تن', 'عدد', 'بسته', 'متر'];
 
 const FormulaManagementPage = () => {
   const { profile } = useAuthStore();
@@ -742,15 +740,17 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
   const [isActive, setIsActive] = useState(formula?.is_active ?? true);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
-  // Inline "add new ingredient" rows (Task 2). These are plain farm_items
-  // inserts merged into the visible table, so they behave IDENTICALLY in
-  // create and edit mode — symmetric by construction. The catalog bus
-  // refetch reconciles them into `feedItems` (deduped below by id).
+  // Catalogue-driven "add row" (relational integrity — no free-text item
+  // identity): the dropdown below offers global feed-catalogue entries that
+  // have no farm row yet. Picking one assigns it to this farm (EXACT name,
+  // LOCKED catalogue unit) and attaches it to the draft in one step — so it
+  // behaves IDENTICALLY in create and edit mode. The catalog bus refetch
+  // reconciles the assignment into `feedItems` (deduped below by id).
   const [addedItems, setAddedItems] = useState<FarmItemBasic[]>([]);
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemUnit, setNewItemUnit] = useState('کیلوگرم');
+  const [assignPick, setAssignPick] = useState('');
   const [newItemQty, setNewItemQty] = useState('');
   const [isAddingItem, setIsAddingItem] = useState(false);
+  const { inputs: catalogueInputs } = useActiveInputs('feed');
 
   useEffect(() => {
     if (formula?.items) {
@@ -774,23 +774,24 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
   const totalWeight = Object.values(quantities).reduce((s, v) => s + (v || 0), 0);
   const itemCount = Object.values(quantities).filter((v) => v > 0).length;
 
-  // Visible ingredient options = last server fetch + just-created rows
+  // Visible ingredient options = last server fetch + just-assigned rows
   // (deduped by id; the bus-driven refetch absorbs them shortly after).
   const feedItemIds = new Set(feedItems.map((i) => i.id));
   const visibleFeedItems = [...feedItems, ...addedItems.filter((a) => !feedItemIds.has(a.id))];
+  // Catalogue feed entries with no farm row yet — the assignment pool.
+  const missingFeedOptions = missingCatalogueItems(
+    catalogueInputs.map((c) => ({ id: c.id, name: c.name, default_unit: c.default_unit })),
+    visibleFeedItems.map((i) => i.name),
+  );
+  const pickedFeedOption = missingFeedOptions.find((o) => o.id === assignPick) ?? null;
 
-  // Create a brand-new farm ingredient WITHOUT leaving the modal and
-  // attach it to the formula draft in one step. Verified insert (row-count
-  // guard — no silent success), catalogue sync best-effort, bus bump so
-  // every other consumer updates instantly.
-  const handleAddNewItem = async () => {
-    const name = normalizeName(newItemName);
-    if (!name) {
-      toast.error('نام نهاده الزامی است');
-      return;
-    }
-    if (visibleFeedItems.some((i) => normalizeName(i.name) === name)) {
-      toast.error('این نهاده قبلاً در لیست است — مقدار آن را وارد کنید');
+  // Assign the picked catalogue entry to this farm WITHOUT leaving the
+  // modal and attach it to the formula draft. Verified insert (row-count
+  // guard — no silent success) + bus bump so every other consumer updates
+  // instantly. The catalogue entry already exists, so no catalogue write.
+  const handleAssignAndAttach = async () => {
+    if (!pickedFeedOption) {
+      toast.error('یک نهاده از کاتالوگ انتخاب کنید');
       return;
     }
     const qty = newItemQty ? parseFloat(newItemQty) : 0;
@@ -803,8 +804,8 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
       const { data, error } = await supabase.from('farm_items').insert({
         farm_id: farmId,
         category: 'feed',
-        name,
-        unit: newItemUnit,
+        name: pickedFeedOption.name,
+        unit: pickedFeedOption.default_unit,
         priority: 100,
         reorder_point: 0,
         is_active: true,
@@ -814,16 +815,7 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
       assertMutationAffected(data ? [data] : null, error);
       const created = data as unknown as FarmItemBasic;
 
-      // Best-effort sync into the global inputs catalogue (never blocks).
-      const { error: catErr } = await supabase.rpc('rpc_admin_create_input', {
-        p_name: name,
-        p_category: 'feed',
-        p_default_unit: newItemUnit,
-        p_description: '',
-        p_is_active: true,
-      });
       bumpCatalog('farm-items');
-      if (!catErr) bumpCatalog('inputs');
 
       setAddedItems((prev) => [...prev, {
         id: created.id,
@@ -832,7 +824,7 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
         priority: created.priority ?? 100,
       }]);
       if (qty > 0) setQuantities((p) => ({ ...p, [created.id]: qty }));
-      setNewItemName('');
+      setAssignPick('');
       setNewItemQty('');
       toast.success(`«${created.name}» به فرمول اضافه شد`);
     } catch {
@@ -960,59 +952,70 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
               <Beaker className="w-4 h-4 text-[var(--c-accent)]" />
               نهاده‌ها و مقادیر (کیلوگرم در هر میکسر)
             </p>
-            {/* Inline new-ingredient creator — available identically in
-                create AND edit mode: builds the farm item on the spot and
-                attaches it to the draft. Totals/percentages below recalc
-                live because they derive from the quantities state. */}
+            {/* Catalogue-driven "add row" — available identically in create
+                AND edit mode. The dropdown offers feed-catalogue entries
+                missing on this farm; picking one assigns it (exact name,
+                locked unit) and attaches it to the draft. Totals below
+                recalc live because they derive from the quantities state. */}
             {!loadingItems && (
               <div className="mb-3 rounded-lg border border-dashed border-[var(--c-accent)]/50 bg-[color-mix(in_srgb,var(--c-accent)_6%,transparent)] p-3">
                 <p className="text-xs font-semibold text-[var(--c-fg)] mb-2 flex items-center gap-1">
                   <Plus className="w-3.5 h-3.5 text-[var(--c-accent)]" />
                   افزودن نهاده جدید به فرمول
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-[1fr_110px_110px_auto] gap-2">
-                  <input
-                    type="text"
-                    value={newItemName}
-                    onChange={(e) => setNewItemName(e.target.value)}
-                    placeholder="نام نهاده جدید"
-                    aria-label="نام نهاده جدید"
-                    className="px-3 py-2 rounded-lg border border-[var(--c-border)] bg-[var(--c-card)] text-sm text-[var(--c-fg)] col-span-2 sm:col-span-1"
-                  />
-                  <select
-                    value={newItemUnit}
-                    onChange={(e) => setNewItemUnit(e.target.value)}
-                    aria-label="واحد نهاده جدید"
-                    className="px-2 py-2 rounded-lg border border-[var(--c-border)] bg-[var(--c-card)] text-sm text-[var(--c-fg)]"
-                  >
-                    {FORMULA_FEED_UNITS.map((unit) => (
-                      <option key={unit} value={unit}>{unit}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    value={newItemQty}
-                    onChange={(e) => setNewItemQty(e.target.value)}
-                    placeholder="مقدار (kg)"
-                    aria-label="مقدار نهاده جدید"
-                    min="0"
-                    step="0.1"
-                    dir="ltr"
-                    className="px-3 py-2 rounded-lg border border-[var(--c-border)] bg-[var(--c-card)] text-sm text-center"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddNewItem}
-                    disabled={isAddingItem || isSaving}
-                    className="px-4 py-2 text-sm rounded-lg bg-[var(--c-accent)] text-[var(--c-accent-fg)] hover:brightness-110 disabled:opacity-50 flex items-center justify-center gap-1 col-span-2 sm:col-span-1"
-                  >
-                    {isAddingItem ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                    افزودن
-                  </button>
-                </div>
-                <p className="text-[11px] text-[var(--c-muted-fg)] mt-1.5">
-                  نهاده در همین فارم ساخته و بلافاصله به جدول اضافه می‌شود؛ با ذخیره فرمول، ترکیب نهایی به‌صورت یکجا و اتمی ثبت می‌شود.
-                </p>
+                {missingFeedOptions.length === 0 ? (
+                  <p className="text-[11px] text-[var(--c-muted-fg)]">
+                    همه نهاده‌های کاتالوگ در این فارم تعریف شده‌اند. نهاده جدید را ابتدا در بخش «تعریف نهاده‌ها» ثبت کنید.
+                  </p>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-[1fr_110px_110px_auto] gap-2">
+                      <select
+                        value={assignPick}
+                        onChange={(e) => setAssignPick(e.target.value)}
+                        aria-label="انتخاب نهاده از کاتالوگ"
+                        className="px-3 py-2 rounded-lg border border-[var(--c-border)] bg-[var(--c-card)] text-sm text-[var(--c-fg)] col-span-2 sm:col-span-1"
+                      >
+                        <option value="">انتخاب از کاتالوگ...</option>
+                        {missingFeedOptions.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.name} ({o.default_unit})
+                          </option>
+                        ))}
+                      </select>
+                      <div
+                        aria-label="واحد نهاده (از کاتالوگ، قفل)"
+                        title="واحد از کاتالوگ خوانده می‌شود و قابل تغییر نیست"
+                        className="px-3 py-2 rounded-lg border border-[var(--c-border)] bg-[var(--c-muted)] text-sm text-[var(--c-muted-fg)] flex items-center justify-center"
+                      >
+                        {pickedFeedOption ? pickedFeedOption.default_unit : 'واحد: —'}
+                      </div>
+                      <input
+                        type="number"
+                        value={newItemQty}
+                        onChange={(e) => setNewItemQty(e.target.value)}
+                        placeholder="مقدار (kg)"
+                        aria-label="مقدار نهاده جدید"
+                        min="0"
+                        step="0.1"
+                        dir="ltr"
+                        className="px-3 py-2 rounded-lg border border-[var(--c-border)] bg-[var(--c-card)] text-sm text-center"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAssignAndAttach}
+                        disabled={isAddingItem || isSaving || !assignPick}
+                        className="px-4 py-2 text-sm rounded-lg bg-[var(--c-accent)] text-[var(--c-accent-fg)] hover:brightness-110 disabled:opacity-50 flex items-center justify-center gap-1 col-span-2 sm:col-span-1"
+                      >
+                        {isAddingItem ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                        افزودن
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-[var(--c-muted-fg)] mt-1.5">
+                      نهاده با نام دقیق کاتالوگ و واحد قفل‌شده به فارم اختصاص می‌یابد و بلافاصله به جدول اضافه می‌شود؛ با ذخیره فرمول، ترکیب نهایی به‌صورت یکجا و اتمی ثبت می‌شود.
+                    </p>
+                  </>
+                )}
               </div>
             )}
             {loadingItems ? (
