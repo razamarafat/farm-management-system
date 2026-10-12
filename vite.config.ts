@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf8'));
-const appVersion = pkg.version || '1.1.2';
+const appVersion = pkg.version || '1.1.3';
 
 // Build identity: a fresh, unique value for every build so an open client can
 // detect that a new deploy has landed. It is inlined into the bundle via

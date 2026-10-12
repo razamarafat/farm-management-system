@@ -326,10 +326,16 @@ BEGIN
 END;
 $function$;
 
--- Update RLS policies on inputs table for operators
+-- Update RLS policies on inputs table for operators.
+-- The *_manage drops make this migration idempotent: preview branches are
+-- cloned from production (which already has these policies), so replaying
+-- CREATE POLICY without a prior DROP fails with 42710 "already exists".
 DROP POLICY IF EXISTS "inputs_insert_admin" ON public.inputs;
 DROP POLICY IF EXISTS "inputs_update_admin" ON public.inputs;
 DROP POLICY IF EXISTS "inputs_delete_admin" ON public.inputs;
+DROP POLICY IF EXISTS "inputs_insert_manage" ON public.inputs;
+DROP POLICY IF EXISTS "inputs_update_manage" ON public.inputs;
+DROP POLICY IF EXISTS "inputs_delete_manage" ON public.inputs;
 
 CREATE POLICY "inputs_insert_manage" ON public.inputs
   FOR INSERT WITH CHECK (is_current_user_admin() OR get_user_role() = 'operator');
