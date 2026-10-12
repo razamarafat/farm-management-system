@@ -48,7 +48,7 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
     data, isLoading, error, isSaving, saveStatus,
     hallConfigs, updateLine, selectFormula, updateHallConfigs,
     autoCalculate, submitSheet, revertSheet, refetch,
-    adhocCandidates, addAdhocItem, removeAdhocItem,
+    adhocCandidates, addAdhocItem, removeLine,
   } = useDailySheet({ farmId, date: dateParam, category, ignoreEditWindow: isAdmin });
 
   const jalaliDate = gregorianToJalali(dateParam);
@@ -456,7 +456,7 @@ export default function DailySheetPage({ category }: DailySheetPageProps) {
           canEdit={canEdit}
           selectedHalls={selectedHalls}
           onUpdateLine={updateLine}
-          onRemoveRow={removeAdhocItem}
+          onRemoveRow={removeLine}
           emptyMessage={
             isFeed && formula
               ? 'در این فرمول قلمی تعریف نشده است. از بخش مدیریت فارم‌ها اقلام فرمول را تکمیل کنید یا با دکمه + زیر نهاده موردنظر را دستی اضافه کنید.'

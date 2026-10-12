@@ -159,6 +159,18 @@ const FormulaManagementPage = () => {
 
   const selectedFarm = farms.find((f) => f.id === selectedFarmId);
 
+  // Escape dismiss for the bespoke duplicate dialog below (the form modal
+  // is a separate component with its own handler; ConfirmDialog/Modal
+  // primitives already handle Escape internally).
+  useEffect(() => {
+    if (!duplicateTarget) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDuplicateTarget(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [duplicateTarget]);
+
   return (
     <div className="space-y-6 w-full">
       {/* Header */}
@@ -403,6 +415,8 @@ const FormulaManagementPage = () => {
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            role="dialog"
+            aria-modal="true"
             onClick={() => setDuplicateTarget(null)}
           >
             <motion.div
@@ -731,6 +745,17 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
     }
   }, [formula]);
 
+  // Escape dismiss for this bespoke full-screen form overlay (backdrop
+  // click is wired on the outer motion.div below; inner card stops
+  // propagation so in-modal interaction never dismisses).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const totalWeight = Object.values(quantities).reduce((s, v) => s + (v || 0), 0);
   const itemCount = Object.values(quantities).filter((v) => v > 0).length;
 
@@ -759,6 +784,8 @@ const FormulaFormModal = ({ farmId, farmName, formula, existingNumbers, isSaving
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
       onClick={onClose}
     >
       <motion.div

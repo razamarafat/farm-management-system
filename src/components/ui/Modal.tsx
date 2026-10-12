@@ -51,6 +51,9 @@ export const Modal = ({
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-[fadeIn_200ms_ease-out]"
       onClick={(e) => {
+        // Backdrop dismiss: only a click whose target IS the backdrop
+        // layer itself closes the dialog. Clicks inside the card have a
+        // different target, so they never dismiss.
         if (!disableBackdropClose && e.target === e.currentTarget) onClose();
       }}
     >
@@ -60,6 +63,11 @@ export const Modal = ({
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
         tabIndex={-1}
+        onClick={(e) => {
+          // Event containment: never let inner clicks bubble to the
+          // backdrop layer, even if the backdrop check above changes.
+          e.stopPropagation();
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
             e.stopPropagation();

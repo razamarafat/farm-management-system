@@ -14,6 +14,7 @@ import { normalizeName } from '@/utils/helpers';
 import { PACKAGING_UNITS } from '@/types/input.types';
 import { supabase } from '@/lib/supabase';
 import { rpcError } from '@/utils/rpcError';
+import { assertMutationAffected } from '@/utils/mutationGuard';
 
 interface FarmItemsPanelProps {
   farm: Farm;
@@ -199,12 +200,18 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
   };
 
   const handleToggle = async (item: FarmItemRow) => {
-    const { error } = await supabase
+    // `.select('id')` + row-count guard: an RLS-denied UPDATE returns
+    // zero rows with NO error — the guard turns it into a real error
+    // instead of a false silent success.
+    const { data, error } = await supabase
       .from('farm_items')
       .update({ is_active: !item.is_active })
-      .eq('id', item.id);
+      .eq('id', item.id)
+      .select('id');
 
-    if (error) {
+    try {
+      assertMutationAffected(data, error);
+    } catch {
       toast.error('خطا در تغییر وضعیت');
       return;
     }
@@ -213,8 +220,14 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
   };
 
   const handleDelete = async (itemId: string) => {
-    const { error } = await supabase.from('farm_items').delete().eq('id', itemId);
-    if (error) {
+    const { data, error } = await supabase
+      .from('farm_items')
+      .delete()
+      .eq('id', itemId)
+      .select('id');
+    try {
+      assertMutationAffected(data, error);
+    } catch {
       toast.error('خطا در حذف آیتم');
       return;
     }
@@ -239,7 +252,7 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
 
     setIsEditing(true);
     const name = normalizeName(editName);
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('farm_items')
       .update({
         name,
@@ -247,9 +260,12 @@ const FarmItemsPanelInner = ({ farm, type }: FarmItemsPanelProps) => {
         priority: editPriority ? Number(editPriority) : 100,
         reorder_point: editReorder ? Number(editReorder) : 0,
       })
-      .eq('id', editingItem.id);
+      .eq('id', editingItem.id)
+      .select('id');
 
-    if (error) {
+    try {
+      assertMutationAffected(data, error);
+    } catch {
       toast.error('خطا در ویرایش آیتم');
       setIsEditing(false);
       return;

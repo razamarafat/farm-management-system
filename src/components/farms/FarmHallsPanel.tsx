@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { toPersianDigits } from '@/utils/persianNumbers';
+import { assertMutationAffected } from '@/utils/mutationGuard';
 
 interface FarmHall {
   id: string;
@@ -153,15 +154,18 @@ const FarmHallsPanelInner = ({ farm }: FarmHallsPanelProps) => {
     }
     setIsEditing(true);
     try {
-      const { error: err } = await supabase
+      // `.select('id')` + row-count guard: an RLS-denied UPDATE returns
+      // zero rows with NO error — without it the toast below lies.
+      const { data, error: err } = await supabase
         .from('farm_halls')
         .update({
           hall_number: num,
           name: editHallName.trim() || null,
         })
-        .eq('id', editingHall.id);
+        .eq('id', editingHall.id)
+        .select('id');
 
-      if (err) throw err;
+      assertMutationAffected(data, err);
       toast.success(`سالن شماره ${toPersianDigits(num)} ویرایش شد`);
       setEditingHall(null);
       fetchHalls();
@@ -175,12 +179,13 @@ const FarmHallsPanelInner = ({ farm }: FarmHallsPanelProps) => {
   const handleConfirmDelete = async () => {
     if (!deletingHall) return;
     try {
-      const { error: err } = await supabase
+      const { data, error: err } = await supabase
         .from('farm_halls')
         .delete()
-        .eq('id', deletingHall.id);
+        .eq('id', deletingHall.id)
+        .select('id');
 
-      if (err) throw err;
+      assertMutationAffected(data, err);
       toast.success(`سالن شماره ${toPersianDigits(deletingHall.hall_number)} حذف شد`);
       setDeletingHall(null);
       fetchHalls();
@@ -191,12 +196,13 @@ const FarmHallsPanelInner = ({ farm }: FarmHallsPanelProps) => {
 
   const handleToggleHall = async (hall: FarmHall) => {
     try {
-      const { error: err } = await supabase
+      const { data, error: err } = await supabase
         .from('farm_halls')
         .update({ is_active: !hall.is_active })
-        .eq('id', hall.id);
+        .eq('id', hall.id)
+        .select('id');
 
-      if (err) throw err;
+      assertMutationAffected(data, err);
       fetchHalls();
     } catch {
       toast.error('خطا در تغییر وضعیت سالن');

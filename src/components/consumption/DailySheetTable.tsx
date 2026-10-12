@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { AlertCircle, CheckCircle, AlertTriangle, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
 import { type DailySheetRow, type VoucherCategory, type HallConfig, CATEGORY_LABELS, toNumber } from '@/types/consumption.types';
 import { toPersianDigits } from '@/utils/persianNumbers';
 import { Input } from '@/components/ui/Input';
@@ -11,8 +11,9 @@ interface DailySheetTableProps {
   canEdit: boolean;
   selectedHalls: HallConfig[];
   onUpdateLine: (itemId: string, field: keyof DailySheetRow, value: string | number) => void;
-  /** Remove a manually added row (no persisted data). Rendered only for
-   *  outside-formula rows that carry no voucher line and zero quantities. */
+  /** Remove a voucher row — the handler deletes persisted
+   *  `daily_voucher_lines` rows when they exist and drops unsaved drafts,
+   *  so EVERY editable row gets a «حذف سطر» button (not just ad-hoc rows). */
   onRemoveRow?: (itemId: string) => void;
   /** Overrides the default empty-state text (e.g. formula with no items). */
   emptyMessage?: string;
@@ -119,6 +120,9 @@ function DailySheetTable({ items, category, canEdit, onUpdateLine, onRemoveRow, 
             <th className="px-3 py-3 text-center font-semibold text-[var(--c-fg)] w-32">مانده انبار</th>
             <th className="px-3 py-3 text-center font-semibold text-[var(--c-fg)] min-w-[140px]">توضیحات</th>
             <th className="px-3 py-3 text-center font-semibold text-[var(--c-fg)] w-12">🔔</th>
+            {canEdit && (
+              <th className="px-3 py-3 text-center font-semibold text-[var(--c-fg)] w-16">حذف سطر</th>
+            )}
           </tr>
         </thead>
 
@@ -133,8 +137,11 @@ function DailySheetTable({ items, category, canEdit, onUpdateLine, onRemoveRow, 
             // Outside the selected formula (manually added, or kept because
             // it already carries a saved voucher line).
             const isOutsideFormula = isFeed && item.qty_per_mixer <= 0;
-            const isRemovable = !!onRemoveRow && canEdit && isOutsideFormula
-              && !item.line_id && item.consumed_qty <= 0 && item.waste_qty <= 0;
+            // Every editable row is removable: the wired handler deletes
+            // persisted voucher lines (verified, no silent success) and
+            // drops unsaved drafts. Ad-hoc rows leave the list; base
+            // formula/farm rows are zeroed in place.
+            const isRemovable = !!onRemoveRow && canEdit;
 
             return (
               <tr
@@ -153,17 +160,6 @@ function DailySheetTable({ items, category, canEdit, onUpdateLine, onRemoveRow, 
                     <span className="mr-2 inline-block text-[10px] px-1.5 py-0.5 rounded-full bg-[color-mix(in_srgb,var(--c-accent)_16%,transparent)] text-[var(--c-accent)]">
                       خارج از فرمول
                     </span>
-                  )}
-                  {isRemovable && (
-                    <button
-                      type="button"
-                      onClick={() => onRemoveRow(item.id)}
-                      aria-label={`حذف ${item.name} از لیست`}
-                      title="حذف از لیست"
-                      className="mr-1 inline-flex items-center justify-center w-5 h-5 rounded-full text-[var(--c-error)] hover:bg-[color-mix(in_srgb,var(--c-destructive)_16%,transparent)]"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
                   )}
                 </td>
 
@@ -249,6 +245,25 @@ function DailySheetTable({ items, category, canEdit, onUpdateLine, onRemoveRow, 
                 <td className="px-3 py-2 text-center">
                   <StatusIcon status={rowStatus} />
                 </td>
+
+                {/* Remove row */}
+                {canEdit && (
+                  <td className="px-3 py-2 text-center">
+                    {isRemovable ? (
+                      <button
+                        type="button"
+                        onClick={() => onRemoveRow(item.id)}
+                        aria-label={`حذف سطر ${item.name}`}
+                        title="حذف سطر"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[var(--c-error)] hover:bg-[color-mix(in_srgb,var(--c-destructive)_12%,transparent)] transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <span className="text-[var(--c-muted-fg)]">—</span>
+                    )}
+                  </td>
+                )}
               </tr>
             );
           })}
@@ -270,7 +285,7 @@ function DailySheetTable({ items, category, canEdit, onUpdateLine, onRemoveRow, 
             <td className="px-3 py-3 text-center text-[var(--c-accent)]">
               {totalWaste > 0 ? toPersianDigits(totalWaste.toFixed(2)) : '—'}
             </td>
-            <td className="px-3 py-3" colSpan={3}></td>
+            <td className="px-3 py-3" colSpan={canEdit ? 4 : 3}></td>
           </tr>
         </tfoot>
       </table>

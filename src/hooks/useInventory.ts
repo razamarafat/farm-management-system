@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/authStore';
 import { toast } from 'sonner';
 import { readFarmItems, readFarmTransactions } from '@/lib/offline/reads';
 import { escapePostgrestOrValue } from '@/utils/postgrestEscape';
+import { assertMutationAffected } from '@/utils/mutationGuard';
 import type {
   InventoryTransaction,
   StockBalance,
@@ -373,6 +374,9 @@ export function useInventoryMutations(farmId: string | null) {
   }, [farmId, user]);
 
   // Delete transaction (admin only)
+  // NOTE: the trailing `.select('id')` is REQUIRED — an RLS-denied DELETE
+  // resolves with `{ data: [], error: null }`, and without the row-count
+  // check below the UI would toast a false success while nothing changed.
   const deleteTransaction = useCallback(async (transactionId: string) => {
     if (!user) {
       toast.error('کاربر نامعتبر است');
@@ -381,17 +385,18 @@ export function useInventoryMutations(farmId: string | null) {
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('inventory_transactions')
         .delete()
-        .eq('id', transactionId);
+        .eq('id', transactionId)
+        .select('id');
 
-      if (error) throw error;
+      assertMutationAffected(data, error);
 
       toast.success('تراکنش با موفقیت حذف شد');
       return true;
     } catch (err) {
-      toast.error('خطا در حذف تراکنش');
+      toast.error(err instanceof Error ? err.message : 'خطا در حذف تراکنش');
       return false;
     } finally {
       setIsSubmitting(false);
@@ -420,17 +425,21 @@ export function useInventoryMutations(farmId: string | null) {
         updateData.total_price = updates.unit_price * updates.qty_in;
       }
 
-      const { error } = await supabase
+      // Trailing `.select('id')` + row-count check: an RLS-denied UPDATE
+      // resolves with zero rows and NO error — without the guard the UI
+      // would toast a false success while the database is untouched.
+      const { data, error } = await supabase
         .from('inventory_transactions')
         .update(updateData)
-        .eq('id', transactionId);
+        .eq('id', transactionId)
+        .select('id');
 
-      if (error) throw error;
+      assertMutationAffected(data, error);
 
       toast.success('تراکنش با موفقیت بروزرسانی شد');
       return true;
     } catch (err) {
-      toast.error('خطا در بروزرسانی تراکنش');
+      toast.error(err instanceof Error ? err.message : 'خطا در بروزرسانی تراکنش');
       return false;
     } finally {
       setIsSubmitting(false);

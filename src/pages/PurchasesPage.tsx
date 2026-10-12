@@ -1,16 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   ShoppingCart, 
   ArrowDownToLine,
   Building2,
   Truck,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   Save,
   Pencil,
   Trash2,
   Search,
   RefreshCw,
+  FileText,
+  History,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useModuleReset } from '@/hooks/useModuleReset';
@@ -26,6 +31,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
 import { toPersianNumbers, formatNumberWithSeparator } from '@/utils/persianNumbers';
+import { assertMutationAffected } from '@/utils/mutationGuard';
 import { getJalaliToday, jalaliToGregorian, gregorianToJalali, formatJalaliDate } from '@/utils/jalaliDate';
 import { JalaliDatePicker } from '@/components/ui/JalaliDatePicker';
 import type { InventoryTransaction } from '@/types/inventory.types';
@@ -48,8 +54,11 @@ type TransactionType = 'purchase' | 'transfer_in' | 'transfer_out';
 
 export default function PurchasesPage() {
   const { profile } = useAuthStore();
+  const navigate = useNavigate();
   const isAdmin = profile?.role === 'admin';
   const isReadOnly = profile?.role === 'supervisor';
+  // Role-scoped base for shortcuts to sibling modules (reports / kardex).
+  const roleBase = profile?.role === 'admin' ? '/admin' : profile?.role === 'supervisor' ? '/supervisor' : '/operator';
 
   // Farm selection for admin
   const [farms, setFarms] = useState<Farm[]>([]);
@@ -106,6 +115,10 @@ export default function PurchasesPage() {
   const [isDeletingTxn, setIsDeletingTxn] = useState(false);
   const [ledgerSearch, setLedgerSearch] = useState('');
   const [ledgerTypeFilter, setLedgerTypeFilter] = useState<'all' | 'purchase' | 'transfer_in' | 'transfer_out'>('all');
+  // The recent-history ledger is collapsible (collapsed by default) so the
+  // primary registration workflow stays clean — the full Kardex lives in
+  // the reports module, linked prominently below.
+  const [showLedger, setShowLedger] = useState(false);
 
 
   // Load farms — uses the JWT-bound `supabase` client.
@@ -257,18 +270,22 @@ export default function PurchasesPage() {
     if (!deleteTxnId || isReadOnly) return;
     setIsDeletingTxn(true);
     try {
-      const { error } = await supabase
+      // `.select('id')` + row-count guard: an RLS-denied DELETE returns
+      // zero rows with NO error — without the check the toast below would
+      // falsely claim success while the row survives reload.
+      const { data, error } = await supabase
         .from('inventory_transactions')
         .delete()
-        .eq('id', deleteTxnId);
+        .eq('id', deleteTxnId)
+        .select('id');
 
-      if (error) throw error;
+      assertMutationAffected(data, error);
       toast.success('تراکنش با موفقیت حذف شد');
       setDeleteTxnId(null);
-      loadTransactions();
+      await loadTransactions();
     } catch (err) {
       console.error('Error deleting transaction:', err);
-      toast.error('خطا در حذف تراکنش');
+      toast.error(err instanceof Error ? err.message : 'خطا در حذف تراکنش');
     } finally {
       setIsDeletingTxn(false);
     }
@@ -358,7 +375,7 @@ export default function PurchasesPage() {
         const costPrice = totalPrice !== null ? totalPrice + Math.round(shippingCost) : null;
         
         if (editingTxnId) {
-          const { error } = await supabase
+          const { data, error } = await supabase
             .from('inventory_transactions')
             .update({
               item_id: formData.item_id,
@@ -371,9 +388,10 @@ export default function PurchasesPage() {
               attachment_url: formData.attachment_url || null,
               supplier_id: formData.supplier_id || null,
             })
-            .eq('id', editingTxnId);
+            .eq('id', editingTxnId)
+            .select('id');
 
-          if (error) throw error;
+          assertMutationAffected(data, error);
           success = true;
           toast.success('خرید با موفقیت ویرایش شد');
         } else {
@@ -407,7 +425,7 @@ export default function PurchasesPage() {
         }
 
         if (editingTxnId) {
-          const { error } = await supabase
+          const { data, error } = await supabase
             .from('inventory_transactions')
             .update({
               item_id: formData.item_id,
@@ -419,9 +437,10 @@ export default function PurchasesPage() {
               notes: formData.notes || null,
               attachment_url: formData.attachment_url || null,
             })
-            .eq('id', editingTxnId);
+            .eq('id', editingTxnId)
+            .select('id');
 
-          if (error) throw error;
+          assertMutationAffected(data, error);
           success = true;
           toast.success('دریافت از واحدها با موفقیت ویرایش شد');
         } else {
@@ -454,7 +473,7 @@ export default function PurchasesPage() {
         }
 
         if (editingTxnId) {
-          const { error } = await supabase
+          const { data, error } = await supabase
             .from('inventory_transactions')
             .update({
               item_id: formData.item_id,
@@ -466,9 +485,10 @@ export default function PurchasesPage() {
               notes: formData.notes || null,
               attachment_url: formData.attachment_url || null,
             })
-            .eq('id', editingTxnId);
+            .eq('id', editingTxnId)
+            .select('id');
 
-          if (error) throw error;
+          assertMutationAffected(data, error);
           success = true;
           toast.success('ارسال به واحدها با موفقیت ویرایش شد');
         } else {
@@ -496,11 +516,11 @@ export default function PurchasesPage() {
 
       if (success) {
         goBackToCards();
-        loadTransactions();
+        await loadTransactions();
       }
     } catch (err) {
       console.error('Error submitting:', err);
-      toast.error('خطا در ثبت اطلاعات');
+      toast.error(err instanceof Error ? err.message : 'خطا در ثبت اطلاعات');
     } finally {
       setIsSubmitting(false);
     }
@@ -717,19 +737,58 @@ export default function PurchasesPage() {
                   </CardContent>
                 </Card>
 
-                {/* Purchases & Transfers Ledger */}
+                {/* Kardex shortcut — the comprehensive ledger lives in reports */}
+                <Card className="border-2 border-dashed border-[var(--c-primary)]/40 bg-[color-mix(in_srgb,var(--c-primary)_6%,transparent)]">
+                  <CardContent className="p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[color-mix(in_srgb,var(--c-primary)_15%,transparent)] flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-[var(--c-fg)]">کاردکس و گزارش‌های جامع</h4>
+                          <p className="text-xs text-[var(--c-muted-fg)] mt-0.5">
+                            گردش کامل کالا، گزارش خریدها و انتقال بین انبارها را در بخش گزارشات ببینید
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={() => navigate(`${roleBase}/reports`)}
+                        className="flex items-center gap-1.5 whitespace-nowrap"
+                      >
+                        <History className="w-4 h-4" />
+                        مشاهده کاردکس / گزارشات
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Purchases & Transfers Ledger (collapsible recent history) */}
                 <Card className="border border-[var(--c-border)] shadow-sm">
                   <CardHeader className="pb-3 border-b border-[var(--c-border)]">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <div>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <ShoppingCart className="w-5 h-5 text-primary" />
-                          دفتر ثبت و تاریخچه خریدها و انتقالات
-                        </CardTitle>
-                        <p className="text-xs text-[var(--c-muted-fg)] mt-1">
-                          مشاهده، ویرایش و مدیریت تمامی تراکنش‌های خرید و انتقال فارم جاری
-                        </p>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowLedger((v) => !v)}
+                        aria-expanded={showLedger}
+                        className="flex items-center gap-2 text-right group"
+                      >
+                        <span className="w-8 h-8 rounded-lg bg-[var(--c-muted)] flex items-center justify-center text-[var(--c-muted-fg)] group-hover:text-[var(--c-fg)] transition-colors">
+                          {showLedger ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </span>
+                        <span>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <ShoppingCart className="w-5 h-5 text-primary" />
+                            تاریخچه اخیر خریدها و انتقالات
+                          </CardTitle>
+                          <span className="text-xs text-[var(--c-muted-fg)] mt-1 block">
+                            {showLedger ? 'بستن لیست' : 'مشاهده ۱۰۰ تراکنش اخیر این فارم — برای گردش کامل به کاردکس بروید'}
+                          </span>
+                        </span>
+                      </button>
                       <div className="flex items-center gap-2">
                         <Button
                           variant="ghost"
@@ -748,6 +807,7 @@ export default function PurchasesPage() {
                     </div>
 
                     {/* Query Filters Bar */}
+                    {showLedger && (
                     <div className="flex flex-col sm:flex-row gap-3 pt-3 items-stretch sm:items-center">
                       <div className="relative flex-1">
                         <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-[var(--c-muted-fg)]" />
@@ -794,7 +854,9 @@ export default function PurchasesPage() {
                         </Button>
                       </div>
                     </div>
+                    )}
                   </CardHeader>
+                  {showLedger && (
                   <CardContent className="p-0">
                     {isLoadingTxns ? (
                       <div className="py-12 flex items-center justify-center">
@@ -821,7 +883,7 @@ export default function PurchasesPage() {
                               <th className="py-3 px-3">طرف معامله / واحد</th>
                               <th className="py-3 px-3 text-center">شماره مرجع</th>
                               <th className="py-3 px-3">توضیحات</th>
-                              {!isReadOnly && <th className="py-3 px-3 text-center">عملیات</th>}
+                              <th className="py-3 px-3 text-center">عملیات</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[var(--c-border)]">
@@ -877,9 +939,20 @@ export default function PurchasesPage() {
                                   <td className="py-3 px-3 text-xs text-[var(--c-muted-fg)] max-w-[150px] truncate">
                                     {txn.notes || '—'}
                                   </td>
-                                  {!isReadOnly && (
+                                  {!isReadOnly ? (
                                     <td className="py-3 px-3 text-center">
                                       <div className="flex items-center justify-center gap-1">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => txn.item_id && navigate(`${roleBase}/inventory/${txn.item_id}/history`)}
+                                          title="مشاهده کاردکس کالا"
+                                          aria-label="مشاهده کاردکس کالا"
+                                          className="text-[var(--c-muted-fg)] hover:bg-[color-mix(in_srgb,var(--c-primary)_10%,transparent)] hover:text-primary p-1.5 h-auto"
+                                        >
+                                          <History className="w-4 h-4" />
+                                        </Button>
                                         <Button
                                           type="button"
                                           variant="ghost"
@@ -904,6 +977,22 @@ export default function PurchasesPage() {
                                         </Button>
                                       </div>
                                     </td>
+                                  ) : (
+                                    <td className="py-3 px-3 text-center">
+                                      <div className="flex items-center justify-center gap-1">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => txn.item_id && navigate(`${roleBase}/inventory/${txn.item_id}/history`)}
+                                          title="مشاهده کاردکس کالا"
+                                          aria-label="مشاهده کاردکس کالا"
+                                          className="text-[var(--c-muted-fg)] hover:bg-[color-mix(in_srgb,var(--c-primary)_10%,transparent)] hover:text-primary p-1.5 h-auto"
+                                        >
+                                          <History className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                    </td>
                                   )}
                                 </tr>
                               );
@@ -913,6 +1002,7 @@ export default function PurchasesPage() {
                       </div>
                     )}
                   </CardContent>
+                  )}
                 </Card>
               </motion.div>
             )}

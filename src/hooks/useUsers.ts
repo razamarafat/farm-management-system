@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { assertMutationAffected } from '@/utils/mutationGuard';
 import { createUser as bffCreateUser, listUsers, updateUserById, deleteUser as bffDeleteUser, resetPassword as bffClientResetPassword } from '@/lib/bff-client';
 import { CreateUserInput, ProfileWithFarm, UpdateUserInput, UserFilters } from '@/types/user.types';
 import { generateRandomPassword } from '@/utils/userHelpers';
@@ -212,7 +213,10 @@ export const useUpdateUser = () => {
     setIsUpdating(true);
     setUpdateError(null);
     try {
-      const { error: profileError } = await supabase
+      // `.select('id')` + row-count guard: an RLS-denied UPDATE returns
+      // zero rows with NO error — without it the UI would report success
+      // while the profile row is untouched.
+      const { data, error: profileError } = await supabase
         .from('profiles')
         .update({
           first_name: input.firstName.trim(),
@@ -222,9 +226,12 @@ export const useUpdateUser = () => {
           phone: (input.phone && input.phone.trim() !== '') ? input.phone.trim() : null,
           farm_id: (input.farmId && input.farmId.trim() !== '') ? input.farmId : null,
         })
-        .eq('id', userId);
+        .eq('id', userId)
+        .select('id');
 
-      if (profileError) {
+      try {
+        assertMutationAffected(data, profileError);
+      } catch {
         throw new Error('خطا در بروزرسانی اطلاعات کاربر');
       }
 
@@ -260,11 +267,14 @@ export const useDeleteUser = () => {
     setIsDeleting(true);
     try {
       if (mode === 'soft') {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('profiles')
           .update({ is_active: false })
-          .eq('id', userId);
-        if (error) {
+          .eq('id', userId)
+          .select('id');
+        try {
+          assertMutationAffected(data, error);
+        } catch {
           throw new Error('خطا در غیرفعالسازی کاربر');
         }
         await logActivity('user_deactivated', userId);
@@ -272,11 +282,14 @@ export const useDeleteUser = () => {
       }
 
       // Hard delete (profile row uses JWT-bound client)
-      const { error: profileError } = await supabase
+      const { data: deleted, error: profileError } = await supabase
         .from('profiles')
         .delete()
-        .eq('id', userId);
-      if (profileError) {
+        .eq('id', userId)
+        .select('id');
+      try {
+        assertMutationAffected(deleted, profileError);
+      } catch {
         throw new Error('خطا در حذف کاربر');
       }
       // Delete auth user via BFF
@@ -294,13 +307,14 @@ export const useDeleteUser = () => {
 export const useToggleUserStatus = () => {
   const toggleStatus = async (userId: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .update({ is_active: !currentStatus })
-        .eq('id', userId);
-      if (error) {
-        throw error;
-      }
+        .eq('id', userId)
+        .select('id');
+      // RLS-denied toggle returns zero rows with NO error — guard it so
+      // the success toast below can never fire falsely.
+      assertMutationAffected(data, error);
       await logActivity(currentStatus ? 'user_deactivated' : 'user_activated', userId);
       toast.success(currentStatus ? 'کاربر غیرفعال شد' : 'کاربر فعال شد');
       return true;

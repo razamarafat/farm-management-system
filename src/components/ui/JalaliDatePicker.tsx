@@ -57,10 +57,17 @@ export const JalaliDatePicker = ({ value, onChange, placeholder = 'انتخاب 
         setOpen(false);
       }
     };
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
     if (open) {
       document.addEventListener('mousedown', onClickOutside);
+      document.addEventListener('keydown', onEscape);
     }
-    return () => document.removeEventListener('mousedown', onClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', onClickOutside);
+      document.removeEventListener('keydown', onEscape);
+    };
   }, [open]);
 
   const days = useMemo(() => {

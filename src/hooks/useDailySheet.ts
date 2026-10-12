@@ -13,6 +13,7 @@ import {
   findVoucher,
 } from '@/lib/offline/reads';
 import { rpcError } from '@/utils/rpcError';
+import { assertMutationAffected } from '@/utils/mutationGuard';
 import {
   type VoucherCategory,
   type DailySheetData,
@@ -474,6 +475,68 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
     if (fi) setAdhocCandidates(prev => [...prev, { id: fi.id, name: fi.name, unit: fi.unit }]);
   }, [data]);
 
+  // Remove a voucher row — handles BOTH unsaved drafts and persisted
+  // database lines (objective 3). Persisted lines are hard-deleted with a
+  // row-count guard (no silent success); pending dirt is discarded either
+  // way. Manually added (ad-hoc) rows leave the list entirely; base
+  // formula/farm rows stay visible but are zeroed — they belong to the
+  // farm/formula, so hiding them would be undone by the next refetch.
+  // Totals, balances and mixer ratios recalculate from the new state.
+  const removeLine = useCallback(async (itemId: string): Promise<boolean> => {
+    if (!data) return false;
+    const row = data.items.find((i) => i.id === itemId);
+    if (!row) return false;
+
+    if (row.line_id) {
+      try {
+        const { data: deleted, error } = await supabase
+          .from('daily_voucher_lines')
+          .delete()
+          .eq('id', row.line_id)
+          .select('id');
+        assertMutationAffected(deleted, error);
+      } catch {
+        toast.error('خطا در حذف ردیف');
+        return false;
+      }
+    }
+    dirtyLinesRef.current.delete(itemId);
+
+    if (adhocRef.current.ids.has(itemId)) {
+      adhocRef.current.ids.delete(itemId);
+      const fi = rawCacheRef.current?.farmItems.find((f) => f.id === itemId);
+      setData(prev => prev ? { ...prev, items: prev.items.filter((i) => i.id !== itemId) } : prev);
+      if (fi) setAdhocCandidates(prev => [...prev, { id: fi.id, name: fi.name, unit: fi.unit }]);
+    } else {
+      setData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map((item) => {
+            if (item.id !== itemId) return item;
+            const remaining = Math.round(toNumber(item.current_balance) * 1000) / 1000;
+            return {
+              ...item,
+              line_id: null,
+              consumed_qty: 0,
+              waste_qty: 0,
+              notes: '',
+              hall_consumed: {},
+              total_consumed: 0,
+              mixer_count: 0,
+              hall_numbers: '',
+              remaining_preview: remaining,
+              status: rowStatusFor(remaining, toNumber(item.reorder_point)),
+              isDirty: false,
+            };
+          }),
+        };
+      });
+    }
+    toast.success('ردیف حذف شد');
+    return true;
+  }, [data]);
+
   // Update hall configs
   const updateHallConfigs = useCallback((configs: HallConfig[]) => {
     setHallConfigs(configs);
@@ -777,5 +840,6 @@ export function useDailySheet({ farmId, date, category, ignoreEditWindow }: UseD
     adhocCandidates,
     addAdhocItem,
     removeAdhocItem,
+    removeLine,
   };
 }

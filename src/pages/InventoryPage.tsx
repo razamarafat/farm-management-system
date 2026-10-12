@@ -281,6 +281,17 @@ export default function InventoryPage() {
     setShowAddModal(true);
   };
 
+  // Backdrop + Escape dismiss for the bespoke «ثبت» modal below (it does
+  // not use the shared <Modal> primitive, so it needs its own handler).
+  useEffect(() => {
+    if (!showAddModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowAddModal(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [showAddModal]);
+
   const confirmDeleteTransaction = async () => {
     if (isSubmitting || isReadOnly || !deleteTxnId) return;
 
@@ -1010,6 +1021,13 @@ export default function InventoryPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => {
+              // Backdrop dismiss — clicks inside the card stop
+              // propagation (see inner onClick) so they never close.
+              if (e.target === e.currentTarget) setShowAddModal(false);
+            }}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}

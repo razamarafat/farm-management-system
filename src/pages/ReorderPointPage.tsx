@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { toast } from 'sonner';
 import { toPersianNumbers, toEnglishDigits, formatRial } from '@/utils/persianNumbers';
+import { assertMutationAffected } from '@/utils/mutationGuard';
 import type { StockBalance } from '@/types/inventory.types';
 
 
@@ -252,19 +253,22 @@ export default function ReorderPointPage() {
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
+      // `.select('id')` + row-count guard: an RLS-denied UPDATE returns
+      // zero rows with NO error — without it the toast below lies.
+      const { data, error } = await supabase
         .from('farm_items')
         .update({ reorder_point: newValue })
-        .eq('id', itemId);
+        .eq('id', itemId)
+        .select('id');
 
-      if (error) throw error;
+      assertMutationAffected(data, error);
 
       toast.success('نقطه سفارش بروزرسانی شد');
       setEditingItemId(null);
       setEditValue('');
       refetch();
     } catch (err) {
-      toast.error('خطا در بروزرسانی نقطه سفارش');
+      toast.error(err instanceof Error ? err.message : 'خطا در بروزرسانی نقطه سفارش');
     } finally {
       setIsSubmitting(false);
     }
